@@ -1,0 +1,21 @@
+import "./App.css";
+import { Route, Routes } from "react-router";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Index from "./pages/Index";
+
+function App() {
+  return (
+    <>
+      <Routes>
+        <Route index element={<Login />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<ResetPassword />} />
+        <Route path="index" element={<Index />} />
+      </Routes>
+    </>
+  );
+}
+
+export default App;

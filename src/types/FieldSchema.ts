@@ -1,0 +1,40 @@
+import * as z from "zod";
+
+const EmailPassword = {
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .pipe(z.email("Enter a valid email address")),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(64, "Password must be at most 64 characters")
+    .regex(/[a-z]/, "Include at least one lowercase letter")
+    .regex(/[A-Z]/, "Include at least one uppercase letter")
+    .regex(/[0-9]/, "Include at least one number")
+    .regex(/[^A-Za-z0-9]/, "Include at least one special character"),
+};
+
+export const SigninSchema = z.object({
+  username: z
+    .string()
+    .min(5, "Username must be at least 5 characters.")
+    .max(25, "Username must be at most 25 characters."),
+  password: EmailPassword.password,
+});
+
+export const ForgotPasswordSchema = z.object({
+  email: EmailPassword.email,
+});
+
+export const ResetPasswordSchema = z
+  .object({
+    email: EmailPassword.email,
+    password: EmailPassword.password,
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
