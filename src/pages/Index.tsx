@@ -9,14 +9,14 @@ const Index = () => {
     <>
       <Container>
         <div>
-          <div className="sticky top-0">
+          <div className="sticky top-0 z-1">
             <AppHeader />
           </div>
           <div>
             <div className=" fixed">
               <AppSideBar />
             </div>
-            <div className="ml-72">
+            <div className="ml-72 z-0">
               <Outlet />
             </div>
           </div>
