@@ -16,7 +16,7 @@ const Index = () => {
             <div className=" fixed">
               <AppSideBar />
             </div>
-            <div className="ml-72 z-0">
+            <div className="ml-64 z-0">
               <Outlet />
             </div>
           </div>

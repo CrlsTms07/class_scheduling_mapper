@@ -56,9 +56,9 @@ const AppSideBar = () => {
   ];
   return (
     <>
-      <div className="w-72 border-e h-screen">
+      <div className="w-64 border-e h-screen">
         {navigationDetail.map((navSet) => (
-          <div key={navSet.label} className="p-7 space-y-2">
+          <div key={navSet.label} className="p-5 space-y-2">
             <p className="text-neutral-600 text-sm pl-3">{navSet.label}</p>
             {navSet.navigationArr.map(({ name, symbol: Icon }) => (
               <div

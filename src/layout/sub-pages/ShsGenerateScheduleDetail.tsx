@@ -1,42 +1,56 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Plus } from "lucide-react";
-import React from "react";
-import { useParams } from "react-router";
+import { CardContent } from "@/components/ui/card";
+import { DoorClosed, Logs } from "lucide-react";
+import ManageSchedule from "../_modal/ManageSchedule";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ShsDailySchedule from "./ShsDailySchedule";
 
 const ShsGenerateScheduleDetail = () => {
-  const { id } = useParams();
-  const roomId = id ? Number(id) : null;
   return (
     <>
-      <div>
-        <div className="p-3 space-y-3">
-          <Card>
-            <CardContent>Room: 101</CardContent>
-          </Card>
-          <Collapsible>
-            <div className="flex justify-between  items-center border rounded-lg p-3">
-              <CollapsibleTrigger>Monday</CollapsibleTrigger>
-              <Button size="xs">
-                <Plus /> Add Schedule
-              </Button>
+      <div className="p-3">
+        <div className="p-2 space-y-3">
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#790D16]/10 p-2 rounded-sm">
+                  <DoorClosed className="text-branding" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-teal-700">A-101</p>
+                  <p className="text-neutral-700 text-xs">Building 14-A</p>
+                </div>
+              </div>
+              <div className="space-x-3">
+                <ManageSchedule />
+                <Button variant="outline" size="icon-sm">
+                  <Logs />
+                </Button>
+              </div>
             </div>
-            <CollapsibleContent>
-              Yes. Free to use for personal and commercial projects. No
-              attribution required.
-            </CollapsibleContent>
-          </Collapsible>
+            <div className="flex items-center border-t pt-2 space-x-3">
+              <p className="text-xs text-neutral-700">Sections:</p>
+              <Badge variant="secondary">STEM 11-1</Badge>
+              <Badge variant="secondary">STEM 12-1</Badge>
+            </div>
+          </CardContent>
+          <Tabs defaultValue="account" className="w-full mt-5">
+            <TabsList className="w-full">
+              <TabsTrigger value="1st">1st Semester</TabsTrigger>
+              <TabsTrigger value="2nd">2nd Semester</TabsTrigger>
+              <TabsTrigger value="3rd">3rd Semester</TabsTrigger>
+            </TabsList>
+            <TabsContent value="1st">
+              <ShsDailySchedule />
+            </TabsContent>
+            <TabsContent value="2nd">
+              <ShsDailySchedule />
+            </TabsContent>
+            <TabsContent value="3rd">
+              <ShsDailySchedule />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </>

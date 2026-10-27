@@ -37,7 +37,7 @@ const ShsGenerateSchedule = () => {
               </InputGroup>
             </div>
           </div>
-          <div className="grid grid-cols-3 grid-flow-row gap-3 mt-2">
+          <div className="grid grid-cols-3 grid-flow-row gap-5 mt-2">
             {Array.from({ length: 9 }).map((_, i) => (
               <Card key={i} className="shadow shadow-[#790D16]/40">
                 <CardContent>
@@ -45,7 +45,7 @@ const ShsGenerateSchedule = () => {
                     <div className="flex justify-between items-center gap-3">
                       <div>
                         <p className="text-teal-700 font-bold text-base">
-                          Room: 10{i + 1}
+                          Room: 10{i + 1} A
                         </p>
                       </div>
                       <Link to={`/index/room/${i + 1}`}>

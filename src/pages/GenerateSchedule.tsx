@@ -20,6 +20,7 @@ const GenerateSchedule = () => {
             <TabsList className="w-xl">
               <TabsTrigger value="account">Senior Highschool</TabsTrigger>
               <TabsTrigger value="password">Junior Highschool</TabsTrigger>
+              <TabsTrigger value="break">Session Break</TabsTrigger>
             </TabsList>
             <TabsContent value="account">
               <ShsGenerateSchedule />
@@ -27,6 +28,7 @@ const GenerateSchedule = () => {
             <TabsContent value="password">
               Change your password here.
             </TabsContent>
+            <TabsContent value="break">Change your password here.</TabsContent>
           </Tabs>
         </div>
       </Container>
