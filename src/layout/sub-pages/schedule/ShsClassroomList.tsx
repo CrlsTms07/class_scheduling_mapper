@@ -6,12 +6,11 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import Pagination from "@/layout/Pagination";
 import { DoorClosed, Plus, SearchIcon } from "lucide-react";
-import React from "react";
-import Pagination from "../Pagination";
 import { Link } from "react-router";
 
-const ShsGenerateSchedule = () => {
+const ShsClassroomList = () => {
   return (
     <>
       <div>
@@ -76,4 +75,4 @@ const ShsGenerateSchedule = () => {
   );
 };
 
-export default ShsGenerateSchedule;
+export default ShsClassroomList;

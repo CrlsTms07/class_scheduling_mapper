@@ -5,7 +5,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import GenerateSchedule from "./pages/GenerateSchedule";
-import ShsGenerateScheduleDetail from "./layout/sub-pages/ShsGenerateScheduleDetail";
+import ShsGenerateScheduleDetail from "./layout/sub-pages/schedule/ShsGenerateScheduleDetail";
 
 function App() {
   return (

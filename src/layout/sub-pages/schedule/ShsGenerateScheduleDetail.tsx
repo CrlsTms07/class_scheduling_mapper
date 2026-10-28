@@ -2,9 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { DoorClosed, Logs } from "lucide-react";
-import ManageSchedule from "../_modal/ManageSchedule";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ShsDailySchedule from "./ShsDailySchedule";
+import ShsRoomDailySchedule from "./ShsRoomDailySchedule";
+import AddSection from "./AddSection";
 
 const ShsGenerateScheduleDetail = () => {
   return (
@@ -23,7 +23,7 @@ const ShsGenerateScheduleDetail = () => {
                 </div>
               </div>
               <div className="space-x-3">
-                <ManageSchedule />
+                <AddSection />
                 <Button variant="outline" size="icon-sm">
                   <Logs />
                 </Button>
@@ -42,13 +42,13 @@ const ShsGenerateScheduleDetail = () => {
               <TabsTrigger value="3rd">3rd Semester</TabsTrigger>
             </TabsList>
             <TabsContent value="1st">
-              <ShsDailySchedule />
+              <ShsRoomDailySchedule />
             </TabsContent>
             <TabsContent value="2nd">
-              <ShsDailySchedule />
+              <ShsRoomDailySchedule />
             </TabsContent>
             <TabsContent value="3rd">
-              <ShsDailySchedule />
+              <ShsRoomDailySchedule />
             </TabsContent>
           </Tabs>
         </div>

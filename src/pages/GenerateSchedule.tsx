@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Container from "@/layout/Container";
-import ShsGenerateSchedule from "@/layout/sub-pages/ShsGenerateSchedule";
+import ShsClassroomList from "@/layout/sub-pages/schedule/ShsClassroomList";
 
 const GenerateSchedule = () => {
   return (
@@ -9,7 +9,7 @@ const GenerateSchedule = () => {
         <div>
           <div>
             <p className="text-branding text-xl font-medium">
-              Schedule Configuration
+              Classroom Schedule Configuration
             </p>
             <p className="text-sm text-neutral-700 ">
               This page lets you build the weekly timetable for each section by
@@ -23,7 +23,8 @@ const GenerateSchedule = () => {
               <TabsTrigger value="break">Session Break</TabsTrigger>
             </TabsList>
             <TabsContent value="account">
-              <ShsGenerateSchedule />
+              {/* component */}
+              <ShsClassroomList />
             </TabsContent>
             <TabsContent value="password">
               Change your password here.
