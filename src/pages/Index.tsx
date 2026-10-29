@@ -1,6 +1,6 @@
-import AppHeader from "@/layout/AppHeader";
-import AppSideBar from "@/layout/AppSideBar";
-import Container from "@/layout/Container";
+import AppHeader from "@/components/global-component/AppHeader";
+import AppSideBar from "@/components/global-component/AppSideBar";
+import Container from "@/components/global-component/Container";
 import React from "react";
 import { Outlet } from "react-router";
 

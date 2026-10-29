@@ -4,8 +4,8 @@ import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
-import GenerateSchedule from "./pages/GenerateSchedule";
-import ShsGenerateScheduleDetail from "./layout/sub-pages/schedule/ShsGenerateScheduleDetail";
+import ShsGenerateScheduleDetail from "./features/schedule/ClassroomScheduleDetail";
+import Schedule from "./pages/Schedule";
 
 function App() {
   return (
@@ -15,7 +15,7 @@ function App() {
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="reset-password" element={<ResetPassword />} />
         <Route path="index" element={<Index />}>
-          <Route path="schedule" element={<GenerateSchedule />} />
+          <Route path="schedule" element={<Schedule />} />
           <Route path="room/:id" element={<ShsGenerateScheduleDetail />} />
         </Route>
       </Routes>

@@ -13,8 +13,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { SigninSchema } from "@/types/FieldSchema";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { NavLink, useNavigate } from "react-router";
-import AuthenticationLayout from "@/layout/AuthenticationLayout";
-import Container from "@/layout/Container";
+import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
+import Container from "@/components/global-component/Container";
 import React from "react";
 import * as z from "zod";
 

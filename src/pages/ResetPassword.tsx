@@ -11,8 +11,8 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ResetPasswordSchema } from "@/types/FieldSchema";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import AuthenticationLayout from "@/layout/AuthenticationLayout";
-import Container from "@/layout/Container";
+import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
+import Container from "@/components/global-component/Container";
 import React from "react";
 import * as z from "zod";
 

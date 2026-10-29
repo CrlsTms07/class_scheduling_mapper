@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { DoorClosed, Logs } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ShsRoomDailySchedule from "./ShsRoomDailySchedule";
 import AddSection from "./AddSection";
+import ShsRoomDailySchedule from "./ShsRoomDailySchedule";
 
-const ShsGenerateScheduleDetail = () => {
+const SectionSubjectDetail = () => {
   return (
     <>
       <div className="p-3">
@@ -18,7 +18,7 @@ const ShsGenerateScheduleDetail = () => {
                   <DoorClosed className="text-branding" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-teal-700">A-101</p>
+                  <p className="text-xl font-bold text-teal-700">S</p>
                   <p className="text-neutral-700 text-xs">Building 14-A</p>
                 </div>
               </div>
@@ -57,4 +57,4 @@ const ShsGenerateScheduleDetail = () => {
   );
 };
 
-export default ShsGenerateScheduleDetail;
+export default SectionSubjectDetail;
