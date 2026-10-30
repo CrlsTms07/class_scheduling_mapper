@@ -1,12 +1,22 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { DoorClosed, Logs } from "lucide-react";
+import { Logs, TableProperties } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AddSection from "./AddSection";
-import ShsRoomDailySchedule from "./ShsRoomDailySchedule";
+import SubjectDailySchedule from "./SubjectDailySchedule";
 
 const SectionSubjectDetail = () => {
+  const semester = [
+    {
+      name: "1st Semester",
+    },
+    {
+      name: "2nd Semester",
+    },
+    {
+      name: "3rd Semester",
+    },
+  ];
   return (
     <>
       <div className="p-3">
@@ -15,41 +25,36 @@ const SectionSubjectDetail = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="bg-[#790D16]/10 p-2 rounded-sm">
-                  <DoorClosed className="text-branding" />
+                  <TableProperties className="text-branding" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-teal-700">S</p>
-                  <p className="text-neutral-700 text-xs">Building 14-A</p>
+                  <p className="text-xl font-bold text-teal-700">STEM 11-1</p>
+                  <p className="text-neutral-700 text-xs">Grade 11</p>
                 </div>
               </div>
               <div className="space-x-3">
-                <AddSection />
                 <Button variant="outline" size="icon-sm">
                   <Logs />
                 </Button>
               </div>
             </div>
             <div className="flex items-center border-t pt-2 space-x-3">
-              <p className="text-xs text-neutral-700">Sections:</p>
-              <Badge variant="secondary">STEM 11-1</Badge>
-              <Badge variant="secondary">STEM 12-1</Badge>
+              <p className="text-xs text-neutral-700">Subjects:</p>
+              <Badge variant="secondary">GEN BIO 1</Badge>
+              <Badge variant="secondary">READING AND WRITING</Badge>
             </div>
           </CardContent>
           <Tabs defaultValue="account" className="w-full mt-5">
             <TabsList className="w-full">
-              <TabsTrigger value="1st">1st Semester</TabsTrigger>
-              <TabsTrigger value="2nd">2nd Semester</TabsTrigger>
-              <TabsTrigger value="3rd">3rd Semester</TabsTrigger>
+              {semester.map(({ name }) => (
+                <TabsTrigger value={name}>{name}</TabsTrigger>
+              ))}
             </TabsList>
-            <TabsContent value="1st">
-              <ShsRoomDailySchedule />
-            </TabsContent>
-            <TabsContent value="2nd">
-              <ShsRoomDailySchedule />
-            </TabsContent>
-            <TabsContent value="3rd">
-              <ShsRoomDailySchedule />
-            </TabsContent>
+            {semester.map(({ name }) => (
+              <TabsContent value={name}>
+                <SubjectDailySchedule />
+              </TabsContent>
+            ))}
           </Tabs>
         </div>
       </div>

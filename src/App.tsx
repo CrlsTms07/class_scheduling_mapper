@@ -6,6 +6,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import ShsGenerateScheduleDetail from "./features/schedule/ClassroomScheduleDetail";
 import Schedule from "./pages/Schedule";
+import SectionSubjectDetail from "./features/schedule/SectionSubjectDetail";
 
 function App() {
   return (
@@ -16,7 +17,7 @@ function App() {
         <Route path="reset-password" element={<ResetPassword />} />
         <Route path="index" element={<Index />}>
           <Route path="schedule" element={<Schedule />} />
-          <Route path="room/:id" element={<ShsGenerateScheduleDetail />} />
+          <Route path="schedule/section" element={<SectionSubjectDetail />} />
         </Route>
       </Routes>
     </>
@@ -24,3 +25,5 @@ function App() {
 }
 
 export default App;
+
+// <Route path="room/:id" element={<ShsGenerateScheduleDetail />} />

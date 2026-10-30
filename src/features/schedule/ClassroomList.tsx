@@ -61,19 +61,19 @@ const ClassroomList = () => {
                     <Badge
                       variant="secondary"
                       render={
-                        <a href="#link">
-                          STEM 11-1
+                        <div className="cursor-pointer">
+                          <p>STEM 11-1</p>
                           <ArrowUpRightIcon data-icon="inline-end" />
-                        </a>
+                        </div>
                       }
                     />
                     <Badge
                       variant="secondary"
                       render={
-                        <a href="#link">
-                          ABM 11-1
+                        <div className="cursor-pointer">
+                          <p>ABM 11-1</p>
                           <ArrowUpRightIcon data-icon="inline-end" />
-                        </a>
+                        </div>
                       }
                     />
                   </div>
