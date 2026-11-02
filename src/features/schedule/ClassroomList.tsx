@@ -45,7 +45,7 @@ const ClassroomList = () => {
                         Room: 10{i + 1} A
                       </p>
                     </div>
-                    <Link to={`/index/room/${i + 1}`}>
+                    <Link to="/index/schedule/classroom-detail">
                       <Button variant="outline" size="xs">
                         <Plus />
                         Add Section
@@ -58,24 +58,28 @@ const ClassroomList = () => {
                     Section in this building:
                   </p>
                   <div className="flex items-center gap-3">
-                    <Badge
-                      variant="secondary"
-                      render={
-                        <div className="cursor-pointer">
-                          <p>STEM 11-1</p>
-                          <ArrowUpRightIcon data-icon="inline-end" />
-                        </div>
-                      }
-                    />
-                    <Badge
-                      variant="secondary"
-                      render={
-                        <div className="cursor-pointer">
-                          <p>ABM 11-1</p>
-                          <ArrowUpRightIcon data-icon="inline-end" />
-                        </div>
-                      }
-                    />
+                    <Link to="section-detail" state={{ name: "STEM 11-1" }}>
+                      <Badge
+                        variant="secondary"
+                        render={
+                          <div className="cursor-pointer">
+                            <p>STEM 11-1</p>
+                            <ArrowUpRightIcon data-icon="inline-end" />
+                          </div>
+                        }
+                      />
+                    </Link>
+                    <Link to="section-detail" state={{ name: "ABM 11-1" }}>
+                      <Badge
+                        variant="secondary"
+                        render={
+                          <div className="cursor-pointer">
+                            <p>ABM 11-1</p>
+                            <ArrowUpRightIcon data-icon="inline-end" />
+                          </div>
+                        }
+                      />
+                    </Link>
                   </div>
                 </div>
               </CardContent>

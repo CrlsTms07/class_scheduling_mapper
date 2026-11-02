@@ -4,8 +4,12 @@ import { CardContent } from "@/components/ui/card";
 import { Logs, TableProperties } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SubjectDailySchedule from "./SubjectDailySchedule";
+import { useLocation } from "react-router";
+import BreadCrumbs from "@/components/global-component/BreadCrumbs";
+import SectionLogs from "./SectionLogs";
 
 const SectionSubjectDetail = () => {
+  const { state } = useLocation();
   const semester = [
     {
       name: "1st Semester",
@@ -20,6 +24,7 @@ const SectionSubjectDetail = () => {
   return (
     <>
       <div className="p-3">
+        <BreadCrumbs />
         <div className="p-2 space-y-3">
           <CardContent>
             <div className="flex justify-between items-center">
@@ -28,14 +33,14 @@ const SectionSubjectDetail = () => {
                   <TableProperties className="text-branding" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-teal-700">STEM 11-1</p>
+                  <p className="text-xl font-bold text-teal-700">
+                    {state.name}
+                  </p>
                   <p className="text-neutral-700 text-xs">Grade 11</p>
                 </div>
               </div>
               <div className="space-x-3">
-                <Button variant="outline" size="icon-sm">
-                  <Logs />
-                </Button>
+                <SectionLogs />
               </div>
             </div>
             <div className="flex items-center border-t pt-2 space-x-3">

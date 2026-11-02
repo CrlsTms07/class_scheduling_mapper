@@ -32,7 +32,7 @@ const Login = () => {
 
   const handleSignin = (data: z.infer<typeof SigninSchema>) => {
     console.log(data);
-    navigate("index");
+    navigate("index/schedule");
   };
   return (
     <>
@@ -90,7 +90,7 @@ const Login = () => {
                         <InputGroupInput
                           {...field}
                           aria-invalid={fieldState.invalid}
-                          placeholder="Enter your password"
+                          placeholder="Your password"
                           type={!isPassword ? "password" : "text"}
                         />
                         <InputGroupAddon align="inline-end">

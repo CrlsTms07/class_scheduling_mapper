@@ -4,12 +4,15 @@ import { CardContent } from "@/components/ui/card";
 import { DoorClosed, Logs } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AddSection from "./AddSection";
-import ShsRoomDailySchedule from "./ShsRoomDailySchedule";
+import RoomDailySchedule from "./RoomDailySchedule";
+import BreadCrumbs from "@/components/global-component/BreadCrumbs";
+import RoomLogs from "./RoomLogs";
 
 const ClassroomScheduleDetail = () => {
   return (
     <>
       <div className="p-3">
+        <BreadCrumbs />
         <div className="p-2 space-y-3">
           <CardContent>
             <div className="flex justify-between items-center">
@@ -24,9 +27,7 @@ const ClassroomScheduleDetail = () => {
               </div>
               <div className="space-x-3">
                 <AddSection />
-                <Button variant="outline" size="icon-sm">
-                  <Logs />
-                </Button>
+                <RoomLogs />
               </div>
             </div>
             <div className="flex items-center border-t pt-2 space-x-3">
@@ -42,13 +43,13 @@ const ClassroomScheduleDetail = () => {
               <TabsTrigger value="3rd">3rd Semester</TabsTrigger>
             </TabsList>
             <TabsContent value="1st">
-              <ShsRoomDailySchedule />
+              <RoomDailySchedule />
             </TabsContent>
             <TabsContent value="2nd">
-              <ShsRoomDailySchedule />
+              <RoomDailySchedule />
             </TabsContent>
             <TabsContent value="3rd">
-              <ShsRoomDailySchedule />
+              <RoomDailySchedule />
             </TabsContent>
           </Tabs>
         </div>

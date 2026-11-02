@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Container from "@/components/global-component/Container";
 import ClassroomList from "@/features/schedule/ClassroomList";
+import BreadCrumbs from "@/components/global-component/BreadCrumbs";
 
 const Schedule = () => {
   const building = [
@@ -18,6 +19,7 @@ const Schedule = () => {
     <>
       <Container className="p-6">
         <div>
+          <BreadCrumbs />
           <div>
             <p className="text-branding text-xl font-medium">
               Schedule Configuration

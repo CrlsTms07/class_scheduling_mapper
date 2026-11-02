@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   UserGroup,
 } from "lucide-react";
+import { Link, NavLink } from "react-router";
 
 const AppSideBar = () => {
   const navigationDetail = [
@@ -17,22 +18,28 @@ const AppSideBar = () => {
         {
           symbol: LayoutDashboard,
           name: "Dashboard",
+          path: ".",
+          end: true,
         },
         {
           symbol: CalendarCheck,
           name: "Schedule",
+          path: "schedule",
         },
         {
           symbol: CircleUserRound,
           name: "Teachers",
+          path: "coming-soon",
         },
         {
           symbol: Blocks,
           name: "Sections",
+          path: "coming-soon",
         },
         {
           symbol: FolderUser,
           name: "Reports",
+          path: "coming-soon",
         },
       ],
     },
@@ -42,14 +49,20 @@ const AppSideBar = () => {
         {
           symbol: CirclePile,
           name: "Subjects",
+
+          path: "coming-soon",
         },
         {
           symbol: Building,
           name: "Building",
+
+          path: "coming-soon",
         },
         {
           symbol: UserGroup,
           name: "Users",
+
+          path: "coming-soon",
         },
       ],
     },
@@ -60,14 +73,29 @@ const AppSideBar = () => {
         {navigationDetail.map((navSet) => (
           <div key={navSet.label} className="p-5 space-y-2">
             <p className="text-neutral-600 text-sm pl-3">{navSet.label}</p>
-            {navSet.navigationArr.map(({ name, symbol: Icon }) => (
-              <div
+
+            {navSet.navigationArr.map(({ name, path, end, symbol: Icon }) => (
+              <NavLink
                 key={name}
-                className="flex items-center gap-3 p-3 hover:bg-[#790D16]/5 hover:rounded-lg"
+                to={path}
+                end={end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    isActive
+                      ? "bg-[#790D16] text-white"
+                      : "text-neutral-700 hover:bg-[#790D16]/5"
+                  }`
+                }
               >
-                <Icon className="text-[#790D16]" />
-                <p className="text-neutral-700 text-sm">{name}</p>
-              </div>
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      className={isActive ? "text-white" : "text-[#790D16]"}
+                    />
+                    <p className="text-sm">{name}</p>
+                  </>
+                )}
+              </NavLink>
             ))}
           </div>
         ))}

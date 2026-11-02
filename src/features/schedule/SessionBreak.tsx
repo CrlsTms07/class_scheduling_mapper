@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/combobox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -190,7 +191,16 @@ const SessionBreak = () => {
                 />
               </div>
               <DialogFooter className="mt-16">
-                <Button type="submit">Submit</Button>
+                <DialogClose
+                  render={
+                    <Button variant="outline" type="button" className="w-36">
+                      Close
+                    </Button>
+                  }
+                />
+                <Button type="submit" className="w-36">
+                  Submit
+                </Button>
               </DialogFooter>
             </form>
           </div>

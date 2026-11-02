@@ -42,16 +42,7 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
     },
     mode: "onSubmit",
   });
-  const classSection = [
-    {
-      value: "STEM",
-      items: ["STEM 11-1", "STEM 11-2", "STEM 11-3", "STEM12-1", "STEM 12-2"],
-    },
-    {
-      value: "ABM",
-      items: ["ABM 11-1", "ABM 11-2", "ABM 11-3", "ABM 12-1", "ABM 12-2"],
-    },
-  ] as const;
+  const classSection = ["STEM 11-1", "STEM 12-1"] as const;
   const classSubject = ["Biology 1", "Aralin Panglipunan"] as const;
   const subjectTeacher = [
     "Justine Christian Dolor",
@@ -84,31 +75,14 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
                     <Field className="w-88">
                       <FieldLabel htmlFor={field.name}>Section</FieldLabel>
                       <Combobox items={classSection}>
-                        <ComboboxInput
-                          {...field}
-                          aria-invalid={fieldState.invalid}
-                          placeholder="Select a class section"
-                        />
+                        <ComboboxInput placeholder="Select a section" />
                         <ComboboxContent>
-                          <ComboboxEmpty>No section found.</ComboboxEmpty>
+                          <ComboboxEmpty>No items found.</ComboboxEmpty>
                           <ComboboxList>
-                            {(group, index) => (
-                              <ComboboxGroup
-                                key={group.value}
-                                items={group.items}
-                              >
-                                <ComboboxLabel>{group.value}</ComboboxLabel>
-                                <ComboboxCollection>
-                                  {(item) => (
-                                    <ComboboxItem key={item} value={item}>
-                                      {item}
-                                    </ComboboxItem>
-                                  )}
-                                </ComboboxCollection>
-                                {index < classSection.length - 1 && (
-                                  <ComboboxSeparator />
-                                )}
-                              </ComboboxGroup>
+                            {(item) => (
+                              <ComboboxItem key={item} value={item}>
+                                {item}
+                              </ComboboxItem>
                             )}
                           </ComboboxList>
                         </ComboboxContent>

@@ -21,7 +21,7 @@ export const SigninSchema = z.object({
     .string()
     .min(5, "Username must be at least 5 characters.")
     .max(25, "Username must be at most 25 characters."),
-  password: EmailPassword.password,
+  password: z.string().min(8, "Password must be at least 8 characters."),
 });
 
 export const ForgotPasswordSchema = z.object({
@@ -54,3 +54,8 @@ export const AddClassSchedule = z
     message: "End time must be after start time",
     path: ["endTime"],
   });
+
+export const SectionSchema = z.object({
+  gradeLevel: z.string().min(1, "Please select a grade level"),
+  section: z.string().min(1, "Please select a section"),
+});

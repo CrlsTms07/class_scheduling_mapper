@@ -14,7 +14,7 @@ import {
 import AddSectionToClassroom from "./AddSectionToClassroom";
 import EditSectionToClassroom from "./EditSectionToClassroom";
 
-const ShsRoomDailySchedule = () => {
+const RoomDailySchedule = () => {
   const Days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   return (
     <>
@@ -94,4 +94,4 @@ const ShsRoomDailySchedule = () => {
   );
 };
 
-export default ShsRoomDailySchedule;
+export default RoomDailySchedule;
