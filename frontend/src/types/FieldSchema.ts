@@ -54,25 +54,3 @@ export const ResetPasswordSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
-
-export const AddClassSchedule = z
-  .object({
-    section: z.string().trim().min(1, "Section is required."),
-    startTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm format (e.g. 08:30)"),
-    endTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm format (e.g. 08:30)"),
-    subject: z.string().trim().min(1, "Subject is required."),
-    teacher: z.string().trim().min(1, "Teacher is required."),
-  })
-  .refine((data) => data.endTime > data.startTime, {
-    message: "End time must be after start time",
-    path: ["endTime"],
-  });
-
-export const SectionSchema = z.object({
-  gradeLevel: z.string().min(1, "Please select a grade level"),
-  section: z.string().min(1, "Please select a section"),
-});
