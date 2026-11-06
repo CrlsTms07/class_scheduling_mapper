@@ -23,7 +23,10 @@ const person = (id: number, first_name: string, overrides: Partial<User> = {}): 
 const ADMIN = person(1, "Admin", { role: "super_admin" });
 const PENDING = person(2, "Pending", { status: "pending", role: null });
 const TEACHER = person(3, "Linked", { personnel: { id: 30, name: "Linked Reyes" } });
-const GONE = person(4, "Gone", { status: "inactive" });
+const GONE = person(4, "Gone", {
+  status: "inactive",
+  cannot_delete_reason: "This account has already worked on schedules, and that history must stay. Deactivate it instead.",
+});
 const USERS = [PENDING, ADMIN, TEACHER, GONE];
 
 const OPTIONS: AccessOptions = {
@@ -181,6 +184,40 @@ describe("an active account", () => {
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].url).toMatch(/\/users\/3\/status$/);
     expect(calls[0].body).toEqual({ status: "inactive" });
+  });
+});
+
+describe("deleting an account", () => {
+  it("has a Delete button beside the main action, but not for the Admin's own account", () => {
+    openPage();
+
+    const buttons = screen.getAllByRole("button", { name: /^Delete: /, hidden: true });
+    expect(buttons.filter((button) => button.closest("table"))).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Delete: Admin Reyes", hidden: true })).not.toBeInTheDocument();
+  });
+
+  it("asks first and says the personnel record stays", async () => {
+    const calls = openPage();
+
+    await manage("Delete: Linked Reyes");
+
+    expect(screen.getByText("Delete Linked Reyes?")).toBeInTheDocument();
+    expect(screen.getByText(/personnel record of Linked Reyes stays/)).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+
+    await click("Yes, delete this account");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/users\/3$/);
+  });
+
+  it("explains why an account with work must stay and offers no delete", async () => {
+    openPage();
+
+    await manage("Delete: Gone Reyes");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Deactivate it instead");
+    expect(screen.queryByRole("button", { name: "Yes, delete this account" })).not.toBeInTheDocument();
   });
 });
 

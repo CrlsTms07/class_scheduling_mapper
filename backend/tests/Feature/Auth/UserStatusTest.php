@@ -97,10 +97,46 @@ it('declines a pending sign-up and writes an audit log', function () {
     expect(json_decode($log->old_data)->email)->toBe($email);
 });
 
-it('only declines pending sign-ups', function () {
+it('deletes an active account with no work and writes an audit log', function () {
+    $this->deleteJson("/api/users/{$this->member->id}")->assertOk();
+
+    expect(User::find($this->member->id))->toBeNull()
+        ->and(DB::table('audit_logs')->where('action', 'delete')->where('record_id', $this->member->id)->exists())->toBeTrue();
+});
+
+it('keeps the personnel record of a deleted account, without a login', function () {
+    $teacherId = DB::table('teachers')->insertGetId([
+        'first_name' => 'Ana', 'last_name' => 'Reyes', 'user_id' => $this->member->id,
+    ]);
+
+    $this->deleteJson("/api/users/{$this->member->id}")->assertOk();
+
+    expect(DB::table('teachers')->where('id', $teacherId)->value('user_id'))->toBeNull();
+});
+
+it('refuses to delete an account that has worked on schedules, and says why', function () {
+    $yearId = DB::table('school_years')->insertGetId([
+        'name' => '2026-2027', 'start_date' => '2026-06-01', 'end_date' => '2027-03-31',
+    ]);
+    $termId = DB::table('school_terms')->insertGetId([
+        'school_year_id' => $yearId, 'term_no' => 1, 'name' => 'First Term',
+        'start_date' => '2026-06-01', 'end_date' => '2026-09-30',
+    ]);
+    $sectionId = DB::table('sections')->insertGetId([
+        'school_year_id' => $yearId, 'grade_level_id' => DB::table('grade_levels')->where('grade', 7)->value('id'), 'name' => 'Honesty',
+    ]);
+    DB::table('schedule_entries')->insert([
+        'term_id' => $termId, 'section_id' => $sectionId, 'created_by' => $this->member->id,
+        'day_of_week' => 1, 'start_time' => '07:00', 'end_time' => '07:45',
+    ]);
+
+    $this->getJson('/api/users')->assertJsonFragment([
+        'cannot_delete_reason' => 'This account has already worked on schedules, and that history must stay. Deactivate it instead.',
+    ]);
+
     $this->deleteJson("/api/users/{$this->member->id}")
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('status');
+        ->assertJsonValidationErrors(['user' => 'Deactivate it instead']);
 
     expect(User::find($this->member->id))->not->toBeNull();
 });

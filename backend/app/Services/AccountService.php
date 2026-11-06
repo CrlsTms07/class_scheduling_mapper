@@ -126,23 +126,41 @@ class AccountService
     }
 
     /**
-     * Removes a sign-up the Admin does not recognize. Only for pending accounts,
-     * which have no role and have never done anything in the system.
+     * Removes an account for good: a sign-up the Admin does not recognize, or an account made
+     * by mistake. The personnel record stays, without a login. An account with work in the
+     * system cannot be removed, because the schedules and approvals must keep their history.
      */
-    public function decline(User $user, User $admin): void
+    public function delete(User $user, User $admin): void
     {
-        if ($user->status !== 'pending') {
-            throw ValidationException::withMessages([
-                'status' => 'Only a pending sign-up can be declined. Deactivate this account instead.',
-            ]);
+        $reason = $this->whyCannotDelete($user);
+        if ($reason !== null) {
+            throw ValidationException::withMessages(['user' => $reason]);
         }
 
         DB::transaction(function () use ($user, $admin) {
-            $email = $user->email;
+            $before = ['email' => $user->email, 'status' => $user->status, 'role' => $user->getRoleNames()->first()];
+
+            DB::table('teachers')->where('user_id', $user->id)->update(['user_id' => null]);
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
             $user->delete();
 
-            $this->audit->log($admin, 'decline', 'users', $user->id, ['email' => $email]);
+            $this->audit->log($admin, $before['status'] === 'pending' ? 'decline' : 'delete', 'users', $user->id, $before);
         });
+    }
+
+    /**
+     * Why an account must stay, in words for the Admin, or null if it can be deleted.
+     */
+    public function whyCannotDelete(User $user): ?string
+    {
+        $hasWork = DB::table('schedule_entries')->where('created_by', $user->id)->exists()
+            || DB::table('schedule_reviews')->where('reviewed_by', $user->id)->exists()
+            || DB::table('schedule_flag_acknowledgements')->where('acknowledged_by', $user->id)->exists();
+
+        return $hasWork
+            ? 'This account has already worked on schedules, and that history must stay. Deactivate it instead.'
+            : null;
     }
 
     /**

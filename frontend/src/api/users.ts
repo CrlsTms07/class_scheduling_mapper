@@ -34,7 +34,7 @@ export function useChangeUserStatus(userId: number) {
   });
 }
 
-export function useDeclineUser(userId: number) {
+export function useDeleteUser(userId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({

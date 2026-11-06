@@ -3,7 +3,7 @@ import {
   useAccessOptions,
   useActivateUser,
   useChangeUserStatus,
-  useDeclineUser,
+  useDeleteUser,
 } from "@/api/users";
 import { apiErrorMessage } from "@/lib/forms";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -42,7 +42,7 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
   const { data: options } = useAccessOptions();
   const activate = useActivateUser();
   const changeStatus = useChangeUserStatus(user.id);
-  const decline = useDeclineUser(user.id);
+  const remove = useDeleteUser(user.id);
 
   const [role, setRole] = React.useState<RoleName | "">(user.role ?? "");
   const [gradeIds, setGradeIds] = React.useState<number[]>(
@@ -54,7 +54,7 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
   const requiredLevel = role ? ROLE_LEVEL[role] : undefined;
   const availableGrades =
     options?.grade_levels.filter(({ level }) => level === requiredLevel) ?? [];
-  const error = activate.error ?? changeStatus.error ?? decline.error;
+  const error = activate.error ?? changeStatus.error ?? remove.error;
 
   const handleRoleChange = (value: RoleName | "") => {
     setRole(value);
@@ -212,8 +212,8 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
                   label="Decline this sign-up"
                   warning="This removes the sign-up. The person can sign up again. Are you sure?"
                   confirmLabel="Yes, decline"
-                  isPending={decline.isPending}
-                  onConfirm={() => decline.mutate(undefined, { onSuccess: onClose })}
+                  isPending={remove.isPending}
+                  onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
                 />
               ) : (
                 <ConfirmDelete

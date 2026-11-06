@@ -20,6 +20,8 @@ export type User = {
   status: AccountStatus;
   role: RoleName | null;
   personnel: { id: number; name: string } | null;
+  /** Sent on the Users page only. */
+  cannot_delete_reason?: string | null;
   grade_levels: GradeLevel[];
 };
 

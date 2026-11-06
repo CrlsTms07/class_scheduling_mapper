@@ -27,12 +27,12 @@ class UserActivationController extends Controller
         return new UserResource($user->fresh()->load('gradeLevels'));
     }
 
-    public function decline(Request $request, User $user, AccountService $accounts): JsonResponse
+    public function destroy(Request $request, User $user, AccountService $accounts): JsonResponse
     {
         Gate::authorize('activate', $user);
 
-        $accounts->decline($user, $request->user());
+        $accounts->delete($user, $request->user());
 
-        return response()->json(['message' => 'The sign-up was declined.']);
+        return response()->json(['message' => 'The account was deleted.']);
     }
 }
