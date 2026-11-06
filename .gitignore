@@ -25,3 +25,6 @@ dist-ssr
 
 # Official forms contain real personnel names: keep out of Git until cleared
 docs/forms/
+
+# Local environment files
+.env

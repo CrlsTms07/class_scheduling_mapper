@@ -1,50 +1,57 @@
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Eye, EyeOffIcon } from "lucide-react";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SigninSchema } from "@/types/FieldSchema";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { NavLink, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
 import Container from "@/components/global-component/Container";
+import FormAlert from "@/components/global-component/FormAlert";
+import PasswordInput from "@/components/global-component/PasswordInput";
+import { useLogin } from "@/api/auth";
+import { applyApiErrors } from "@/lib/forms";
+import { homePathFor } from "@/lib/navigation";
 import React from "react";
 import * as z from "zod";
 
 const Login = () => {
-  const [isPassword, setIsPassword] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const login = useLogin();
   const form = useForm<z.infer<typeof SigninSchema>>({
     resolver: zodResolver(SigninSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
     mode: "onSubmit",
   });
 
   const handleSignin = (data: z.infer<typeof SigninSchema>) => {
-    console.log(data);
-    navigate("index/schedule");
+    setFormError(null);
+    login.mutate(data, {
+      onSuccess: ({ data: user }) => {
+        // Back to the page they tried to open, otherwise to their home page.
+        navigate(location.state?.from ?? homePathFor(user.role), { replace: true });
+      },
+      onError: (error) => setFormError(applyApiErrors(form, error)),
+    });
   };
+
   return (
     <>
       <Container>
         <AuthenticationLayout
           title="Sign in to your account"
-          description="Enter your username below to access to your account"
+          description="Enter your DepEd email below to access your account"
         >
-          <form onSubmit={form.handleSubmit((data) => handleSignin(data))}>
+          <form onSubmit={form.handleSubmit(handleSignin)} noValidate>
             <div className="space-y-6">
+              {formError && <FormAlert>{formError}</FormAlert>}
               <Controller
-                name="username"
+                name="email"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
@@ -52,13 +59,16 @@ const Login = () => {
                       htmlFor={field.name}
                       className="text-sm text-neutral-800"
                     >
-                      Username
+                      Email
                     </FieldLabel>
                     <Input
                       {...field}
                       aria-invalid={fieldState.invalid}
-                      id="username"
-                      placeholder="SampleUserName2026"
+                      id={field.name}
+                      type="email"
+                      autoComplete="username"
+                      className="h-11"
+                      placeholder="juan.delacruz@deped.gov.ph"
                     />
                     {fieldState.invalid && (
                       <FieldError errors={[fieldState.error]} />
@@ -72,38 +82,30 @@ const Login = () => {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <div>
-                      <div className="flex justify-between">
-                        <Label className="text-sm text-neutral-800 mb-1">
+                      <div className="flex justify-between items-center">
+                        <FieldLabel
+                          htmlFor={field.name}
+                          className="text-sm text-neutral-800 mb-1"
+                        >
                           Password
-                        </Label>
-                        <NavLink to="forgot-password">
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="text-xs"
-                          >
-                            Forgot your password?
-                          </Button>
-                        </NavLink>
+                        </FieldLabel>
+                        <Link
+                          to="/forgot-password"
+                          className={buttonVariants({
+                            variant: "link",
+                            className: "h-11 px-0 text-xs",
+                          })}
+                        >
+                          Forgot your password?
+                        </Link>
                       </div>
-                      <InputGroup>
-                        <InputGroupInput
-                          {...field}
-                          aria-invalid={fieldState.invalid}
-                          placeholder="Your password"
-                          type={!isPassword ? "password" : "text"}
-                        />
-                        <InputGroupAddon align="inline-end">
-                          <InputGroupButton
-                            aria-label="Copy"
-                            title="Copy"
-                            size="icon-xs"
-                            onClick={() => setIsPassword(!isPassword)}
-                          >
-                            {!isPassword ? <EyeOffIcon /> : <Eye />}
-                          </InputGroupButton>
-                        </InputGroupAddon>
-                      </InputGroup>
+                      <PasswordInput
+                        {...field}
+                        aria-invalid={fieldState.invalid}
+                        id={field.name}
+                        autoComplete="current-password"
+                        placeholder="Your password"
+                      />
                     </div>
                     {fieldState.invalid && (
                       <FieldError errors={[fieldState.error]} />
@@ -112,10 +114,35 @@ const Login = () => {
                 )}
               />
             </div>
-            <div>
-              <Button type="submit" className="w-full mt-10">
-                Signin
+            <div className="mt-8 space-y-3">
+              <Button
+                type="submit"
+                className="w-full h-11"
+                disabled={login.isPending}
+              >
+                {login.isPending ? "Signing in..." : "Sign in"}
               </Button>
+              <Link
+                to="/guest"
+                className={buttonVariants({
+                  variant: "outline",
+                  className: "w-full h-11",
+                })}
+              >
+                View Schedule
+              </Link>
+              <p className="text-center text-sm text-neutral-700">
+                No account yet?{" "}
+                <Link
+                  to="/signup"
+                  className={buttonVariants({
+                    variant: "link",
+                    className: "h-11 px-1",
+                  })}
+                >
+                  Sign up
+                </Link>
+              </p>
             </div>
           </form>
         </AuthenticationLayout>

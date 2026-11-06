@@ -13,7 +13,7 @@ const ClassroomList = () => {
   return (
     <>
       <div>
-        <div className="flex justify-between items-center py-2">
+        <div className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center py-2">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-[#790D16]/20 rounded-sm">
               <DoorClosed className="text-branding size-5" />
@@ -34,7 +34,7 @@ const ClassroomList = () => {
             </InputGroup>
           </div>
         </div>
-        <div className="grid grid-cols-3 grid-flow-row gap-5 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 grid-flow-row gap-5 mt-2">
           {Array.from({ length: 9 }).map((_, i) => (
             <Card key={i} className="shadow shadow-[#790D16]/40">
               <CardContent>
@@ -45,7 +45,7 @@ const ClassroomList = () => {
                         Room: 10{i + 1} A
                       </p>
                     </div>
-                    <Link to="/index/schedule/classroom-detail">
+                    <Link to="/schedule/classroom-detail">
                       <Button variant="outline" size="xs">
                         <Plus />
                         Add Section

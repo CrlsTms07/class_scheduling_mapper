@@ -8,16 +8,16 @@ const Index = () => {
     <>
       <Container>
         <div>
-          <div className="sticky top-0 z-1">
+          <div className="sticky top-0 z-10">
             <AppHeader />
           </div>
           <div>
-            <div className=" fixed">
+            <aside className="hidden lg:block fixed w-64 h-[calc(100dvh-5rem)] overflow-y-auto border-e">
               <AppSideBar />
-            </div>
-            <div className="ml-64 z-0">
+            </aside>
+            <main className="lg:ml-64 min-w-0">
               <Outlet />
-            </div>
+            </main>
           </div>
         </div>
       </Container>

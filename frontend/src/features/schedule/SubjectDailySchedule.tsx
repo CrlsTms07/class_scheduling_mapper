@@ -57,7 +57,7 @@ const SubjectDailySchedule = () => {
                 </InputGroup>
               </div>
             </div>
-            <div className="grid grid-cols-3 items-center pt-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 items-center pt-3 gap-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Card key={i}>
                   <CardContent>

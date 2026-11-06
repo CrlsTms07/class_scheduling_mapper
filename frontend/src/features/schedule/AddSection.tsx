@@ -79,7 +79,7 @@ const AddSection = () => {
                 name="gradeLevel"
                 control={form.control}
                 render={({ field, fieldState }) => (
-                  <Field className="w-88">
+                  <Field className="w-full px-4">
                     <FieldLabel htmlFor={field.name}>GradeLevel</FieldLabel>
                     <Combobox
                       items={gradeLevel}
@@ -110,7 +110,7 @@ const AddSection = () => {
                 name="section"
                 control={form.control}
                 render={({ field, fieldState }) => (
-                  <Field className="w-88">
+                  <Field className="w-full px-4">
                     <FieldLabel htmlFor={field.name}>Section</FieldLabel>
                     <Combobox
                       items={classSection}

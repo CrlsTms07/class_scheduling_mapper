@@ -14,15 +14,15 @@ const AuthenticationLayout = ({
 }: AuthenticationLayoutProp) => {
   return (
     <>
-      <div className="grid grid-cols-2 grid-flow-row ">
-        <div className="flex items-center justify-center">
-          <div className="space-y-8">
-            <div className="mx-36 space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 min-h-dvh">
+        <div className="flex items-center justify-center px-4 py-8 sm:px-8">
+          <div className="w-full max-w-md space-y-6 sm:space-y-8">
+            <div className="space-y-3">
               <div className="flex justify-center mb-4">
                 <img
                   src={HeroLogo}
                   alt="hero-logo"
-                  className="aspect-auto object-center w-16"
+                  className="aspect-auto object-center w-16 max-lg:landscape:w-10"
                 />
               </div>
               <p className="text-center text-xl font-bold text-[#790D16]">
@@ -32,10 +32,10 @@ const AuthenticationLayout = ({
                 {description}
               </p>
             </div>
-            <div className="px-24 pt-5">{children}</div>
+            <div>{children}</div>
           </div>
         </div>
-        <div className="p-10 bg-mauve-100 h-screen">
+        <div className="hidden lg:block p-10 bg-mauve-100">
           <div className="space-y-3 mt-10 p-5">
             <p className="text-3xl font-bold text-center text-[#790D16]">
               Scheduling Mapper

@@ -33,7 +33,7 @@ const SectionSubjectDetail = () => {
                 </div>
                 <div>
                   <p className="text-xl font-bold text-teal-700">
-                    {state.name}
+                    {state?.name ?? "Section"}
                   </p>
                   <p className="text-neutral-700 text-xs">Grade 11</p>
                 </div>
@@ -48,14 +48,14 @@ const SectionSubjectDetail = () => {
               <Badge variant="secondary">READING AND WRITING</Badge>
             </div>
           </CardContent>
-          <Tabs defaultValue="account" className="w-full mt-5">
+          <Tabs defaultValue={semester[0].name} className="w-full mt-5">
             <TabsList className="w-full">
               {semester.map(({ name }) => (
-                <TabsTrigger value={name}>{name}</TabsTrigger>
+                <TabsTrigger value={name} key={name}>{name}</TabsTrigger>
               ))}
             </TabsList>
             {semester.map(({ name }) => (
-              <TabsContent value={name}>
+              <TabsContent value={name} key={name}>
                 <SubjectDailySchedule />
               </TabsContent>
             ))}

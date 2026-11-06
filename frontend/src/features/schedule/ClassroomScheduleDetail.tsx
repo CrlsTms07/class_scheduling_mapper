@@ -35,7 +35,7 @@ const ClassroomScheduleDetail = () => {
               <Badge variant="secondary">STEM 12-1</Badge>
             </div>
           </CardContent>
-          <Tabs defaultValue="account" className="w-full mt-5">
+          <Tabs defaultValue="1st" className="w-full mt-5">
             <TabsList className="w-full">
               <TabsTrigger value="1st">1st Semester</TabsTrigger>
               <TabsTrigger value="2nd">2nd Semester</TabsTrigger>

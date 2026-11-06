@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -17,6 +18,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
 
+    public const ROLE_ADMIN = 'super_admin';
+
+    public const ROLES = [self::ROLE_ADMIN, 'glc', 'master_teacher', 'teacher'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -27,5 +32,25 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
         ];
+    }
+
+    public function gradeLevels(): BelongsToMany
+    {
+        return $this->belongsToMany(GradeLevel::class, 'user_grade_levels');
+    }
+
+    /**
+     * The grade levels this user may work with: all of them for the Admin,
+     * the assigned ones for a GLC or Master Teacher, and none for anyone else.
+     *
+     * @return array<int, int>
+     */
+    public function gradeLevelIdsInScope(): array
+    {
+        if ($this->hasRole(self::ROLE_ADMIN)) {
+            return GradeLevel::pluck('id')->all();
+        }
+
+        return $this->gradeLevels()->pluck('grade_levels.id')->all();
     }
 }

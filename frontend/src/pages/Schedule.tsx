@@ -17,7 +17,7 @@ const Schedule = () => {
   ];
   return (
     <>
-      <Container className="p-6">
+      <Container className="p-4 sm:p-6">
         <div>
           <BreadCrumbs />
           <div>
@@ -29,8 +29,8 @@ const Schedule = () => {
               assigning subjects, teachers, rooms, and time slots in one place.
             </p>
           </div>
-          <Tabs defaultValue="account" className=" mt-10">
-            <TabsList className="w-xl">
+          <Tabs defaultValue={building[0].name} className=" mt-10">
+            <TabsList className="w-full max-w-xl">
               {building.map(({ name }) => (
                 <TabsTrigger value={name} key={name}>
                   {name}

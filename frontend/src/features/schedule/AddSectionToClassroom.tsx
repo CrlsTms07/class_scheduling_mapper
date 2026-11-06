@@ -67,7 +67,7 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
                   name="section"
                   control={form.control}
                   render={({ field, fieldState }) => (
-                    <Field className="w-88">
+                    <Field className="w-full px-4">
                       <FieldLabel htmlFor={field.name}>Section</FieldLabel>
                       <Combobox items={classSection}>
                         <ComboboxInput placeholder="Select a section" />
@@ -92,7 +92,7 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
                   name="startTime"
                   control={form.control}
                   render={({ field, fieldState }) => (
-                    <Field className="w-88">
+                    <Field className="w-full px-4">
                       <FieldLabel htmlFor="time-picker-optional">
                         Start Time
                       </FieldLabel>
@@ -115,7 +115,7 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
                   name="endTime"
                   control={form.control}
                   render={({ field, fieldState }) => (
-                    <Field className="w-88">
+                    <Field className="w-full px-4">
                       <FieldLabel htmlFor="time-picker-optional">
                         End Time
                       </FieldLabel>
@@ -138,7 +138,7 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
                   name="endTime"
                   control={form.control}
                   render={({ field, fieldState }) => (
-                    <Field className="w-88">
+                    <Field className="w-full px-4">
                       <FieldLabel htmlFor="time-picker-optional">
                         Subject
                       </FieldLabel>
@@ -172,7 +172,7 @@ const AddSectionToClassroom = ({ day }: { day: string }) => {
                   name="endTime"
                   control={form.control}
                   render={({ field, fieldState }) => (
-                    <Field className="w-88">
+                    <Field className="w-full px-4">
                       <FieldLabel htmlFor="time-picker-optional">
                         Teacher
                       </FieldLabel>

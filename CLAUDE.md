@@ -40,7 +40,7 @@ CLAUDE.md
 # backend
 cd backend
 composer install
-createdb ercihs_scheduling          # once; also: createdb ercihs_scheduling_test
+createdb ercihs_scheduling_updatedDB   # once; also: createdb ercihs_scheduling_test (Pest wipes it)
 php artisan migrate:fresh --seed
 php artisan serve                 # http://localhost:8000
 ./vendor/bin/pest
@@ -49,19 +49,18 @@ php artisan serve                 # http://localhost:8000
 cd frontend
 npm install
 npm run dev                       # http://localhost:5173
-npm run test                      # not set up yet (Vitest is added in the front-end task)
+npm run test
 npm run build
 ```
 
 ## Current status (Nov 6, 2026)
 
-- **Front-end, existing (UI only, dummy data, no API yet):**
-  - Login page
-  - Generic layout (the menu does not depend on the user's role yet)
-  - Schedule creation screen, partially done
+- **Front-end, working with the API:** login, sign-up, forgot and reset password, route
+  guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
+- **Front-end, UI only (dummy data):** schedule creation screen, partially done.
 - **Front-end, not started:** all Admin screens, Guest view.
-- **Back-end:** Laravel project, database migrations, seeders and database rule tests are done.
-  No API endpoints yet.
+- **Back-end:** migrations, seeders and auth are done: login, logout, sign-up, password reset,
+  account activation with role and scope (API only, the Users screen is not built yet).
 
 ---
 
