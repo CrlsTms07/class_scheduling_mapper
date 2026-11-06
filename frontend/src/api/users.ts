@@ -24,6 +24,25 @@ export type ActivationInput = {
   teacher_id: number | null;
 };
 
+export function useChangeUserStatus(userId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (status: "active" | "inactive") =>
+      api<DataResponse<User>>(`/users/${userId}/status`, { method: "PUT", body: { status } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
+
+export function useDeclineUser(userId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api(`/users/${userId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
+
 export function useActivateUser() {
   const queryClient = useQueryClient();
 

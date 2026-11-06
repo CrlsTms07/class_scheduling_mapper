@@ -101,6 +101,51 @@ class AccountService
     }
 
     /**
+     * Switches an account on or off. Its role and scope stay, so reactivating restores it
+     * as it was. Someone deactivated is signed out of every device right away.
+     */
+    public function changeStatus(User $user, User $admin, string $status): void
+    {
+        DB::transaction(function () use ($user, $admin, $status) {
+            $before = $user->status;
+            $user->update(['status' => $status]);
+
+            if ($status === 'inactive') {
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+            }
+
+            $this->audit->log(
+                $admin,
+                $status === 'inactive' ? 'deactivate' : 'reactivate',
+                'users',
+                $user->id,
+                ['status' => $before],
+                ['status' => $status],
+            );
+        });
+    }
+
+    /**
+     * Removes a sign-up the Admin does not recognize. Only for pending accounts,
+     * which have no role and have never done anything in the system.
+     */
+    public function decline(User $user, User $admin): void
+    {
+        if ($user->status !== 'pending') {
+            throw ValidationException::withMessages([
+                'status' => 'Only a pending sign-up can be declined. Deactivate this account instead.',
+            ]);
+        }
+
+        DB::transaction(function () use ($user, $admin) {
+            $email = $user->email;
+            $user->delete();
+
+            $this->audit->log($admin, 'decline', 'users', $user->id, ['email' => $email]);
+        });
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function accessOf(User $user): array

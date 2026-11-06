@@ -35,6 +35,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/access-options', [UserController::class, 'accessOptions']);
     Route::put('/users/{user}/activation', [UserActivationController::class, 'update']);
+    Route::put('/users/{user}/status', [UserActivationController::class, 'changeStatus']);
+    Route::delete('/users/{user}', [UserActivationController::class, 'decline']);
 
     Route::get('/school-years', [SchoolYearController::class, 'index']);
     Route::post('/school-years', [SchoolYearController::class, 'store']);

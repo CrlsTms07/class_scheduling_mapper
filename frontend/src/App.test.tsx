@@ -17,6 +17,7 @@ function userWith(role: RoleName): User {
     suffix: null,
     status: "active",
     role,
+    personnel: null,
     grade_levels: [],
   };
 }

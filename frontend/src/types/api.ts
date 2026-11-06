@@ -19,6 +19,7 @@ export type User = {
   suffix: string | null;
   status: AccountStatus;
   role: RoleName | null;
+  personnel: { id: number; name: string } | null;
   grade_levels: GradeLevel[];
 };
 

@@ -19,7 +19,7 @@ class UserController extends Controller
     {
         Gate::authorize('viewAny', User::class);
 
-        $users = User::with(['gradeLevels', 'roles'])
+        $users = User::with(['gradeLevels', 'roles', 'teacher'])
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->orderBy('last_name')
             ->get();

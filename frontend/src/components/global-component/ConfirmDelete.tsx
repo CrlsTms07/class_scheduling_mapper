@@ -4,14 +4,24 @@ import { Button } from "@/components/ui/button";
 
 type ConfirmDeleteProp = {
   label: string;
-  /** Why this cannot be deleted. The reason is shown in place of the button. */
+  /** Why this is not allowed. The reason is shown in place of the button. */
   blockedReason?: string | null;
+  /** What the user is warned about before confirming. */
+  warning?: string;
+  confirmLabel?: string;
   isPending?: boolean;
   onConfirm: () => void;
 };
 
-/** A delete button that asks once more, or explains why deleting is not allowed. */
-const ConfirmDelete = ({ label, blockedReason, isPending, onConfirm }: ConfirmDeleteProp) => {
+/** A dangerous button that asks once more, or explains why it is not allowed. */
+const ConfirmDelete = ({
+  label,
+  blockedReason,
+  warning = "This cannot be undone. Are you sure?",
+  confirmLabel = "Yes, delete",
+  isPending,
+  onConfirm,
+}: ConfirmDeleteProp) => {
   const [isAsking, setIsAsking] = React.useState(false);
 
   if (blockedReason) {
@@ -38,7 +48,7 @@ const ConfirmDelete = ({ label, blockedReason, isPending, onConfirm }: ConfirmDe
 
   return (
     <div className="space-y-2 rounded-md border border-destructive/30 p-3">
-      <p className="text-sm text-neutral-800">This cannot be undone. Are you sure?</p>
+      <p className="text-sm text-neutral-800">{warning}</p>
       <div className="grid grid-cols-2 gap-2">
         <Button type="button" variant="outline" className="h-11" onClick={() => setIsAsking(false)}>
           Keep it
@@ -50,7 +60,7 @@ const ConfirmDelete = ({ label, blockedReason, isPending, onConfirm }: ConfirmDe
           disabled={isPending}
           onClick={onConfirm}
         >
-          {isPending ? "Deleting..." : "Yes, delete"}
+          {isPending ? "Saving..." : confirmLabel}
         </Button>
       </div>
     </div>

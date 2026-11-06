@@ -21,6 +21,9 @@ class UserResource extends JsonResource
             'suffix' => $this->suffix,
             'status' => $this->status,
             'role' => $this->getRoleNames()->first(),
+            'personnel' => $this->teacher
+                ? ['id' => $this->teacher->id, 'name' => $this->teacher->printedName()]
+                : null,
             'grade_levels' => $this->gradeLevels->map(fn ($gradeLevel) => [
                 'id' => $gradeLevel->id,
                 'grade' => $gradeLevel->grade,
