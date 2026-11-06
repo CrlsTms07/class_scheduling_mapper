@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Official forms contain real personnel names: keep out of Git until cleared
+docs/forms/
