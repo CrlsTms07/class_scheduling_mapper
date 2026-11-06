@@ -1,12 +1,13 @@
 import { useMe } from "@/api/auth";
-import { useActiveTerm } from "@/api/calendar";
+import { useSelectedTerm } from "@/context/selectedTerm";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROLE_LABELS } from "@/lib/navigation";
 
 // A starting point: the pending counts, flags and checklist come with the dashboard task.
 const DashboardIndex = () => {
   const { data: user } = useMe();
-  const { data: activeTerm, isSuccess } = useActiveTerm();
+  const { terms, isPending } = useSelectedTerm();
+  const activeTerm = terms.find(({ is_active }) => is_active);
   const grades = user?.grade_levels.map(({ grade }) => grade).join(", ");
 
   return (
@@ -31,7 +32,7 @@ const DashboardIndex = () => {
               <p className="text-sm">School Year {activeTerm.school_year.name}</p>
             </>
           ) : (
-            isSuccess && <p className="text-sm">No active term has been set.</p>
+            !isPending && <p className="text-sm">No active term has been set.</p>
           )}
         </CardContent>
       </Card>

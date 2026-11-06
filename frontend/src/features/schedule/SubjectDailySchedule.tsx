@@ -82,7 +82,7 @@ const SubjectDailySchedule = () => {
                         <div className="bg-[#790D16]/20 p-1 rounded-sm">
                           <UserRound className="size-5 text-branding" />
                         </div>
-                        <p className="text-xs">John Christian Olor</p>
+                        <p className="text-xs">Sample Teacher</p>
                       </div>
                     </div>
                   </CardContent>

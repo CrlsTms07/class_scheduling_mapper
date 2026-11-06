@@ -76,7 +76,7 @@ const RoomDailySchedule = () => {
                         </div>
                         <div>
                           <p className="text-xs">GEN BIO 2</p>
-                          <p className="text-xs">John Christian Olor</p>
+                          <p className="text-xs">Sample Teacher</p>
                         </div>
                       </div>
                       <div className="mt-4">

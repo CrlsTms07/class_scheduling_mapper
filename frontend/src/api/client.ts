@@ -7,18 +7,21 @@ export class ApiError extends Error {
   status: number;
   code?: string;
   errors: Record<string, string[]>;
+  body: unknown;
 
   constructor(
     status: number,
     message: string,
     code?: string,
     errors: Record<string, string[]> = {},
+    body: unknown = null,
   ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.errors = errors;
+    this.body = body;
   }
 }
 
@@ -54,6 +57,7 @@ async function toApiError(response: Response): Promise<ApiError> {
     body.message ?? "Something went wrong. Please try again.",
     body.code,
     body.errors,
+    body,
   );
 }
 
@@ -83,4 +87,26 @@ export async function api<T>(
   }
 
   return response.json();
+}
+
+/**
+ * Downloads a generated file through the signed-in session and saves it on the device.
+ */
+export async function downloadFile(path: string): Promise<void> {
+  const response = await send(path, "GET");
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const fileName = disposition.match(/filename="([^"]+)"/)?.[1] ?? "download";
+  const url = URL.createObjectURL(await response.blob());
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+
+  URL.revokeObjectURL(url);
 }

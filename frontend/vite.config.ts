@@ -16,6 +16,11 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
+  // Fails with a clear error if 5173 is taken. The API only accepts this address.
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",

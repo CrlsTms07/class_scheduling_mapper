@@ -1,8 +1,7 @@
 import React from "react";
 import HeroLogo from "@/assets/login/hero-logo.png";
-import { Bell, LogOut, Menu, PenLine } from "lucide-react";
+import { Bell, LogOut, Menu } from "lucide-react";
 import { useLogout, useMe } from "@/api/auth";
-import { useActiveTerm } from "@/api/calendar";
 import { ROLE_LABELS } from "@/lib/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +13,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import AppSideBar from "./AppSideBar";
+import TermSelect from "./TermSelect";
 
 const AppHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { data: user } = useMe();
-  const { data: activeTerm } = useActiveTerm();
   const logout = useLogout();
 
   const initials = `${user?.first_name[0] ?? ""}${user?.last_name[0] ?? ""}`;
@@ -54,22 +53,15 @@ const AppHeader = () => {
             <p className="font-medium text-[#790D16] text-sm sm:text-base truncate">
               ERCIHS - Scheduling Mapper
             </p>
-            {activeTerm && (
-              <div className="flex items-center gap-2">
-                <PenLine className="size-3 shrink-0" />
-                <p className="text-xs truncate">
-                  SY {activeTerm.school_year.name} · {activeTerm.name}
-                </p>
-              </div>
-            )}
           </div>
+          <TermSelect className="hidden sm:block ml-4 w-64 max-lg:w-52 shrink-0" />
         </div>
         <div className="flex items-center gap-2 lg:gap-6 lg:mr-6 shrink-0">
           <div className="flex items-center gap-2">
-            <Avatar className="hidden sm:flex">
+            <Avatar className="hidden xl:flex">
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
-            <div className="hidden sm:block">
+            <div className="hidden xl:block">
               <p className="text-xs">
                 {user?.first_name} {user?.last_name}
               </p>
@@ -80,7 +72,7 @@ const AppHeader = () => {
               )}
             </div>
           </div>
-          <div className="hidden sm:block bg-mauve-100 p-2 rounded-full">
+          <div className="hidden xl:block bg-mauve-100 p-2 rounded-full">
             <Bell className="text-[#790D16] size-5" />
           </div>
           <Button
@@ -95,6 +87,7 @@ const AppHeader = () => {
           </Button>
         </div>
       </div>
+      <TermSelect className="sm:hidden mt-1 w-full" />
     </div>
   );
 };

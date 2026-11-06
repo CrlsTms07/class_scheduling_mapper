@@ -27,7 +27,7 @@ function openApp(path: string, user: User | null) {
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   client.setQueryData(ME_QUERY_KEY, user);
-  client.setQueryData(["active-term"], null);
+  client.setQueryData(["terms"], []);
 
   render(
     <QueryClientProvider client={client}>
@@ -42,50 +42,48 @@ const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status });
 
 async function submitLogin(email: string, password: string) {
-  await userEvent.type(screen.getByLabelText("Email"), email);
+  await userEvent.type(await screen.findByLabelText("Email"), email);
   await userEvent.type(screen.getByLabelText("Password"), password);
   await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 }
 
 describe("route guards", () => {
-  it("sends a visitor from a protected page to the login page", () => {
+  it("sends a visitor from a protected page to the login page", async () => {
     openApp("/dashboard", null);
-    expect(screen.getByText("Sign in to your account")).toBeInTheDocument();
+    expect(await screen.findByText("Sign in to your account")).toBeInTheDocument();
   });
 
-  it("shows a page to a role that is allowed", () => {
+  it("shows a page to a role that is allowed", async () => {
     openApp("/approvals", userWith("super_admin"));
-    expect(screen.getByText("This page is being built.")).toBeInTheDocument();
+    expect(await screen.findByText("This page is being built.")).toBeInTheDocument();
   });
 
-  it("sends a GLC away from an Admin page to their dashboard", () => {
+  it("sends a GLC away from an Admin page to their dashboard", async () => {
     openApp("/users", userWith("glc"));
-    expect(screen.getByText("Welcome, Demo")).toBeInTheDocument();
+    expect(await screen.findByText("Welcome, Demo")).toBeInTheDocument();
   });
 
-  it("sends a teacher away from staff pages to their own schedule", () => {
+  it("sends a teacher away from staff pages to their own schedule", async () => {
     openApp("/schedule", userWith("teacher"));
-    expect(
-      screen.getAllByText("My Schedule").length,
-    ).toBeGreaterThan(0);
+    expect(await screen.findByText("This page is being built.")).toBeInTheDocument();
     expect(screen.queryByText("Schedule Configuration")).not.toBeInTheDocument();
   });
 
-  it("sends a signed-in user away from the login page", () => {
+  it("sends a signed-in user away from the login page", async () => {
     openApp("/", userWith("super_admin"));
-    expect(screen.getByText("Welcome, Demo")).toBeInTheDocument();
+    expect(await screen.findByText("Welcome, Demo")).toBeInTheDocument();
   });
 
-  it("keeps the guest page open to visitors", () => {
+  it("keeps the guest page open to visitors", async () => {
     openApp("/guest", null);
-    expect(screen.getByText("View Schedule")).toBeInTheDocument();
+    expect(await screen.findByText("View Schedule")).toBeInTheDocument();
   });
 });
 
 describe("login page", () => {
-  it("has a View Schedule button for guests and a sign-up link", () => {
+  it("has a View Schedule button for guests and a sign-up link", async () => {
     openApp("/", null);
-    expect(screen.getByRole("link", { name: "View Schedule" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "View Schedule" })).toHaveAttribute(
       "href",
       "/guest",
     );
@@ -149,13 +147,13 @@ describe("login page", () => {
 });
 
 describe("reset password page", () => {
-  it("explains when the link is incomplete", () => {
+  it("explains when the link is incomplete", async () => {
     openApp("/reset-password", null);
-    expect(screen.getByRole("alert")).toHaveTextContent("incomplete");
+    expect(await screen.findByRole("alert")).toHaveTextContent("incomplete");
   });
 
-  it("shows the account from the link", () => {
+  it("shows the account from the link", async () => {
     openApp("/reset-password?token=abc&email=juan%40deped.gov.ph", null);
-    expect(screen.getByText("juan@deped.gov.ph")).toBeInTheDocument();
+    expect(await screen.findByText("juan@deped.gov.ph")).toBeInTheDocument();
   });
 });

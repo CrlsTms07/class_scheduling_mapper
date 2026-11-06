@@ -57,10 +57,14 @@ npm run build
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
-- **Front-end, UI only (dummy data):** schedule creation screen, partially done.
+- **Working, JHS flow:** section list, plotter (tap-to-assign, conflicts with suggestions, flags),
+  term selector, Class Program PDF, and activating accounts (Users page).
+- **Not built yet:** submit and approvals, teacher loading screen, school years and wizard, time
+  slots, sections and other CRUD screens, Teacher Program, Room Schedule, My Schedule, Guest view.
+- **Old dummy screens with no route:** `frontend/src/features/schedule/` files outside `plotter/`.
 - **Front-end, not started:** all Admin screens, Guest view.
-- **Back-end:** migrations, seeders and auth are done: login, logout, sign-up, password reset,
-  account activation with role and scope (API only, the Users screen is not built yet).
+- **Back-end:** migrations, seeders, auth, plotter API and Class Program PDF are done.
+  First Admin on a new server: `php artisan app:create-admin`.
 
 ---
 

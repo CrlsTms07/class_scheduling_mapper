@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ActiveTerm, DataResponse } from "@/types/api";
+import type { DataResponse, Term } from "@/types/api";
 import { api } from "./client";
 
-/** The active term, or null when the Admin has not set one. */
-export function useActiveTerm() {
+/** Every term, newest school year first. */
+export function useTerms() {
   return useQuery({
-    queryKey: ["active-term"],
+    queryKey: ["terms"],
     staleTime: 5 * 60 * 1000,
-    queryFn: async () =>
-      (await api<DataResponse<ActiveTerm | null>>("/active-term")).data,
+    queryFn: async () => (await api<DataResponse<Term[]>>("/terms")).data,
   });
 }

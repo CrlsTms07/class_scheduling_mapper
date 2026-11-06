@@ -40,8 +40,8 @@ const EditSectionToClassroom = ({ day }: { day: string }) => {
   const classSection = ["STEM 11-1", "STEM 12-1"] as const;
   const classSubject = ["Biology 1", "Aralin Panglipunan"] as const;
   const subjectTeacher = [
-    "Justine Christian Dolor",
-    "Millie Ann Galang",
+    "Sample Teacher",
+    "Another Teacher",
   ] as const;
   return (
     <>
