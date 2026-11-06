@@ -4,6 +4,7 @@ use App\Http\Controllers\ActiveTermController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassProgramController;
+use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlotterController;
 use App\Http\Controllers\RegistrationController;
@@ -49,6 +50,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/day-patterns/{dayPattern}/slots', [TimeSlotController::class, 'storeSlot']);
     Route::put('/time-slots/{timeSlot}', [TimeSlotController::class, 'updateSlot']);
     Route::delete('/time-slots/{timeSlot}', [TimeSlotController::class, 'destroySlot']);
+
+    Route::get('/school-years/{schoolYear}/sections', [ManagedSectionController::class, 'index']);
+    Route::get('/school-years/{schoolYear}/section-options', [ManagedSectionController::class, 'options']);
+    Route::post('/school-years/{schoolYear}/sections', [ManagedSectionController::class, 'store']);
+    Route::put('/sections/{section}', [ManagedSectionController::class, 'update']);
+    Route::delete('/sections/{section}', [ManagedSectionController::class, 'destroy']);
+    Route::post('/tracks', [ManagedSectionController::class, 'storeTrack']);
 
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);

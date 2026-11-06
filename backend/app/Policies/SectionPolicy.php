@@ -24,6 +24,14 @@ class SectionPolicy
     }
 
     /**
+     * Only the Admin encodes sections, once per school year.
+     */
+    public function manage(User $user): bool
+    {
+        return $user->hasRole(User::ROLE_ADMIN);
+    }
+
+    /**
      * Only the Admin approves, rejects or reopens schedules.
      */
     public function review(User $user): bool

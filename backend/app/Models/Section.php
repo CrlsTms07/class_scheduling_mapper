@@ -26,6 +26,11 @@ class Section extends Model
         return $this->belongsTo(GradeLevel::class);
     }
 
+    public function track(): BelongsTo
+    {
+        return $this->belongsTo(Track::class);
+    }
+
     public function adviser(): BelongsTo
     {
         return $this->belongsTo(Teacher::class, 'adviser_id');

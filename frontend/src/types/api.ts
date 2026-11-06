@@ -256,6 +256,49 @@ export type SlotInput = {
   end_time: string;
 };
 
+/** A section on the Admin's Sections page. */
+export type ManagedSection = {
+  id: number;
+  name: string;
+  label: string;
+  grade_level_id: number;
+  grade: number;
+  level: SchoolLevel;
+  shift: Shift;
+  track_id: number | null;
+  track: string | null;
+  adviser_id: number | null;
+  adviser: string | null;
+  home_room_id: number | null;
+  home_room: string | null;
+  class_size: number | null;
+  locked_reason: string | null;
+};
+
+export type SectionInput = {
+  grade_level_id: number;
+  name: string;
+  shift: Shift;
+  track_id: number | null;
+  adviser_id: number | null;
+  home_room_id: number | null;
+  class_size: number | null;
+};
+
+export type Track = { id: number; name: string };
+
+export type SectionOptions = {
+  grade_levels: { id: number; grade: number; level: SchoolLevel }[];
+  tracks: Track[];
+  teachers: {
+    id: number;
+    name: string;
+    advises_section_id: number | null;
+    advises: string | null;
+  }[];
+  rooms: { id: number; label: string }[];
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };

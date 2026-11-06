@@ -23,6 +23,7 @@ const UsersIndex = lazy(() => import("./features/users/UsersIndex"));
 const ApprovalsIndex = lazy(() => import("./features/approvals/ApprovalsIndex"));
 const SchoolYearsIndex = lazy(() => import("./features/school-years/SchoolYearsIndex"));
 const TimeSlotsIndex = lazy(() => import("./features/time-slots/TimeSlotsIndex"));
+const SectionsIndex = lazy(() => import("./features/sections/SectionsIndex"));
 
 const PageLoading = () => (
   <div className="flex min-h-dvh items-center justify-center text-sm text-neutral-600">
@@ -66,7 +67,7 @@ function App() {
 
             <Route element={<RequireRole roles={ROLES.ADMIN} />}>
               <Route path="approvals" element={<ApprovalsIndex />} />
-              <Route path="sections" element={<ComingSoonIndex title="Sections" />} />
+              <Route path="sections" element={<SectionsIndex />} />
               <Route path="school-years" element={<SchoolYearsIndex />} />
               <Route path="time-slots" element={<TimeSlotsIndex />} />
               <Route path="users" element={<UsersIndex />} />
