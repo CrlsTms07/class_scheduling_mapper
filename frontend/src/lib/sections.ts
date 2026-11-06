@@ -60,6 +60,29 @@ export function filterSections(
   );
 }
 
+/**
+ * Other sections with the same home room at the same time of day. Whole day overlaps both
+ * AM and PM. AM and PM can share a room. This is only a warning: the school may allow it.
+ */
+export function homeRoomSharedWith(
+  sections: ManagedSection[],
+  roomId: number | null,
+  shift: Shift,
+  ownId: number | undefined,
+): string[] {
+  if (roomId === null) return [];
+
+  const overlaps = (other: Shift) =>
+    other === shift || other === "WHOLE_DAY" || shift === "WHOLE_DAY";
+
+  return sections
+    .filter(
+      (section) =>
+        section.id !== ownId && section.home_room_id === roomId && overlaps(section.shift),
+    )
+    .map(({ label }) => label);
+}
+
 /** What is still missing on a section. These become flags in the plotter if left empty. */
 export function missingAdviserCount(sections: ManagedSection[]): number {
   return sections.filter(({ adviser_id }) => adviser_id === null).length;

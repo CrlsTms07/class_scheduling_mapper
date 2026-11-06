@@ -209,6 +209,20 @@ describe("section form", () => {
     await waitFor(() => expect(screen.getByLabelText("Track (optional)")).toHaveValue("7"));
   });
 
+  it("warns about a shared home room but still allows saving", async () => {
+    const calls = openPage(undefined, { data: HONESTY }, 201);
+
+    await click("Add section");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Grade level" }), "1");
+    await userEvent.type(screen.getByLabelText("Section name"), "Hope");
+    await userEvent.selectOptions(screen.getByLabelText("Home room (optional)"), "4");
+
+    expect(screen.getByText(/also the home room of Grade 7 – Honesty/)).toBeInTheDocument();
+
+    await click("Save");
+    await waitFor(() => expect(calls).toHaveLength(1));
+  });
+
   it("does not offer a teacher who advises another section", async () => {
     openPage();
 

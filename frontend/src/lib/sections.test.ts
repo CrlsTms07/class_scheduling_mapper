@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ManagedSection } from "@/types/api";
 import {
   filterSections,
+  homeRoomSharedWith,
   missingAdviserCount,
   SectionFormSchema,
   toSectionForm,
@@ -92,6 +93,31 @@ describe("filterSections", () => {
 
   it("shows everything with no filter", () => {
     expect(filterSections(sections, "  ", "")).toHaveLength(2);
+  });
+});
+
+describe("homeRoomSharedWith", () => {
+  const whole = section();
+  const morning = section({ id: 2, label: "Grade 8 – Hope", shift: "AM" });
+
+  it("finds a section in the same room at the same time", () => {
+    expect(homeRoomSharedWith([whole], 4, "WHOLE_DAY", undefined)).toEqual(["Grade 7 – Honesty"]);
+    expect(homeRoomSharedWith([morning], 4, "AM", undefined)).toEqual(["Grade 8 – Hope"]);
+  });
+
+  it("treats whole day as overlapping both AM and PM", () => {
+    expect(homeRoomSharedWith([whole], 4, "AM", undefined)).toHaveLength(1);
+    expect(homeRoomSharedWith([morning], 4, "WHOLE_DAY", undefined)).toHaveLength(1);
+  });
+
+  it("lets AM and PM share a room", () => {
+    expect(homeRoomSharedWith([morning], 4, "PM", undefined)).toEqual([]);
+  });
+
+  it("ignores the section itself, other rooms and an empty room", () => {
+    expect(homeRoomSharedWith([whole], 4, "WHOLE_DAY", whole.id)).toEqual([]);
+    expect(homeRoomSharedWith([whole], 9, "WHOLE_DAY", undefined)).toEqual([]);
+    expect(homeRoomSharedWith([whole], null, "WHOLE_DAY", undefined)).toEqual([]);
   });
 });
 

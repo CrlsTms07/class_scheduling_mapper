@@ -6,12 +6,14 @@ import {
   useAddTrack,
   useCreateSection,
   useDeleteSection,
+  useManagedSections,
   useSectionOptions,
   useUpdateSection,
 } from "@/api/sections";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { apiErrorMessage } from "@/lib/forms";
 import {
+  homeRoomSharedWith,
   SectionFormSchema,
   toSectionForm,
   toSectionInput,
@@ -80,6 +82,7 @@ type SectionSheetProp = {
 const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) => {
   const isPhonePortrait = useMediaQuery("(orientation: portrait) and (max-width: 767px)");
   const { data: options } = useSectionOptions(yearId);
+  const { data: sections } = useManagedSections(yearId);
 
   const create = useCreateSection(yearId);
   const update = useUpdateSection(section?.id ?? 0);
@@ -95,6 +98,14 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
     defaultValues: toSectionForm(section),
   });
   const gradeId = useWatch({ control: form.control, name: "grade_level_id" });
+  const roomId = useWatch({ control: form.control, name: "home_room_id" });
+  const shift = useWatch({ control: form.control, name: "shift" });
+  const sharedWith = homeRoomSharedWith(
+    sections ?? [],
+    roomId === "" ? null : Number(roomId),
+    shift,
+    section?.id,
+  );
 
   const level = options?.grade_levels.find(({ id }) => String(id) === gradeId)?.level;
   const isLocked = !!section?.locked_reason;
@@ -225,14 +236,22 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
           </SelectField>
 
           {level !== "SHS" && (
-            <SelectField form={form} name="home_room_id" label="Home room (optional)">
-              <NativeSelectOption value="">None yet</NativeSelectOption>
-              {options?.rooms.map(({ id, label }) => (
-                <NativeSelectOption key={id} value={String(id)}>
-                  {label}
-                </NativeSelectOption>
-              ))}
-            </SelectField>
+            <div className="space-y-2">
+              <SelectField form={form} name="home_room_id" label="Home room (optional)">
+                <NativeSelectOption value="">None yet</NativeSelectOption>
+                {options?.rooms.map(({ id, label }) => (
+                  <NativeSelectOption key={id} value={String(id)}>
+                    {label}
+                  </NativeSelectOption>
+                ))}
+              </SelectField>
+              {sharedWith.length > 0 && (
+                <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                  This room is also the home room of {sharedWith.join(", ")} at the same time of
+                  day. You can still save, but their schedules may conflict.
+                </p>
+              )}
+            </div>
           )}
 
           <FormTextField
