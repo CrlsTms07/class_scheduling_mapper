@@ -59,6 +59,15 @@ export function useUpdateSchoolYear(yearId: number) {
   });
 }
 
+export function useDeleteSchoolYear(yearId: number) {
+  const refresh = useRefreshCalendar();
+
+  return useMutation({
+    mutationFn: () => api(`/school-years/${yearId}`, { method: "DELETE" }),
+    onSuccess: refresh,
+  });
+}
+
 export function useActivateTerm() {
   const refresh = useRefreshCalendar();
 

@@ -37,6 +37,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/school-years', [SchoolYearController::class, 'index']);
     Route::post('/school-years', [SchoolYearController::class, 'store']);
     Route::put('/school-years/{schoolYear}', [SchoolYearController::class, 'update']);
+    Route::delete('/school-years/{schoolYear}', [SchoolYearController::class, 'destroy']);
     Route::put('/terms/{term}/activate', [SchoolYearController::class, 'activateTerm']);
 
     Route::get('/terms', [TermController::class, 'index']);

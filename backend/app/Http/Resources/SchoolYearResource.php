@@ -24,6 +24,7 @@ class SchoolYearResource extends JsonResource
             'term_label' => $this->term_label,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
+            'cannot_delete_reason' => $service->whyYearCannotBeDeleted($this->resource),
             // What the wizard can copy from this year.
             'counts' => [
                 'subjects' => $countIn('subjects'),

@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useUpdateSchoolYear } from "@/api/calendar";
+import { useDeleteSchoolYear, useUpdateSchoolYear } from "@/api/calendar";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { apiErrorMessage } from "@/lib/forms";
 import { SchoolYearSchema } from "@/lib/schoolYear";
 import type { SchoolYear, SchoolYearInput } from "@/types/api";
+import ConfirmDelete from "@/components/global-component/ConfirmDelete";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import { TermFields, YearFields } from "./CalendarFields";
 const CalendarSettingsSheet = ({ year, onClose }: { year: SchoolYear; onClose: () => void }) => {
   const isPhonePortrait = useMediaQuery("(orientation: portrait) and (max-width: 767px)");
   const update = useUpdateSchoolYear(year.id);
+  const remove = useDeleteSchoolYear(year.id);
   const form = useForm<SchoolYearInput>({
     resolver: zodResolver(SchoolYearSchema),
     defaultValues: {
@@ -48,6 +50,7 @@ const CalendarSettingsSheet = ({ year, onClose }: { year: SchoolYear; onClose: (
           onSubmit={form.handleSubmit((values) => update.mutate(values, { onSuccess: onClose }))}
         >
           {update.isError && <FormAlert>{apiErrorMessage(update.error)}</FormAlert>}
+          {remove.isError && <FormAlert>{apiErrorMessage(remove.error)}</FormAlert>}
 
           <YearFields form={form} />
           <TermFields
@@ -64,6 +67,13 @@ const CalendarSettingsSheet = ({ year, onClose }: { year: SchoolYear; onClose: (
               Close
             </Button>
           </div>
+
+          <ConfirmDelete
+            label="Delete this school year"
+            blockedReason={year.cannot_delete_reason}
+            isPending={remove.isPending}
+            onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
+          />
         </form>
       </SheetContent>
     </Sheet>

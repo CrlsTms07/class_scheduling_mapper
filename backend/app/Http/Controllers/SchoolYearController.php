@@ -41,6 +41,15 @@ class SchoolYearController extends Controller
         return new SchoolYearResource($year->load('terms'));
     }
 
+    public function destroy(Request $request, SchoolYear $schoolYear, SchoolYearService $service): JsonResponse
+    {
+        Gate::authorize('manage', SchoolYear::class);
+
+        $service->delete($schoolYear, $request->user());
+
+        return response()->json(['message' => "School year {$schoolYear->name} was deleted."]);
+    }
+
     public function activateTerm(Request $request, SchoolTerm $term, SchoolYearService $service): JsonResponse
     {
         Gate::authorize('manage', SchoolYear::class);

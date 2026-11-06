@@ -389,3 +389,60 @@ it('can activate the term that is already active', function () {
 
     expect(DB::table('school_terms')->where('is_active', true)->value('id'))->toBe($this->termIds[1]);
 });
+
+it('deletes a mistaken year together with its copied setup', function () {
+    addSubject($this->yearId, 'Math 7');
+    $patternId = DB::table('day_patterns')->insertGetId([
+        'school_year_id' => $this->yearId, 'level' => 'JHS', 'shift' => 'WHOLE_DAY', 'name' => 'Friday', 'days' => '{5}',
+    ]);
+    DB::table('time_slots')->insert([
+        'day_pattern_id' => $patternId, 'period_no' => 1, 'start_time' => '07:00', 'end_time' => '07:40',
+    ]);
+    DB::table('report_signatories')->insert([
+        'term_id' => $this->termIds[1], 'label' => 'Prepared by', 'name' => 'Name',
+    ]);
+
+    $this->postJson('/api/school-years', newYear([
+        'copy_from_id' => $this->yearId,
+        'copy' => ['subjects' => true, 'time_slots' => true, 'signatories' => true],
+    ]))->assertCreated();
+    $newYearId = DB::table('school_years')->where('name', '2027-2028')->value('id');
+
+    $this->deleteJson("/api/school-years/{$newYearId}")->assertOk();
+
+    expect(DB::table('school_years')->where('id', $newYearId)->exists())->toBeFalse()
+        ->and(DB::table('subjects')->count())->toBe(1)
+        ->and(DB::table('day_patterns')->count())->toBe(1)
+        ->and(DB::table('time_slots')->count())->toBe(1)
+        ->and(DB::table('report_signatories')->count())->toBe(1)
+        ->and(DB::table('audit_logs')->where('action', 'delete')->where('record_id', $newYearId)->exists())->toBeTrue();
+});
+
+it('refuses to delete the year of the active term', function () {
+    $this->deleteJson("/api/school-years/{$this->yearId}")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['school_year' => 'active term']);
+
+    expect(DB::table('school_years')->count())->toBe(1);
+});
+
+it('refuses to delete a year that has sections', function () {
+    $this->postJson('/api/school-years', newYear())->assertCreated();
+    $newYearId = DB::table('school_years')->where('name', '2027-2028')->value('id');
+    DB::table('sections')->insert([
+        'school_year_id' => $newYearId, 'grade_level_id' => gradeLevelId(7), 'name' => 'Honesty',
+    ]);
+
+    $this->deleteJson("/api/school-years/{$newYearId}")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['school_year' => '1 section']);
+});
+
+it('keeps deleting a year to the Admin', function () {
+    $this->postJson('/api/school-years', newYear())->assertCreated();
+    $newYearId = DB::table('school_years')->where('name', '2027-2028')->value('id');
+
+    $this->actingAs(User::factory()->create()->assignRole('glc'));
+
+    $this->deleteJson("/api/school-years/{$newYearId}")->assertForbidden();
+});

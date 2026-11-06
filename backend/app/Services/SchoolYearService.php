@@ -109,6 +109,49 @@ class SchoolYearService
     }
 
     /**
+     * For a year made by mistake. Its copied setup (subjects, bell schedules, signatories)
+     * goes with it. A year with sections or any work on it can never be deleted.
+     */
+    public function delete(SchoolYear $year, User $admin): void
+    {
+        DB::transaction(function () use ($year, $admin) {
+            $reason = $this->whyYearCannotBeDeleted($year);
+            if ($reason !== null) {
+                throw ValidationException::withMessages(['school_year' => $reason]);
+            }
+
+            DB::table('subjects')->where('school_year_id', $year->id)->delete();
+            DB::table('day_patterns')->where('school_year_id', $year->id)->delete();
+            $year->terms()->delete();
+            $year->delete();
+
+            $this->audit->log($admin, 'delete', 'school_years', $year->id, $year->only(['name', 'term_count']));
+        });
+    }
+
+    /**
+     * The reason a year must stay, in words for the Admin, or null if it can be deleted.
+     */
+    public function whyYearCannotBeDeleted(SchoolYear $year): ?string
+    {
+        $termIds = $year->terms()->pluck('id');
+
+        if ($year->terms()->where('is_active', true)->exists()) {
+            return 'It has the active term. Set a term of another year as active first.';
+        }
+
+        $sections = DB::table('sections')->where('school_year_id', $year->id)->count();
+        if ($sections > 0) {
+            return "It has {$sections} ".($sections === 1 ? 'section' : 'sections').'.';
+        }
+
+        $hasWork = DB::table('schedule_reviews')->whereIn('term_id', $termIds)->exists()
+            || DB::table('teacher_tasks')->whereIn('term_id', $termIds)->exists();
+
+        return $hasWork ? 'It already has approval records or teacher tasks.' : null;
+    }
+
+    /**
      * The reason a term must stay, in words for the Admin, or null if it can be removed.
      */
     public function whyTermCannotBeRemoved(SchoolTerm $term): ?string

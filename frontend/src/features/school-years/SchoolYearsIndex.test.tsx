@@ -13,6 +13,7 @@ const YEAR: SchoolYear = {
   term_label: "Term",
   start_date: "2026-06-01",
   end_date: "2027-03-31",
+  cannot_delete_reason: null,
   counts: { subjects: 12, day_patterns: 2, sections: 8, signatories: 4 },
   terms: [
     { id: 11, term_no: 1, name: "First Term", start_date: "2026-06-01", end_date: "2026-09-15", is_active: true, cannot_remove_reason: "First Term is the active term." },
@@ -215,6 +216,30 @@ describe("start new school year wizard", () => {
     await click("Create school year");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("overlap school year 2026-2027");
+  });
+});
+
+describe("deleting a school year", () => {
+  it("explains why a year cannot be deleted", async () => {
+    openPage([{ ...YEAR, cannot_delete_reason: "It has the active term." }]);
+
+    await click("Calendar settings");
+
+    expect(screen.getByText(/Cannot be deleted. It has the active term/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete this school year" })).not.toBeInTheDocument();
+  });
+
+  it("asks once more before deleting", async () => {
+    const calls = openPage();
+
+    await click("Calendar settings");
+    await click("Delete this school year");
+    expect(calls).toHaveLength(0);
+
+    await click("Yes, delete");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/school-years\/1$/);
   });
 });
 

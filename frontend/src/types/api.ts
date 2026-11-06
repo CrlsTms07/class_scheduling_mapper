@@ -191,6 +191,7 @@ export type SchoolYear = {
   term_label: string;
   start_date: string;
   end_date: string;
+  cannot_delete_reason: string | null;
   counts: {
     subjects: number;
     day_patterns: number;
