@@ -174,6 +174,56 @@ export type AccessOptions = {
   teachers: { id: number; first_name: string; last_name: string }[];
 };
 
+export type SchoolYearTerm = {
+  id: number;
+  term_no: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  cannot_remove_reason: string | null;
+};
+
+export type SchoolYear = {
+  id: number;
+  name: string;
+  term_count: number;
+  term_label: string;
+  start_date: string;
+  end_date: string;
+  counts: {
+    subjects: number;
+    day_patterns: number;
+    sections: number;
+    signatories: number;
+  };
+  terms: SchoolYearTerm[];
+};
+
+export type SchoolYearInput = {
+  name: string;
+  start_date: string;
+  end_date: string;
+  term_label: string;
+  terms: { name: string; start_date: string; end_date: string }[];
+};
+
+export type CopyOption = "subjects" | "time_slots" | "signatories" | "section_names";
+
+export type StartSchoolYearInput = SchoolYearInput & {
+  copy_from_id: number | null;
+  copy: Record<CopyOption, boolean>;
+};
+
+export type CopyResult = {
+  subjects?: number;
+  subjects_skipped?: number;
+  day_patterns?: number;
+  time_slots?: number;
+  signatories?: number;
+  sections?: number;
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };

@@ -7,6 +7,7 @@ use App\Http\Controllers\ClassProgramController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlotterController;
 use App\Http\Controllers\RegistrationController;
+use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\UserActivationController;
@@ -32,6 +33,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/access-options', [UserController::class, 'accessOptions']);
     Route::put('/users/{user}/activation', [UserActivationController::class, 'update']);
+
+    Route::get('/school-years', [SchoolYearController::class, 'index']);
+    Route::post('/school-years', [SchoolYearController::class, 'store']);
+    Route::put('/school-years/{schoolYear}', [SchoolYearController::class, 'update']);
+    Route::put('/terms/{term}/activate', [SchoolYearController::class, 'activateTerm']);
 
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);
