@@ -10,6 +10,7 @@ use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\TermController;
+use App\Http\Controllers\TimeSlotController;
 use App\Http\Controllers\UserActivationController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/school-years/{schoolYear}', [SchoolYearController::class, 'update']);
     Route::delete('/school-years/{schoolYear}', [SchoolYearController::class, 'destroy']);
     Route::put('/terms/{term}/activate', [SchoolYearController::class, 'activateTerm']);
+
+    Route::get('/school-years/{schoolYear}/day-patterns', [TimeSlotController::class, 'index']);
+    Route::post('/school-years/{schoolYear}/day-patterns', [TimeSlotController::class, 'storePattern']);
+    Route::put('/day-patterns/{dayPattern}', [TimeSlotController::class, 'updatePattern']);
+    Route::delete('/day-patterns/{dayPattern}', [TimeSlotController::class, 'destroyPattern']);
+    Route::post('/day-patterns/{dayPattern}/copy', [TimeSlotController::class, 'copyPattern']);
+    Route::post('/day-patterns/{dayPattern}/slots', [TimeSlotController::class, 'storeSlot']);
+    Route::put('/time-slots/{timeSlot}', [TimeSlotController::class, 'updateSlot']);
+    Route::delete('/time-slots/{timeSlot}', [TimeSlotController::class, 'destroySlot']);
 
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);

@@ -22,6 +22,7 @@ const GuestViewIndex = lazy(() => import("./features/guest/GuestViewIndex"));
 const UsersIndex = lazy(() => import("./features/users/UsersIndex"));
 const ApprovalsIndex = lazy(() => import("./features/approvals/ApprovalsIndex"));
 const SchoolYearsIndex = lazy(() => import("./features/school-years/SchoolYearsIndex"));
+const TimeSlotsIndex = lazy(() => import("./features/time-slots/TimeSlotsIndex"));
 
 const PageLoading = () => (
   <div className="flex min-h-dvh items-center justify-center text-sm text-neutral-600">
@@ -67,7 +68,7 @@ function App() {
               <Route path="approvals" element={<ApprovalsIndex />} />
               <Route path="sections" element={<ComingSoonIndex title="Sections" />} />
               <Route path="school-years" element={<SchoolYearsIndex />} />
-              <Route path="time-slots" element={<ComingSoonIndex title="Time Slots" />} />
+              <Route path="time-slots" element={<TimeSlotsIndex />} />
               <Route path="users" element={<UsersIndex />} />
               <Route
                 path="report-settings"

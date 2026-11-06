@@ -225,6 +225,37 @@ export type CopyResult = {
   sections?: number;
 };
 
+export type SchoolLevel = "JHS" | "SHS";
+export type Shift = "AM" | "PM" | "WHOLE_DAY";
+
+/** A period or break on the Time Slots page. */
+export type ManagedSlot = TimeSlot & { locked_reason: string | null };
+
+/** A bell schedule on the Time Slots page. */
+export type ManagedPattern = {
+  id: number;
+  level: SchoolLevel;
+  shift: Shift;
+  name: string;
+  days: number[];
+  locked_reason: string | null;
+  slots: ManagedSlot[];
+};
+
+export type PatternInput = {
+  level: SchoolLevel;
+  shift: Shift;
+  name: string;
+  days: number[];
+};
+
+export type SlotInput = {
+  is_break: boolean;
+  label: string;
+  start_time: string;
+  end_time: string;
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };

@@ -61,8 +61,8 @@ npm run build
   term selector, submit with flag acknowledgements, approvals by scope (approve, reject, reopen),
   revise after rejection, Class Program PDF, and activating accounts (Users page).
 - **Working, Admin:** School Years page, Start New School Year wizard, Calendar settings and
-  switching the active term.
-- **Not built yet:** teacher loading screen, time slots, sections and other CRUD screens, SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
+  switching the active term; Time Slots page (bell schedules, periods, breaks, copy).
+- **Not built yet:** teacher loading screen, sections and other CRUD screens, SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
 - **Front-end, not started:** all Admin screens, Guest view.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
   First Admin on a new server: `php artisan app:create-admin`.
