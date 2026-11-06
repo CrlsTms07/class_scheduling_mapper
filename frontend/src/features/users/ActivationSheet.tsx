@@ -1,6 +1,6 @@
 import React from "react";
 import { useAccessOptions, useActivateUser } from "@/api/users";
-import { ApiError } from "@/api/client";
+import { apiErrorMessage } from "@/lib/forms";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ROLE_LABELS } from "@/lib/navigation";
 import type { RoleName, User } from "@/types/api";
@@ -25,13 +25,6 @@ const ROLE_LEVEL: Partial<Record<RoleName, "JHS" | "SHS">> = {
   glc: "JHS",
   master_teacher: "SHS",
 };
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return Object.values(error.errors)[0]?.[0] ?? error.message;
-  }
-  return "Cannot reach the server. Please check your connection and try again.";
-}
 
 const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void }) => {
   const isPhonePortrait = useMediaQuery("(orientation: portrait) and (max-width: 767px)");
@@ -86,7 +79,7 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
         </SheetHeader>
 
         <div className="space-y-4 px-4 pb-4">
-          {activate.isError && <FormAlert>{errorMessage(activate.error)}</FormAlert>}
+          {activate.isError && <FormAlert>{apiErrorMessage(activate.error)}</FormAlert>}
 
           <div className="space-y-1">
             <label htmlFor="access-role" className="text-sm text-neutral-800">

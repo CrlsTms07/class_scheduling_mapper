@@ -3,8 +3,7 @@ import { Link } from "react-router";
 import { ArrowUpRightIcon, SearchIcon, TableProperties } from "lucide-react";
 import { useSections } from "@/api/schedule";
 import { useSelectedTerm } from "@/context/selectedTerm";
-import { STATUS_LABELS } from "@/lib/schedule";
-import type { ScheduleStatus } from "@/types/api";
+import { STATUS_COLORS, STATUS_LABELS } from "@/lib/schedule";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,14 +11,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-
-const STATUS_COLORS: Record<ScheduleStatus, string> = {
-  not_started: "bg-neutral-200 text-neutral-800",
-  draft: "bg-sky-100 text-sky-900",
-  pending: "bg-amber-100 text-amber-900",
-  approved: "bg-emerald-100 text-emerald-900",
-  rejected: "bg-red-100 text-red-900",
-};
 
 const Schedule = () => {
   const { term, isPending: isTermPending } = useSelectedTerm();

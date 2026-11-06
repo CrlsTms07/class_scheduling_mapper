@@ -25,6 +25,13 @@ class PlotterService
     {
         $section->loadMissing(['gradeLevel', 'adviser', 'homeRoom.building']);
 
+        $status = DB::table('section_term_status')
+            ->where('term_id', $termId)
+            ->where('section_id', $section->id)
+            ->value('status');
+
+        $canPlot = $user->can('plot', $section);
+
         return [
             'section' => [
                 'id' => $section->id,
@@ -36,14 +43,13 @@ class PlotterService
                 'adviser' => $section->adviser?->printedName(),
                 'home_room_id' => $section->home_room_id,
             ],
-            'status' => DB::table('section_term_status')
-                ->where('term_id', $termId)
-                ->where('section_id', $section->id)
-                ->value('status'),
-            'can_plot' => $user->can('plot', $section),
+            'status' => $status,
+            'can_plot' => $canPlot,
+            'can_edit' => $canPlot && in_array($status, ['not_started', 'draft']),
+            'last_review' => $this->lastReview($section, $termId),
             'patterns' => $this->patterns($section),
             'loading' => $this->loading($section, $termId),
-            'entries' => $this->entries($section, $termId),
+            'entries' => $this->entries($section, $termId, $status),
             'rooms' => Room::with('building')
                 ->where('is_active', true)
                 ->orderBy('room_number')
@@ -52,6 +58,30 @@ class PlotterService
                 ->values(),
             'flags' => $this->flags->forSection($section, $termId),
         ];
+    }
+
+    /**
+     * The Admin's latest decision on this section's entries, with its remarks.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function lastReview(Section $section, int $termId): ?array
+    {
+        $review = DB::table('schedule_reviews')
+            ->join('users', 'users.id', '=', 'schedule_reviews.reviewed_by')
+            ->whereIn('schedule_reviews.id', ScheduleEntry::where('term_id', $termId)
+                ->where('section_id', $section->id)
+                ->whereNotNull('review_id')
+                ->select('review_id'))
+            ->orderByDesc('schedule_reviews.id')
+            ->first(['schedule_reviews.action', 'schedule_reviews.remarks', 'schedule_reviews.created_at', 'users.first_name', 'users.last_name']);
+
+        return $review ? [
+            'action' => $review->action,
+            'remarks' => $review->remarks,
+            'reviewed_by' => "{$review->first_name} {$review->last_name}",
+            'created_at' => $review->created_at,
+        ] : null;
     }
 
     private function patterns(Section $section)
@@ -100,12 +130,16 @@ class PlotterService
             ->values();
     }
 
-    private function entries(Section $section, int $termId)
+    /**
+     * Rejected entries are only shown while the section is rejected, so the
+     * scheduler can see what the Admin was looking at.
+     */
+    private function entries(Section $section, int $termId, ?string $status)
     {
         return ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
             ->where('term_id', $termId)
             ->where('section_id', $section->id)
-            ->where('status', '<>', 'rejected')
+            ->when($status !== 'rejected', fn ($query) => $query->where('status', '<>', 'rejected'))
             ->get()
             ->map(fn (ScheduleEntry $entry) => [
                 'id' => $entry->id,

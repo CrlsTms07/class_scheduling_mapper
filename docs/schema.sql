@@ -304,6 +304,18 @@ CREATE INDEX section_subjects_teacher_term_idx ON section_subjects (teacher_id, 
 CREATE INDEX schedule_entries_section_term_idx ON schedule_entries (section_id, term_id);
 CREATE INDEX schedule_entries_status_term_idx  ON schedule_entries (term_id, status);
 
+-- A scheduler's record that they saw a soft flag and are submitting anyway
+CREATE TABLE schedule_flag_acknowledgements (
+    id               BIGSERIAL PRIMARY KEY,
+    term_id          INT    NOT NULL REFERENCES school_terms(id) ON DELETE CASCADE,
+    section_id       INT    NOT NULL REFERENCES sections(id)     ON DELETE CASCADE,
+    flag_key         VARCHAR(80) NOT NULL,     -- changes when the problem changes, e.g. 'minutes:12:320'
+    note             TEXT,
+    acknowledged_by  BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (term_id, section_id, flag_key)
+);
+
 -- ---------------------------------------------------------------------
 -- Printed documents: school header/footer, document control, signatories
 -- (everything printed is encoded by the Admin — nothing is hard-coded)

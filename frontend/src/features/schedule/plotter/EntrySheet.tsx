@@ -6,7 +6,7 @@ import {
 } from "@/api/schedule";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { DAY_NAMES, entryAt, isLocked, slotTimeLabel } from "@/lib/schedule";
-import { ApiError } from "@/api/client";
+import { apiErrorMessage } from "@/lib/forms";
 import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Button } from "@/components/ui/button";
@@ -40,13 +40,6 @@ type EntrySheetProp = {
 };
 
 const SELECT_CLASS = "w-full [&_select]:h-11";
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return Object.values(error.errors)[0]?.[0] ?? error.message;
-  }
-  return "Cannot reach the server. Please check your connection and try again.";
-}
 
 const EntrySheet = ({ target, plotter, termId, onClose }: EntrySheetProp) => {
   const { pattern, slot, day } = target;
@@ -164,7 +157,7 @@ const EntrySheet = ({ target, plotter, termId, onClose }: EntrySheetProp) => {
             </div>
           )}
 
-          {error != null && !conflict && <FormAlert>{errorMessage(error)}</FormAlert>}
+          {error != null && !conflict && <FormAlert>{apiErrorMessage(error)}</FormAlert>}
 
           {isCurrentLocked && (
             <FormAlert>

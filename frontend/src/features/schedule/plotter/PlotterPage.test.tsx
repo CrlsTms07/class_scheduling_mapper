@@ -22,6 +22,8 @@ const plotterData = (overrides: Partial<Plotter> = {}): Plotter => ({
   },
   status: "not_started",
   can_plot: true,
+  can_edit: true,
+  last_review: null,
   patterns: [
     {
       id: 1,
@@ -233,7 +235,7 @@ describe("the entry sheet", () => {
 
 describe("read-only view", () => {
   it("gives the Admin no way to plot", async () => {
-    stubApi(plotterData({ can_plot: false }));
+    stubApi(plotterData({ can_plot: false, can_edit: false }));
     openPlotter();
 
     await screen.findByText("Grade 7 – Sample A");
@@ -241,6 +243,110 @@ describe("read-only view", () => {
     expect(screen.queryByRole("button", { name: MONDAY_SLOT })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Mathematics/ })).not.toBeInTheDocument();
     expect(screen.getByText("Mathematics")).toBeInTheDocument();
+  });
+});
+
+describe("submitting", () => {
+  const flag = { key: "minutes:1:80", type: "minutes_under", severity: "amber" as const, blocking: false, acknowledged: false, message: "Filipino: 80 of 220 minutes scheduled." };
+
+  it("needs each flag checked, then sends the acknowledgements", async () => {
+    const plotter = plotterData({ status: "draft", flags: [flag] });
+    const fetchMock = stubApi(plotter, () => reply(200, { data: plotterData({ status: "pending", can_edit: false }) }));
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Submit for approval" }));
+
+    const sheet = await screen.findByRole("dialog");
+    const confirm = within(sheet).getByRole("button", { name: "Submit for approval" });
+    expect(confirm).toBeDisabled();
+
+    await userEvent.click(within(sheet).getByRole("checkbox"));
+    expect(confirm).toBeEnabled();
+
+    await userEvent.click(confirm);
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(1));
+
+    const [url, init] = changeCalls(fetchMock)[0];
+    expect(url).toMatch(/\/sections\/1\/submit$/);
+    expect(JSON.parse(init.body).acknowledged_flags).toEqual(["minutes:1:80"]);
+    expect(await screen.findByText(/locked while it waits/)).toBeInTheDocument();
+  });
+
+  it("will not submit with open slots", async () => {
+    stubApi(plotterData({
+      status: "draft",
+      flags: [{ ...flag, key: "open_slots", blocking: true, message: "2 open slots are still unfilled." }],
+    }));
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Submit for approval" }));
+
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getByRole("button", { name: "Submit for approval" })).toBeDisabled();
+    expect(within(sheet).queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("has no submit button before anything is plotted", async () => {
+    stubApi(plotterData({ status: "not_started" }));
+    openPlotter();
+
+    await screen.findByText("Grade 7 – Sample A");
+
+    expect(screen.queryByRole("button", { name: "Submit for approval" })).not.toBeInTheDocument();
+  });
+});
+
+describe("after the Admin's decision", () => {
+  const rejected = () =>
+    plotterData({
+      status: "rejected",
+      can_edit: false,
+      last_review: { action: "reject", remarks: "Please fix Filipino.", reviewed_by: "Demo Admin", created_at: "" },
+    });
+
+  it("shows why it was rejected and blocks editing until revised", async () => {
+    stubApi(rejected());
+    openPlotter();
+
+    expect(await screen.findByText(/Please fix Filipino/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: MONDAY_SLOT })).not.toBeInTheDocument();
+  });
+
+  it("reports entries that could not come back after revising", async () => {
+    const fetchMock = stubApi(rejected(), () =>
+      reply(200, {
+        data: plotterData({ status: "draft" }),
+        removed: ["Filipino was removed: the room is used by Grade 7 – Sample B."],
+      }),
+    );
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Revise this schedule" }));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(1));
+    expect(changeCalls(fetchMock)[0][0]).toMatch(/\/revise$/);
+    expect(await screen.findByText(/Filipino was removed/)).toBeInTheDocument();
+    expect(await screen.findAllByRole("button", { name: MONDAY_SLOT })).not.toHaveLength(0);
+  });
+
+  it("shows the Admin a rejected schedule without a revise button", async () => {
+    stubApi({ ...rejected(), can_plot: false });
+    openPlotter();
+
+    await screen.findByText(/Please fix Filipino/);
+
+    expect(screen.queryByRole("button", { name: "Revise this schedule" })).not.toBeInTheDocument();
+  });
+
+  it("says when an approved schedule is locked", async () => {
+    stubApi(plotterData({
+      status: "approved",
+      can_edit: false,
+      last_review: { action: "approve", remarks: null, reviewed_by: "Demo Admin", created_at: "" },
+    }));
+    openPlotter();
+
+    expect(await screen.findByText(/Approved by Demo Admin/)).toBeInTheDocument();
   });
 });
 
@@ -260,7 +366,7 @@ describe("screen states", () => {
   });
 
   it("shows flags", async () => {
-    stubApi(plotterData({ flags: [{ type: "minutes_over", severity: "red", message: "Homeroom Guidance: 80 of 60 minutes scheduled." }] }));
+    stubApi(plotterData({ flags: [{ key: "minutes:1:80", type: "minutes_over", severity: "red", blocking: false, acknowledged: false, message: "Homeroom Guidance: 80 of 60 minutes scheduled." }] }));
     openPlotter();
 
     expect(await screen.findByText("1 flag to check")).toBeInTheDocument();

@@ -77,6 +77,38 @@ export function useClearSlot(termId: number | undefined, sectionId: number) {
   );
 }
 
+export function useSubmitSchedule(termId: number | undefined, sectionId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { acknowledged_flags: string[]; note?: string }) =>
+      api<DataResponse<Plotter>>(`/terms/${termId}/sections/${sectionId}/submit`, {
+        method: "POST",
+        body: input,
+      }),
+    onSuccess: ({ data }) => {
+      queryClient.setQueryData(plotterKey(termId, sectionId), data);
+      queryClient.invalidateQueries({ queryKey: ["terms", termId, "sections"], exact: true });
+    },
+  });
+}
+
+export function useReviseSchedule(termId: number | undefined, sectionId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      api<DataResponse<Plotter> & { removed: string[] }>(
+        `/terms/${termId}/sections/${sectionId}/revise`,
+        { method: "POST" },
+      ),
+    onSuccess: ({ data }) => {
+      queryClient.setQueryData(plotterKey(termId, sectionId), data);
+      queryClient.invalidateQueries({ queryKey: ["terms", termId, "sections"], exact: true });
+    },
+  });
+}
+
 /** The conflicts and suggestions in an API error, if it is a schedule conflict. */
 export function conflictDetailsOf(error: unknown): ConflictDetails | null {
   return error instanceof ApiError && error.code === "schedule_conflict"

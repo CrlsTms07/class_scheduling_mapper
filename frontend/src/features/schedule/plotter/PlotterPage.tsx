@@ -1,10 +1,11 @@
 import React from "react";
 import { Link, useParams } from "react-router";
-import { ArrowLeft, Download, TableProperties } from "lucide-react";
-import { useAssignSlot, usePlotter } from "@/api/schedule";
+import { ArrowLeft, Download, Send, TableProperties } from "lucide-react";
+import { useAssignSlot, usePlotter, useReviseSchedule } from "@/api/schedule";
 import { downloadFile } from "@/api/client";
 import { useSelectedTerm } from "@/context/selectedTerm";
-import { entryAt, STATUS_LABELS } from "@/lib/schedule";
+import { apiErrorMessage } from "@/lib/forms";
+import { entryAt, STATUS_COLORS, STATUS_LABELS } from "@/lib/schedule";
 import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import FlagsPanel from "./FlagsPanel";
 import LoadingPanel from "./LoadingPanel";
 import ScheduleDayList from "./ScheduleDayList";
 import ScheduleGrid from "./ScheduleGrid";
+import SubmitSheet from "./SubmitSheet";
 
 const BackToSections = () => (
   <Link
@@ -48,13 +50,26 @@ const PlotterPage = () => {
 };
 
 const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }) => {
-  const { section, patterns, entries, loading, flags, status, can_plot: canPlot } = plotter;
+  const {
+    section,
+    patterns,
+    entries,
+    loading,
+    flags,
+    status,
+    last_review: lastReview,
+    can_plot: canPlot,
+    can_edit: canEdit,
+  } = plotter;
   const [patternId, setPatternId] = React.useState(patterns[0]?.id);
   const [day, setDay] = React.useState(1);
   const [selectedLoadingId, setSelectedLoadingId] = React.useState<number | null>(null);
   const [target, setTarget] = React.useState<SheetTarget | null>(null);
   const [downloadError, setDownloadError] = React.useState<string | null>(null);
+  const [isSubmitOpen, setIsSubmitOpen] = React.useState(false);
+  const [removedByRevise, setRemovedByRevise] = React.useState<string[]>([]);
   const assign = useAssignSlot(termId, section.id);
+  const revise = useReviseSchedule(termId, section.id);
 
   const pattern = patterns.find(({ id }) => id === patternId) ?? patterns[0];
 
@@ -111,7 +126,13 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     ).catch((error: Error) => setDownloadError(error.message));
   };
 
-  const onSelect = canPlot ? handleSelect : undefined;
+  const handleRevise = () => {
+    revise.mutate(undefined, {
+      onSuccess: ({ removed }) => setRemovedByRevise(removed),
+    });
+  };
+
+  const onSelect = canEdit ? handleSelect : undefined;
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -128,22 +149,83 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
               Adviser: {section.adviser ?? "None yet"}
             </p>
           </div>
-          <Badge variant="secondary" className="shrink-0">
+          <Badge className={`shrink-0 ${STATUS_COLORS[status]}`}>
             {STATUS_LABELS[status]}
           </Badge>
         </div>
-        {section.level === "JHS" && (
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 shrink-0"
-            onClick={handleDownload}
-          >
-            <Download />
-            Class Program PDF
-          </Button>
-        )}
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          {section.level === "JHS" && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11"
+              onClick={handleDownload}
+            >
+              <Download />
+              Class Program PDF
+            </Button>
+          )}
+          {canEdit && status === "draft" && (
+            <Button
+              type="button"
+              className="h-11"
+              onClick={() => setIsSubmitOpen(true)}
+            >
+              <Send />
+              Submit for approval
+            </Button>
+          )}
+        </div>
       </div>
+
+      {status === "pending" && (
+        <FormAlert variant="success">
+          Submitted. This schedule is locked while it waits for the Admin.
+        </FormAlert>
+      )}
+
+      {status === "approved" && (
+        <FormAlert variant="success">
+          Approved{lastReview ? ` by ${lastReview.reviewed_by}` : ""}. This schedule is locked.
+        </FormAlert>
+      )}
+
+      {status === "rejected" && (
+        <div className="space-y-2">
+          <FormAlert>
+            Rejected{lastReview ? ` by ${lastReview.reviewed_by}: ${lastReview.remarks}` : "."}
+          </FormAlert>
+          {canPlot && (
+            <Button
+              type="button"
+              className="h-11"
+              disabled={revise.isPending}
+              onClick={handleRevise}
+            >
+              {revise.isPending ? "Opening..." : "Revise this schedule"}
+            </Button>
+          )}
+          {revise.isError && <FormAlert>{apiErrorMessage(revise.error)}</FormAlert>}
+        </div>
+      )}
+
+      {status === "draft" && lastReview && lastReview.action !== "approve" && (
+        <FormAlert>
+          {lastReview.action === "reject" ? "Rejected" : "Reopened"} by {lastReview.reviewed_by}:{" "}
+          {lastReview.remarks}
+        </FormAlert>
+      )}
+
+      {removedByRevise.length > 0 && (
+        <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <p className="font-medium">These entries could not come back. Please place them again:</p>
+          <ul className="list-disc pl-4">
+            {removedByRevise.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {downloadError && <FormAlert>{downloadError}</FormAlert>}
       <FlagsPanel flags={flags} />
@@ -169,7 +251,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
               <LoadingPanel
                 loading={loading}
                 selectedId={selectedLoadingId}
-                onSelect={canPlot ? setSelectedLoadingId : undefined}
+                onSelect={canEdit ? setSelectedLoadingId : undefined}
               />
             </div>
           )}
@@ -214,6 +296,14 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
             </div>
           </div>
         </div>
+      )}
+
+      {isSubmitOpen && (
+        <SubmitSheet
+          plotter={plotter}
+          termId={termId}
+          onClose={() => setIsSubmitOpen(false)}
+        />
       )}
 
       {target && (

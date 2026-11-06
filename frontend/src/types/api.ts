@@ -93,9 +93,13 @@ export type ScheduleEntry = {
 };
 
 export type ScheduleFlag = {
+  key: string;
   type: string;
   severity: "red" | "amber";
   message: string;
+  /** Must be fixed: it cannot be acknowledged. */
+  blocking: boolean;
+  acknowledged: boolean;
   section_subject_id?: number;
 };
 
@@ -114,6 +118,13 @@ export type Plotter = {
   };
   status: ScheduleStatus;
   can_plot: boolean;
+  can_edit: boolean;
+  last_review: {
+    action: ReviewAction;
+    remarks: string | null;
+    reviewed_by: string;
+    created_at: string;
+  } | null;
   patterns: DayPattern[];
   loading: Loading[];
   entries: ScheduleEntry[];
@@ -133,6 +144,29 @@ export type ConflictDetails = {
     rooms: RoomOption[];
     slots: { id: number; label: string }[];
   };
+};
+
+export type ReviewAction = "approve" | "reject" | "reopen";
+
+export type ReviewInput = {
+  scope: "section" | "grade_level" | "JHS" | "SHS" | "all";
+  scope_ref_id?: number;
+  action: ReviewAction;
+  remarks?: string;
+};
+
+export type ApprovalSection = {
+  id: number;
+  name: string;
+  label: string;
+  grade_level_id: number;
+  grade: number;
+  level: "JHS" | "SHS";
+  adviser: string | null;
+  status: ScheduleStatus;
+  pending_count: number;
+  approved_count: number;
+  flags: ScheduleFlag[];
 };
 
 export type AccessOptions = {

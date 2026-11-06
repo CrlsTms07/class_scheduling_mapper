@@ -26,9 +26,9 @@ const FlagsPanel = ({ flags }: { flags: ScheduleFlag[] }) => {
         )}
       </summary>
       <ul className="space-y-1 p-2 pt-0">
-        {flags.map((flag, index) => (
+        {flags.map((flag) => (
           <li
-            key={`${flag.type}-${index}`}
+            key={flag.key}
             className={`rounded px-2 py-1 text-xs ${
               flag.severity === "red"
                 ? "bg-red-50 text-red-900"
@@ -36,6 +36,7 @@ const FlagsPanel = ({ flags }: { flags: ScheduleFlag[] }) => {
             }`}
           >
             {flag.message}
+            {flag.acknowledged && " (acknowledged)"}
           </li>
         ))}
       </ul>

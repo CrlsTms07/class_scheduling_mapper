@@ -22,4 +22,12 @@ class SectionPolicy
     {
         return $user->hasAnyRole(['glc', 'master_teacher']) && $this->view($user, $section);
     }
+
+    /**
+     * Only the Admin approves, rejects or reopens schedules.
+     */
+    public function review(User $user): bool
+    {
+        return $user->hasRole(User::ROLE_ADMIN);
+    }
 }

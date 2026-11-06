@@ -10,27 +10,43 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Soft rules: the entry is saved but flagged. Flags are worked out on every read,
- * so they can never go out of date.
+ * so they can never go out of date. Submitting needs each flag fixed or acknowledged.
+ *
+ * Each flag has a key that changes when the problem changes, so a new problem
+ * always needs a new acknowledgement.
  */
 class FlagService
 {
     /**
-     * @return array<int, array{type: string, severity: string, message: string, section_subject_id?: int}>
+     * @return array<int, array{key: string, type: string, severity: string, message: string, blocking: bool, acknowledged: bool, section_subject_id?: int}>
      */
     public function forSection(Section $section, int $termId): array
     {
-        return [
+        $flags = [
             ...$this->adviser($section),
             ...$this->minutes($section, $termId),
             ...$this->openSlots($section, $termId),
             ...$this->breaksAndShifts($section, $termId),
             ...$this->overloadedTeachers($section, $termId),
         ];
+
+        $acknowledged = DB::table('schedule_flag_acknowledgements')
+            ->where('term_id', $termId)
+            ->where('section_id', $section->id)
+            ->pluck('flag_key')
+            ->all();
+
+        return array_map(fn (array $flag) => [
+            ...$flag,
+            'blocking' => $flag['blocking'] ?? false,
+            'acknowledged' => in_array($flag['key'], $acknowledged),
+        ], $flags);
     }
 
     private function adviser(Section $section): array
     {
         return $section->adviser_id ? [] : [[
+            'key' => 'no_adviser',
             'type' => 'no_adviser',
             'severity' => 'amber',
             'message' => 'This section has no adviser.',
@@ -47,6 +63,7 @@ class FlagService
             ->get();
 
         return $rows->map(fn ($row) => [
+            'key' => "minutes:{$row->section_subject_id}:{$row->scheduled_minutes}",
             'type' => $row->scheduled_minutes > $row->required_minutes ? 'minutes_over' : 'minutes_under',
             'severity' => $row->scheduled_minutes > $row->required_minutes ? 'red' : 'amber',
             'message' => "{$row->subject}: {$row->scheduled_minutes} of {$row->required_minutes} minutes scheduled.",
@@ -54,17 +71,23 @@ class FlagService
         ])->all();
     }
 
+    /**
+     * Open slots cannot be acknowledged: they must be filled before submitting.
+     */
     private function openSlots(Section $section, int $termId): array
     {
         $count = ScheduleEntry::where('term_id', $termId)
             ->where('section_id', $section->id)
+            ->where('status', '<>', 'rejected')
             ->whereNull('section_subject_id')
             ->count();
 
         return $count === 0 ? [] : [[
+            'key' => 'open_slots',
             'type' => 'open_slots',
-            'severity' => 'amber',
+            'severity' => 'red',
             'message' => "{$count} open ".($count === 1 ? 'slot is' : 'slots are').' still unfilled.',
+            'blocking' => true,
         ]];
     }
 
@@ -91,15 +114,26 @@ class FlagService
                 && $slot->end_time > $entry->start_time);
 
             if ($overlapsBreak) {
-                $flags[] = ['type' => 'overlaps_break', 'severity' => 'red', 'message' => "The entry on {$when} overlaps a break."];
+                $flags[] = [
+                    'key' => "overlaps_break:{$entry->id}",
+                    'type' => 'overlaps_break',
+                    'severity' => 'red',
+                    'message' => "The entry on {$when} overlaps a break.",
+                ];
             }
 
             if ($pattern && ! $pattern->timeSlots->contains(fn ($slot) => $slot->start_time <= $entry->start_time && $slot->end_time >= $entry->end_time)) {
-                $flags[] = ['type' => 'outside_shift', 'severity' => 'red', 'message' => "The entry on {$when} is outside the section's bell schedule."];
+                $flags[] = [
+                    'key' => "outside_shift:{$entry->id}",
+                    'type' => 'outside_shift',
+                    'severity' => 'red',
+                    'message' => "The entry on {$when} is outside the section's bell schedule.",
+                ];
             }
 
             if ($entry->teacher && $this->isOutsideTeacherShift($entry, $section)) {
                 $flags[] = [
+                    'key' => "teacher_shift:{$entry->id}",
                     'type' => 'teacher_shift',
                     'severity' => 'amber',
                     'message' => "{$entry->teacher->printedName()} has the {$entry->teacher->shift} shift, but teaches on {$when}.",
@@ -142,11 +176,12 @@ class FlagService
             ->join('teachers', 'teachers.id', '=', 'teacher_load.teacher_id')
             ->where('teacher_load.term_id', $termId)
             ->where('teacher_load.is_overloaded', true)
-            ->select('teachers.first_name', 'teachers.last_name', 'teachers.display_name', 'teacher_load.subject_count', 'teacher_load.max_subjects')
+            ->select('teachers.id', 'teachers.first_name', 'teachers.last_name', 'teachers.display_name', 'teacher_load.subject_count', 'teacher_load.max_subjects')
             ->distinct()
             ->get();
 
         return $rows->map(fn ($row) => [
+            'key' => "teacher_overloaded:{$row->id}:{$row->subject_count}",
             'type' => 'teacher_overloaded',
             'severity' => 'amber',
             'message' => ($row->display_name ?: "{$row->first_name} {$row->last_name}")." has {$row->subject_count} classes (limit {$row->max_subjects}).",

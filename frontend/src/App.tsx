@@ -20,6 +20,7 @@ const PlotterPage = lazy(() => import("./features/schedule/plotter/PlotterPage")
 const DashboardIndex = lazy(() => import("./features/dashboard/DashboardIndex"));
 const GuestViewIndex = lazy(() => import("./features/guest/GuestViewIndex"));
 const UsersIndex = lazy(() => import("./features/users/UsersIndex"));
+const ApprovalsIndex = lazy(() => import("./features/approvals/ApprovalsIndex"));
 
 const PageLoading = () => (
   <div className="flex min-h-dvh items-center justify-center text-sm text-neutral-600">
@@ -62,7 +63,7 @@ function App() {
             </Route>
 
             <Route element={<RequireRole roles={ROLES.ADMIN} />}>
-              <Route path="approvals" element={<ComingSoonIndex title="Approvals" />} />
+              <Route path="approvals" element={<ApprovalsIndex />} />
               <Route path="sections" element={<ComingSoonIndex title="Sections" />} />
               <Route
                 path="school-years"

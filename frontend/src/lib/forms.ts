@@ -1,6 +1,14 @@
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { ApiError } from "@/api/client";
 
+/** One readable message for any failed API call. */
+export function apiErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return Object.values(error.errors)[0]?.[0] ?? error.message;
+  }
+  return "Cannot reach the server. Please check your connection and try again.";
+}
+
 /**
  * Shows API validation errors under their form fields.
  * Returns the message to show above the form when no field can display it.
