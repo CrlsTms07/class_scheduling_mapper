@@ -37,7 +37,12 @@ const LOADING: SectionLoading = {
 
 type Call = { url: string; method: string; body: Record<string, unknown> };
 
-function openPage(path = "/teacher-loading", replies: { status?: number; body?: unknown } = {}, loading = LOADING) {
+function openPage(
+  path = "/teacher-loading",
+  replies: { status?: number; body?: unknown } = {},
+  loading = LOADING,
+  terms: Term[] = [TERM],
+) {
   const calls: Call[] = [];
 
   vi.stubGlobal(
@@ -55,7 +60,7 @@ function openPage(path = "/teacher-loading", replies: { status?: number; body?: 
         }
         return new Response(JSON.stringify(replies.body ?? { data: loading }), { status: replies.status ?? 200 });
       }
-      const data = url.includes("/loading") ? loading : url.includes("/sections") ? SECTIONS : [TERM];
+      const data = url.includes("/loading") ? loading : url.includes("/sections") ? SECTIONS : terms;
       return new Response(JSON.stringify({ data }), { status: 200 });
     }),
   );
@@ -63,7 +68,7 @@ function openPage(path = "/teacher-loading", replies: { status?: number; body?: 
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
-  client.setQueryData(["terms"], [TERM]);
+  client.setQueryData(["terms"], terms);
   client.setQueryData(["terms", 2, "sections"], SECTIONS);
   client.setQueryData(["terms", 2, "sections", 5, "loading"], loading);
 
@@ -160,6 +165,47 @@ describe("assigning", () => {
 
     expect(screen.getByLabelText("Teacher of English 7")).toBeDisabled();
     expect(screen.getByText(/The Admin must reopen it first/)).toBeInTheDocument();
+  });
+});
+
+describe("copying from another term", () => {
+  const SECOND: Term = { ...TERM, id: 3, term_no: 2, name: "Second Term", is_active: false };
+
+  it("is not offered when the year has only one term", () => {
+    openPage();
+
+    expect(screen.queryByRole("button", { name: "Copy from another term" })).not.toBeInTheDocument();
+  });
+
+  it("copies for this section by default and reports the result", async () => {
+    const calls = openPage("/teacher-loading", {
+      body: { data: { copied: 2, already_set: 1, not_offered: 0, teacher_unavailable: 0 } },
+    }, LOADING, [TERM, SECOND]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy from another term" }));
+
+    expect(screen.getByLabelText("Copy from")).toHaveValue("3");
+    expect(screen.getByRole("button", { name: "Only Grade 7 – Honesty" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy the teachers" }));
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].url).toMatch(/\/terms\/2\/loading\/copy$/);
+    expect(calls[0].body).toEqual({ from_term_id: 3, section_id: 5 });
+    expect(await screen.findByText(/2 subjects were copied. 1 already had a teacher/)).toBeInTheDocument();
+  });
+
+  it("can copy for all sections", async () => {
+    const calls = openPage("/teacher-loading", {
+      body: { data: { copied: 0, already_set: 0, not_offered: 0, teacher_unavailable: 0 } },
+    }, LOADING, [TERM, SECOND]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy from another term" }));
+    await userEvent.click(screen.getByRole("button", { name: "All sections of my grade levels" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy the teachers" }));
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].body).toEqual({ from_term_id: 3, section_id: null });
   });
 });
 

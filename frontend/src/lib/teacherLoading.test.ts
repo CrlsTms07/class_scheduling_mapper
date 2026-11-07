@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LoadingRow, LoadingTeacher } from "@/types/api";
 import {
+  copyResultLines,
   isOverLoad,
   loadedCount,
   QuickAddSchema,
@@ -10,6 +11,24 @@ import {
 } from "./teacherLoading";
 
 const teacher: LoadingTeacher = { id: 1, name: "Ana Reyes", shift: "WHOLE_DAY", assigned: 3, limit: 5 };
+
+describe("copyResultLines", () => {
+  it("only mentions what happened", () => {
+    expect(copyResultLines({ copied: 1, already_set: 0, not_offered: 0, teacher_unavailable: 0 })).toEqual([
+      "1 subject was copied.",
+    ]);
+  });
+
+  it("explains everything left out", () => {
+    const lines = copyResultLines({ copied: 2, already_set: 1, not_offered: 2, teacher_unavailable: 1 });
+
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toBe("2 subjects were copied.");
+    expect(lines[1]).toMatch(/already had a teacher/);
+    expect(lines[2]).toMatch(/2 are not taken/);
+    expect(lines[3]).toMatch(/no longer active/);
+  });
+});
 
 describe("loadedCount", () => {
   it("counts subjects with a teacher", () => {

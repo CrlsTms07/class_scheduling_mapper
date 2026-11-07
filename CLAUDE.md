@@ -70,8 +70,13 @@ npm run build
   per term) and Buildings and Rooms page.
 - **Working, Chairperson and Master Teacher within scope (Admin views):** Subjects page (per school
   year, term, track, minutes per week); Teacher Loading page (per section and term, quick-add teacher,
-  locks with pending or approved schedules).
-- **Not built yet:** SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
+  locks with pending or approved schedules, copy from another term).
+- **Working, Schedule module:** Building tabs, room cards, Room Schedule page, and plotter with day
+  cards (team decision, Nov 7, 2026: the default on wide screens) and the weekly grid as a choice.
+- **Working, Reports page:** JHS and SHS Class Program, Teacher Program, Room Schedule and room usage,
+  in PDF and XLSX. Teacher Program and Room Schedule have no official form yet, so their layout is to be
+  confirmed with the school.
+- **Not built yet:** My Schedule, Guest view.
 - **Front-end, not started:** all Admin screens, Guest view.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
   First Admin on a new server: `php artisan app:create-admin`.

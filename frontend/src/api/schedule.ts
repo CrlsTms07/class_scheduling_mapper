@@ -3,6 +3,8 @@ import type {
   ConflictDetails,
   DataResponse,
   Plotter,
+  RoomSchedule,
+  ScheduleMap,
   SectionSummary,
 } from "@/types/api";
 import { api, ApiError } from "./client";
@@ -13,6 +15,25 @@ export function useSections(termId: number | undefined) {
     enabled: termId !== undefined,
     queryFn: async () =>
       (await api<DataResponse<SectionSummary[]>>(`/terms/${termId}/sections`)).data,
+  });
+}
+
+/** Buildings, their rooms and the sections in them, for the Schedule page. */
+export function useScheduleMap(termId: number | undefined) {
+  return useQuery({
+    queryKey: ["terms", termId, "schedule-map"],
+    enabled: termId !== undefined,
+    queryFn: async () =>
+      (await api<DataResponse<ScheduleMap>>(`/terms/${termId}/schedule-map`)).data,
+  });
+}
+
+export function useRoomSchedule(termId: number | undefined, roomId: number) {
+  return useQuery({
+    queryKey: ["terms", termId, "rooms", roomId, "schedule"],
+    enabled: termId !== undefined,
+    queryFn: async () =>
+      (await api<DataResponse<RoomSchedule>>(`/terms/${termId}/rooms/${roomId}/schedule`)).data,
   });
 }
 

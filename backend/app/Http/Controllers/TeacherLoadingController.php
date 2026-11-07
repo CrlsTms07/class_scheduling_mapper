@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CopyLoadingRequest;
 use App\Http\Requests\QuickAddTeacherRequest;
 use App\Http\Requests\SaveLoadingRequest;
 use App\Models\SchoolTerm;
@@ -40,6 +41,18 @@ class TeacherLoadingController extends Controller
         $loading->remove($term, $section, $subject, $request->user());
 
         return response()->json(['data' => $loading->forSection($term, $section)]);
+    }
+
+    public function copy(CopyLoadingRequest $request, SchoolTerm $term, TeacherLoadingService $loading): JsonResponse
+    {
+        $result = $loading->copyFromTerm(
+            $term,
+            SchoolTerm::find($request->integer('from_term_id')),
+            $request->input('section_id'),
+            $request->user(),
+        );
+
+        return response()->json(['data' => $result]);
     }
 
     public function quickAddTeacher(QuickAddTeacherRequest $request, TeacherService $teachers): JsonResponse

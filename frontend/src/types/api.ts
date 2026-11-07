@@ -510,6 +510,87 @@ export type SectionLoading = {
   teachers: LoadingTeacher[];
 };
 
+export type MapRoom = {
+  id: number;
+  room_number: string;
+  room_name: string | null;
+  is_active: boolean;
+  sections: SectionSummary[];
+};
+
+export type ScheduleMap = {
+  buildings: { id: number; name: string; rooms: MapRoom[] }[];
+  unassigned: SectionSummary[];
+};
+
+export type RoomSchedule = {
+  room: {
+    id: number;
+    label: string;
+    room_name: string | null;
+    capacity: number | null;
+    building: string;
+  };
+  sections: string[];
+  entries: {
+    id: number;
+    day: number;
+    start_time: string;
+    end_time: string;
+    minutes: number;
+    status: ScheduleEntry["status"];
+    subject: string | null;
+    teacher: string | null;
+    section_id: number;
+    section: string;
+    can_open: boolean;
+  }[];
+};
+
+export type CopyLoadingResult = {
+  copied: number;
+  already_set: number;
+  not_offered: number;
+  teacher_unavailable: number;
+};
+
+export type ReportOptions = {
+  sections: { id: number; label: string; level: SchoolLevel }[];
+  teachers: { id: number; label: string }[];
+  rooms: { id: number; label: string }[];
+};
+
+/** A Teacher Program or Room Schedule, for the preview on screen. */
+export type ReportGrid = {
+  title: string;
+  term_label: string;
+  heading: string;
+  details: string[];
+  days: { day: number; name: string }[];
+  rows: {
+    start_time: string;
+    end_time: string;
+    time: string;
+    minutes: number;
+    cells: Record<number, (string | null)[][]>;
+  }[];
+  totals: { per_day: Record<number, number>; week: number; week_duration: string };
+  isDraft: boolean;
+};
+
+export type RoomUsage = {
+  buildings: {
+    name: string;
+    rooms: {
+      id: number;
+      room_number: string;
+      room_name: string | null;
+      periods_per_week: number;
+      sections: { label: string; periods_per_week: number }[];
+    }[];
+  }[];
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };

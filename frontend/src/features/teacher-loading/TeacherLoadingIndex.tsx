@@ -1,11 +1,12 @@
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowUpRight, ClipboardList, Lock } from "lucide-react";
+import { ArrowUpRight, ClipboardList, Copy, Lock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router";
 import { useSections } from "@/api/schedule";
 import {
   useAssignLoading,
+  useCopyLoading,
   useQuickAddTeacher,
   useRemoveLoading,
   useSectionLoading,
@@ -14,6 +15,7 @@ import { useSelectedTerm } from "@/context/selectedTerm";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { apiErrorMessage } from "@/lib/forms";
 import {
+  copyResultLines,
   isOverLoad,
   loadedCount,
   QuickAddSchema,
@@ -21,7 +23,7 @@ import {
   teacherOptionLabel,
   teachersForRow,
 } from "@/lib/teacherLoading";
-import type { LoadingRow, SectionLoading } from "@/types/api";
+import type { LoadingRow, SectionLoading, Term } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import FormTextField from "@/components/global-component/FormTextField";
 import { Badge } from "@/components/ui/badge";
@@ -200,8 +202,113 @@ const LoadingRowCard = ({ termId, loading, row }: LoadingRowProp) => {
   );
 };
 
+type CopySheetProp = {
+  termId: number;
+  termName: string;
+  otherTerms: Term[];
+  section: { id: number; grade: number; name: string };
+  onClose: () => void;
+};
+
+const CopySheet = ({ termId, termName, otherTerms, section, onClose }: CopySheetProp) => {
+  const isPhonePortrait = useMediaQuery("(orientation: portrait) and (max-width: 767px)");
+  const copy = useCopyLoading(termId);
+  const [fromTermId, setFromTermId] = React.useState(otherTerms[0].id);
+  const [isWholeScope, setIsWholeScope] = React.useState(false);
+
+  const scopes = [
+    { value: false, text: `Only Grade ${section.grade} – ${section.name}` },
+    { value: true, text: "All sections of my grade levels" },
+  ];
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side={isPhonePortrait ? "bottom" : "right"}
+        className="max-h-[90dvh] overflow-y-auto"
+      >
+        <SheetHeader>
+          <SheetTitle className="text-branding">Copy from another term</SheetTitle>
+          <SheetDescription>
+            Fills {termName} with the same teachers, for subjects taught in both terms. Subjects
+            that already have a teacher stay as they are.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-4 px-4 pb-4">
+          {copy.isError && <FormAlert>{apiErrorMessage(copy.error)}</FormAlert>}
+
+          {copy.isSuccess ? (
+            <FormAlert variant="success">{copyResultLines(copy.data.data).join(" ")}</FormAlert>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <label htmlFor="copy-from-term" className="text-sm text-neutral-800">
+                  Copy from
+                </label>
+                <NativeSelect
+                  id="copy-from-term"
+                  className="w-full [&_select]:h-11"
+                  value={fromTermId}
+                  onChange={(event) => setFromTermId(Number(event.target.value))}
+                >
+                  {otherTerms.map(({ id, name }) => (
+                    <NativeSelectOption key={id} value={id}>
+                      {name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
+
+              <div role="group" aria-label="Which sections" className="grid grid-cols-1 gap-2">
+                {scopes.map(({ value, text }) => {
+                  const isOn = value === isWholeScope;
+                  return (
+                    <button
+                      key={text}
+                      type="button"
+                      aria-pressed={isOn}
+                      onClick={() => setIsWholeScope(value)}
+                      className={`min-h-11 rounded-md border px-3 text-left text-sm font-medium ${
+                        isOn
+                          ? "bg-[#790D16] text-white border-[#790D16]"
+                          : "bg-background text-neutral-700"
+                      }`}
+                    >
+                      {text}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button
+                type="button"
+                className="h-11 w-full"
+                disabled={copy.isPending}
+                onClick={() =>
+                  copy.mutate({
+                    from_term_id: fromTermId,
+                    section_id: isWholeScope ? null : section.id,
+                  })
+                }
+              >
+                {copy.isPending ? "Copying..." : "Copy the teachers"}
+              </Button>
+            </>
+          )}
+
+          <Button type="button" variant="outline" className="h-11 w-full" onClick={onClose}>
+            {copy.isSuccess ? "Done" : "Close"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 const TeacherLoadingIndex = () => {
-  const { term, isPending: isTermPending } = useSelectedTerm();
+  const { term, terms, isPending: isTermPending } = useSelectedTerm();
+  const [isCopying, setIsCopying] = React.useState(false);
   const { data: sections, isPending: isSectionsPending } = useSections(term?.id);
   const [params, setParams] = useSearchParams();
 
@@ -219,6 +326,9 @@ const TeacherLoadingIndex = () => {
   }
 
   const done = loading ? loadedCount(loading.rows) : 0;
+  const otherTerms = terms.filter(
+    (item) => item.school_year.id === term.school_year.id && item.id !== term.id,
+  );
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
@@ -273,14 +383,37 @@ const TeacherLoadingIndex = () => {
               ))}
             </NativeSelect>
           </div>
-          <Link
-            to={`/schedule/sections/${section.id}`}
-            className={buttonVariants({ variant: "outline", className: "h-11 shrink-0" })}
-          >
-            Open the plotter
-            <ArrowUpRight />
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            {otherTerms.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                onClick={() => setIsCopying(true)}
+              >
+                <Copy />
+                Copy from another term
+              </Button>
+            )}
+            <Link
+              to={`/schedule/sections/${section.id}`}
+              className={buttonVariants({ variant: "outline", className: "h-11" })}
+            >
+              Open the plotter
+              <ArrowUpRight />
+            </Link>
+          </div>
         </div>
+      )}
+
+      {isCopying && section && (
+        <CopySheet
+          termId={term.id}
+          termName={term.name}
+          otherTerms={otherTerms}
+          section={section}
+          onClose={() => setIsCopying(false)}
+        />
       )}
 
       {section && isPending && <p className="text-sm text-neutral-600">Loading...</p>}

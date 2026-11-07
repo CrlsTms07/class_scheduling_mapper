@@ -26,6 +26,24 @@ export const STATUS_COLORS: Record<ScheduleStatus, string> = {
   rejected: "bg-red-100 text-red-900",
 };
 
+export type PlotterView = "days" | "grid";
+
+export const PLOTTER_VIEWS: { value: PlotterView; label: string }[] = [
+  { value: "days", label: "Day cards" },
+  { value: "grid", label: "Weekly grid" },
+];
+
+const PLOTTER_VIEW_KEY = "plotter-view";
+
+/** The plotter opens the way the user last left it, on day cards at first. */
+export function readPlotterView(): PlotterView {
+  return localStorage.getItem(PLOTTER_VIEW_KEY) === "grid" ? "grid" : "days";
+}
+
+export function savePlotterView(view: PlotterView): void {
+  localStorage.setItem(PLOTTER_VIEW_KEY, view);
+}
+
 /** "13:05" becomes "1:05 PM". */
 export function formatTime(time: string): string {
   const [hour, minute] = time.split(":").map(Number);

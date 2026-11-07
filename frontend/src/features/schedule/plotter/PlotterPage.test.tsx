@@ -378,8 +378,27 @@ describe("screen states", () => {
     stubApi(plotterData());
     openPlotter();
 
+    await userEvent.click(await screen.findByRole("tab", { name: "Weekly grid" }));
     await userEvent.click(await screen.findByRole("tab", { name: "Friday" }));
 
     expect(screen.getAllByRole("button", { name: "Friday, 7:50 AM – 9:10 AM" }).length).toBeGreaterThan(0);
+  });
+
+  it("opens on day cards, showing every day of the week", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    expect(await screen.findByRole("region", { name: "Monday" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Friday" })).toHaveTextContent("7:50 AM");
+    expect(screen.getByRole("tab", { name: "Day cards" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("remembers the view the user chose", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Weekly grid" }));
+    expect(screen.queryByRole("region", { name: "Monday" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("plotter-view")).toBe("grid");
   });
 });

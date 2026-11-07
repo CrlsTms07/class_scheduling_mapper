@@ -1,11 +1,29 @@
 import * as z from "zod";
-import type { LoadingRow, LoadingTeacher, Shift } from "@/types/api";
+import type { CopyLoadingResult, LoadingRow, LoadingTeacher, Shift } from "@/types/api";
 import { SHIFT_LABELS } from "./timeSlots";
 
 export const QuickAddSchema = z.object({
   first_name: z.string().trim().min(1, "Enter the first name").max(60, "Use 60 characters or fewer"),
   last_name: z.string().trim().min(1, "Enter the last name").max(60, "Use 60 characters or fewer"),
 });
+
+/** What a copy did, in plain words. */
+export function copyResultLines(result: CopyLoadingResult): string[] {
+  const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+
+  return [
+    `${result.copied} ${plural(result.copied, "subject was", "subjects were")} copied.`,
+    ...(result.already_set > 0
+      ? [`${result.already_set} already had a teacher, so they were left as they are.`]
+      : []),
+    ...(result.not_offered > 0
+      ? [`${result.not_offered} ${plural(result.not_offered, "is", "are")} not taken in this term.`]
+      : []),
+    ...(result.teacher_unavailable > 0
+      ? [`${result.teacher_unavailable} had a teacher who is no longer active. Choose a new one.`]
+      : []),
+  ];
+}
 
 /** How many subjects already have a teacher. */
 export function loadedCount(rows: LoadingRow[]): number {

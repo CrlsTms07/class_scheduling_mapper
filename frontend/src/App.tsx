@@ -17,6 +17,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const PlotterPage = lazy(() => import("./features/schedule/plotter/PlotterPage"));
+const RoomSchedulePage = lazy(() => import("./features/schedule/RoomSchedulePage"));
 const DashboardIndex = lazy(() => import("./features/dashboard/DashboardIndex"));
 const GuestViewIndex = lazy(() => import("./features/guest/GuestViewIndex"));
 const UsersIndex = lazy(() => import("./features/users/UsersIndex"));
@@ -26,6 +27,7 @@ const TimeSlotsIndex = lazy(() => import("./features/time-slots/TimeSlotsIndex")
 const SectionsIndex = lazy(() => import("./features/sections/SectionsIndex"));
 const TeachersIndex = lazy(() => import("./features/teachers/TeachersIndex"));
 const BuildingsIndex = lazy(() => import("./features/buildings/BuildingsIndex"));
+const ReportsIndex = lazy(() => import("./features/reports/ReportsIndex"));
 const SubjectsIndex = lazy(() => import("./features/subjects/SubjectsIndex"));
 const TeacherLoadingIndex = lazy(() => import("./features/teacher-loading/TeacherLoadingIndex"));
 const ReportSettingsIndex = lazy(() => import("./features/report-settings/ReportSettingsIndex"));
@@ -57,10 +59,11 @@ function App() {
               <Route path="dashboard" element={<DashboardIndex />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="schedule/sections/:sectionId" element={<PlotterPage />} />
+              <Route path="schedule/rooms/:roomId" element={<RoomSchedulePage />} />
               <Route path="teachers" element={<TeachersIndex />} />
               <Route path="subjects" element={<SubjectsIndex />} />
               <Route path="buildings" element={<BuildingsIndex />} />
-              <Route path="reports" element={<ComingSoonIndex title="Reports" />} />
+              <Route path="reports" element={<ReportsIndex />} />
             </Route>
 
             <Route element={<RequireRole roles={ROLES.SCHEDULERS} />}>

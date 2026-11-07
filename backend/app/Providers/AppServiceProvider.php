@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\SchoolTerm;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -36,6 +39,21 @@ class AppServiceProvider extends ServiceProvider
         // The Admin needs them too, because sections take their advisers and home rooms from them.
         Gate::define('view-school-records', fn (User $user) => $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']));
         Gate::define('manage-school-records', fn (User $user) => $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']));
+
+        // A teacher's program is printed whole, since half a teaching load would mislead.
+        // A scheduler can print it if the teacher handles a section in their grade levels.
+        Gate::define('view-teacher-program', function (User $user, Teacher $teacher, SchoolTerm $term) {
+            if ($user->hasRole(User::ROLE_ADMIN)) {
+                return true;
+            }
+
+            return $user->hasAnyRole(['glc', 'master_teacher']) && DB::table('section_subjects')
+                ->join('sections', 'sections.id', '=', 'section_subjects.section_id')
+                ->where('section_subjects.term_id', $term->id)
+                ->where('section_subjects.teacher_id', $teacher->id)
+                ->whereIn('sections.grade_level_id', $user->gradeLevelIdsInScope())
+                ->exists();
+        });
 
         // Same password policy as the front-end form (frontend/src/types/FieldSchema.ts).
         Password::defaults(fn () => Password::min(8)->max(64)->mixedCase()->numbers()->symbols());

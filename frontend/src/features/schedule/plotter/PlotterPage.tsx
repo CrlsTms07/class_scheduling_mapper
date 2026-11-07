@@ -5,7 +5,15 @@ import { useAssignSlot, usePlotter, useReviseSchedule } from "@/api/schedule";
 import { downloadFile } from "@/api/client";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { apiErrorMessage } from "@/lib/forms";
-import { entryAt, STATUS_COLORS, STATUS_LABELS } from "@/lib/schedule";
+import {
+  entryAt,
+  PLOTTER_VIEWS,
+  readPlotterView,
+  savePlotterView,
+  STATUS_COLORS,
+  STATUS_LABELS,
+  type PlotterView,
+} from "@/lib/schedule";
 import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +21,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import EntrySheet, { type SheetTarget } from "./EntrySheet";
 import FlagsPanel from "./FlagsPanel";
 import LoadingPanel from "./LoadingPanel";
+import ScheduleDayCards from "./ScheduleDayCards";
 import ScheduleDayList from "./ScheduleDayList";
 import ScheduleGrid from "./ScheduleGrid";
 import SubmitSheet from "./SubmitSheet";
@@ -68,6 +77,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
   const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const [isSubmitOpen, setIsSubmitOpen] = React.useState(false);
   const [removedByRevise, setRemovedByRevise] = React.useState<string[]>([]);
+  const [view, setView] = React.useState<PlotterView>(readPlotterView);
   const assign = useAssignSlot(termId, section.id);
   const revise = useReviseSchedule(termId, section.id);
 
@@ -119,10 +129,15 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     );
   };
 
-  const handleDownload = () => {
+  const changeView = (next: PlotterView) => {
+    setView(next);
+    savePlotterView(next);
+  };
+
+  const handleDownload = (extension: "pdf" | "xlsx") => {
     setDownloadError(null);
     downloadFile(
-      `/terms/${termId}/sections/${section.id}/class-program.pdf`,
+      `/terms/${termId}/sections/${section.id}/class-program.${extension}`,
     ).catch((error: Error) => setDownloadError(error.message));
   };
 
@@ -154,17 +169,21 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
           </Badge>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-          {section.level === "JHS" && (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              onClick={handleDownload}
-            >
-              <Download />
-              Class Program PDF
-            </Button>
-          )}
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            {(["pdf", "xlsx"] as const).map((extension) => (
+              <Button
+                key={extension}
+                type="button"
+                variant="outline"
+                className="h-11"
+                aria-label={`Class Program ${extension.toUpperCase()}`}
+                onClick={() => handleDownload(extension)}
+              >
+                <Download />
+                {extension.toUpperCase()}
+              </Button>
+            ))}
+          </div>
           {canEdit && status === "draft" && (
             <Button
               type="button"
@@ -269,7 +288,30 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
           <div className={`min-w-0 ${loading.length === 0 ? "lg:col-span-2" : ""}`}>
             {/* Wide screens and landscape */}
             <div className="max-md:portrait:hidden space-y-3">
-              {patterns.length > 1 && (
+              <div role="tablist" aria-label="View" className="grid grid-cols-2 gap-2 sm:w-80">
+                {PLOTTER_VIEWS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={value === view}
+                    onClick={() => changeView(value)}
+                    className={`min-h-11 rounded-md border px-3 text-sm font-medium ${
+                      value === view
+                        ? "bg-[#790D16] text-white border-[#790D16]"
+                        : "bg-background text-neutral-700"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {view === "days" && (
+                <ScheduleDayCards patterns={patterns} entries={entries} onSelect={onSelect} />
+              )}
+
+              {view === "grid" && patterns.length > 1 && (
                 <div role="tablist" aria-label="Bell schedule" className="flex gap-2">
                   {patterns.map(({ id, name }) => (
                     <button
@@ -289,7 +331,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
                   ))}
                 </div>
               )}
-              {pattern && (
+              {view === "grid" && pattern && (
                 <ScheduleGrid pattern={pattern} entries={entries} onSelect={onSelect} />
               )}
             </div>

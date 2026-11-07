@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DataResponse, NamedOption, SectionLoading } from "@/types/api";
+import type { CopyLoadingResult, DataResponse, NamedOption, SectionLoading } from "@/types/api";
 import { api } from "./client";
 
 const loadingKey = (termId: number | undefined, sectionId: number | undefined) => [
@@ -51,6 +51,16 @@ export const useRemoveLoading = (termId: number, sectionId: number, subjectId: n
   useLoadingChange(termId, sectionId, () =>
     api(`/terms/${termId}/sections/${sectionId}/loading/${subjectId}`, { method: "DELETE" }),
   );
+
+export function useCopyLoading(termId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: { from_term_id: number; section_id: number | null }) =>
+      api<DataResponse<CopyLoadingResult>>(`/terms/${termId}/loading/copy`, { method: "POST", body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["terms", termId] }),
+  });
+}
 
 export function useQuickAddTeacher() {
   const queryClient = useQueryClient();

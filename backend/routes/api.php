@@ -10,7 +10,9 @@ use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlotterController;
 use App\Http\Controllers\RegistrationController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportSettingsController;
+use App\Http\Controllers\ScheduleMapController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SubjectController;
@@ -89,6 +91,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/rooms/{room}', [BuildingController::class, 'updateRoom']);
     Route::delete('/rooms/{room}', [BuildingController::class, 'destroyRoom']);
 
+    Route::get('/terms/{term}/schedule-map', [ScheduleMapController::class, 'index']);
+    Route::get('/terms/{term}/rooms/{room}/schedule', [ScheduleMapController::class, 'room']);
+    Route::post('/terms/{term}/loading/copy', [TeacherLoadingController::class, 'copy']);
     Route::post('/teachers/quick-add', [TeacherLoadingController::class, 'quickAddTeacher']);
     Route::get('/personnel-options', [TeacherController::class, 'options']);
     Route::post('/personnel-options/{type}', [TeacherController::class, 'storeOption'])
@@ -104,6 +109,19 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/subjects/{subject}', [SubjectController::class, 'update']);
     Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy']);
 
+    Route::prefix('/terms/{term}/reports')->group(function () {
+        Route::get('/options', [ReportController::class, 'options']);
+        Route::get('/teachers/{teacher}', [ReportController::class, 'teacherProgram']);
+        Route::get('/teachers/{teacher}/program.pdf', [ReportController::class, 'teacherProgramPdf']);
+        Route::get('/teachers/{teacher}/program.xlsx', [ReportController::class, 'teacherProgramXlsx']);
+        Route::get('/rooms/{room}', [ReportController::class, 'roomSchedule']);
+        Route::get('/rooms/{room}/schedule.pdf', [ReportController::class, 'roomSchedulePdf']);
+        Route::get('/rooms/{room}/schedule.xlsx', [ReportController::class, 'roomScheduleXlsx']);
+        Route::get('/room-usage', [ReportController::class, 'roomUsage']);
+        Route::get('/room-usage.pdf', [ReportController::class, 'roomUsagePdf']);
+        Route::get('/room-usage.xlsx', [ReportController::class, 'roomUsageXlsx']);
+    });
+
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);
 
@@ -117,6 +135,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/submit', [PlotterController::class, 'submit']);
         Route::post('/revise', [PlotterController::class, 'revise']);
         Route::get('/class-program.pdf', [ClassProgramController::class, 'show']);
+        Route::get('/class-program.xlsx', [ReportController::class, 'classProgramXlsx']);
         Route::get('/loading', [TeacherLoadingController::class, 'show']);
         Route::put('/loading/{subject}', [TeacherLoadingController::class, 'assign']);
         Route::delete('/loading/{subject}', [TeacherLoadingController::class, 'remove']);

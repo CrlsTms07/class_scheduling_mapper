@@ -235,6 +235,73 @@ class TeacherLoadingService
         });
     }
 
+    /**
+     * Copies teachers from another term of the year, for subjects taught in both. What this
+     * term already has is never overwritten, and only active teaching personnel carry over.
+     *
+     * @return array{copied: int, already_set: int, not_offered: int, teacher_unavailable: int}
+     */
+    public function copyFromTerm(SchoolTerm $term, SchoolTerm $from, ?int $sectionId, User $user): array
+    {
+        $result = ['copied' => 0, 'already_set' => 0, 'not_offered' => 0, 'teacher_unavailable' => 0];
+
+        return DB::transaction(function () use ($term, $from, $sectionId, $user, $result) {
+            $sections = Section::visibleTo($user)
+                ->where('school_year_id', $term->school_year_id)
+                ->when($sectionId, fn ($query) => $query->whereKey($sectionId))
+                ->get()
+                ->keyBy('id');
+
+            $sources = SectionSubject::with(['subject', 'teacher'])
+                ->where('term_id', $from->id)
+                ->whereIn('section_id', $sections->keys())
+                ->get();
+
+            $existing = SectionSubject::where('term_id', $term->id)
+                ->whereIn('section_id', $sections->keys())
+                ->get()
+                ->map(fn (SectionSubject $row) => "{$row->section_id}|{$row->subject_id}")
+                ->flip();
+
+            foreach ($sources as $source) {
+                $section = $sections[$source->section_id];
+
+                $outcome = match (true) {
+                    $existing->has("{$source->section_id}|{$source->subject_id}") => 'already_set',
+                    ! $this->isOfferedTo($source->subject, $term, $section) => 'not_offered',
+                    $source->teacher->personnel_type !== 'teaching' || ! $source->teacher->is_active => 'teacher_unavailable',
+                    default => 'copied',
+                };
+
+                $result[$outcome]++;
+
+                if ($outcome === 'copied') {
+                    SectionSubject::create([
+                        'term_id' => $term->id,
+                        'section_id' => $source->section_id,
+                        'subject_id' => $source->subject_id,
+                        'teacher_id' => $source->teacher_id,
+                    ]);
+                }
+            }
+
+            $this->audit->log($user, 'copy', 'section_subjects', $term->id, null, [
+                'from_term_id' => $from->id,
+                'section_id' => $sectionId,
+                ...$result,
+            ]);
+
+            return $result;
+        });
+    }
+
+    private function isOfferedTo(Subject $subject, SchoolTerm $term, Section $section): bool
+    {
+        return Subject::whereKey($subject->id)
+            ->where(fn ($query) => $this->offeredTo($query, $term, $section))
+            ->exists();
+    }
+
     private function loadingOf(SchoolTerm $term, Section $section, Subject $subject): ?SectionSubject
     {
         return SectionSubject::where('term_id', $term->id)
