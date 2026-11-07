@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ConflictDetails,
+  CopyScheduleResult,
   DataResponse,
   Plotter,
   RoomSchedule,
@@ -15,6 +16,29 @@ export function useSections(termId: number | undefined) {
     enabled: termId !== undefined,
     queryFn: async () =>
       (await api<DataResponse<SectionSummary[]>>(`/terms/${termId}/sections`)).data,
+  });
+}
+
+export type CopyScheduleInput = {
+  from_term_id: number;
+  section_id: number | null;
+  grade: number | null;
+  fill_subjects: boolean;
+  /** Reports what would happen, without copying anything. */
+  preview: boolean;
+};
+
+export function useCopySchedule(termId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: CopyScheduleInput) =>
+      api<DataResponse<CopyScheduleResult>>(`/terms/${termId}/schedule-copy`, { method: "POST", body }),
+    onSuccess: (_data, { preview }) => {
+      if (!preview) {
+        queryClient.invalidateQueries({ queryKey: ["terms", termId] });
+      }
+    },
   });
 }
 
@@ -86,6 +110,14 @@ export type AssignInput = {
 export function useAssignSlot(termId: number | undefined, sectionId: number) {
   return useSlotChange<AssignInput>(termId, sectionId, ({ slotId, ...body }, basePath) =>
     api(`${basePath}/${slotId}`, { method: "PUT", body }),
+  );
+}
+
+export function useMoveEntry(termId: number | undefined, sectionId: number) {
+  return useSlotChange<{ slotId: number; from_slot_id: number; from_days: number[]; days: number[] }>(
+    termId,
+    sectionId,
+    ({ slotId, ...body }, basePath) => api(`${basePath}/${slotId}/move`, { method: "POST", body }),
   );
 }
 

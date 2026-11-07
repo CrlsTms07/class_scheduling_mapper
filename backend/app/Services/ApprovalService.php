@@ -26,12 +26,13 @@ class ApprovalService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function overview(SchoolTerm $term): array
+    public function overview(SchoolTerm $term, ?array $gradeLevelIds = null): array
     {
         $counts = DB::table('section_term_status')->where('term_id', $term->id)->get()->keyBy('section_id');
 
         return Section::with(['gradeLevel', 'adviser'])
             ->where('school_year_id', $term->school_year_id)
+            ->when($gradeLevelIds !== null, fn ($query) => $query->whereIn('grade_level_id', $gradeLevelIds))
             ->get()
             ->sortBy(fn (Section $section) => [$section->gradeLevel->grade, $section->name])
             ->map(fn (Section $section) => [

@@ -6,19 +6,23 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\ClassProgramController;
+use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ManagedSectionController;
+use App\Http\Controllers\MyRecordsController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlotterController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportSettingsController;
 use App\Http\Controllers\ScheduleMapController;
+use App\Http\Controllers\SchedulerDashboardController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TeacherLoadingController;
 use App\Http\Controllers\TermController;
+use App\Http\Controllers\TermCopyController;
 use App\Http\Controllers\TimeSlotController;
 use App\Http\Controllers\UserActivationController;
 use App\Http\Controllers\UserController;
@@ -29,6 +33,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/active-term', [ActiveTermController::class, 'show']);
 
 Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login'])->name('login');
+
+Route::middleware('throttle:guest')->prefix('/guest')->group(function () {
+    Route::get('/sections', [GuestController::class, 'sections']);
+    Route::get('/sections/{section}', [GuestController::class, 'show']);
+    Route::get('/sections/{section}/class-program.pdf', [GuestController::class, 'pdf']);
+});
 
 Route::middleware('throttle:account')->group(function () {
     Route::post('/register', [RegistrationController::class, 'store']);
@@ -82,6 +92,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/signatories/{signatory}/move', [ReportSettingsController::class, 'moveSignatory'])->whereNumber('signatory');
 
     Route::get('/terms/{term}/dashboard', [AdminDashboardController::class, 'show']);
+    Route::get('/terms/{term}/my-dashboard', [SchedulerDashboardController::class, 'show']);
 
     Route::get('/buildings', [BuildingController::class, 'index']);
     Route::post('/buildings', [BuildingController::class, 'store']);
@@ -94,6 +105,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/terms/{term}/schedule-map', [ScheduleMapController::class, 'index']);
     Route::get('/terms/{term}/rooms/{room}/schedule', [ScheduleMapController::class, 'room']);
     Route::post('/terms/{term}/loading/copy', [TeacherLoadingController::class, 'copy']);
+    Route::post('/terms/{term}/schedule-copy', [TermCopyController::class, 'store']);
     Route::post('/teachers/quick-add', [TeacherLoadingController::class, 'quickAddTeacher']);
     Route::get('/personnel-options', [TeacherController::class, 'options']);
     Route::post('/personnel-options/{type}', [TeacherController::class, 'storeOption'])
@@ -120,7 +132,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/room-usage', [ReportController::class, 'roomUsage']);
         Route::get('/room-usage.pdf', [ReportController::class, 'roomUsagePdf']);
         Route::get('/room-usage.xlsx', [ReportController::class, 'roomUsageXlsx']);
+        Route::get('/validation', [ReportController::class, 'validationReport']);
+        Route::get('/validation.pdf', [ReportController::class, 'validationPdf']);
+        Route::get('/validation.xlsx', [ReportController::class, 'validationXlsx']);
     });
+
+    Route::get('/terms/{term}/my-schedule', [MyRecordsController::class, 'schedule']);
+    Route::get('/terms/{term}/my-schedule/program.pdf', [MyRecordsController::class, 'schedulePdf']);
+    Route::get('/terms/{term}/my-schedule/program.xlsx', [MyRecordsController::class, 'scheduleXlsx']);
+    Route::get('/terms/{term}/my-profile', [MyRecordsController::class, 'profile']);
 
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);
@@ -132,6 +152,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/plotter', [PlotterController::class, 'show']);
         Route::put('/slots/{timeSlot}', [PlotterController::class, 'assign']);
         Route::delete('/slots/{timeSlot}', [PlotterController::class, 'clear']);
+        Route::post('/slots/{timeSlot}/move', [PlotterController::class, 'move']);
         Route::post('/submit', [PlotterController::class, 'submit']);
         Route::post('/revise', [PlotterController::class, 'revise']);
         Route::get('/class-program.pdf', [ClassProgramController::class, 'show']);

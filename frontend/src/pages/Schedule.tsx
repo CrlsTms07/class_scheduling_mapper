@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
-import { ArrowUpRightIcon, DoorClosed, SearchIcon, TableProperties } from "lucide-react";
+import { ArrowUpRightIcon, Copy, DoorClosed, SearchIcon, TableProperties } from "lucide-react";
 import { useScheduleMap } from "@/api/schedule";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/schedule";
@@ -12,8 +12,9 @@ import {
   searchSections,
 } from "@/lib/scheduleMap";
 import type { MapRoom, SectionSummary } from "@/types/api";
+import CopyScheduleSheet from "@/features/schedule/CopyScheduleSheet";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   InputGroup,
@@ -76,7 +77,8 @@ const RoomCard = ({ room, building }: { room: MapRoom; building?: string }) => (
 );
 
 const Schedule = () => {
-  const { term, isPending: isTermPending } = useSelectedTerm();
+  const { term, isPending: isTermPending, terms } = useSelectedTerm();
+  const [isCopyOpen, setIsCopyOpen] = React.useState(false);
   const { data: map, isPending, isError } = useScheduleMap(term?.id);
   const [search, setSearch] = React.useState("");
   const [chosenTab, setChosenTab] = React.useState<string | null>(null);
@@ -84,6 +86,10 @@ const Schedule = () => {
   const tabs = map ? mapTabs(map) : [];
   const tab = tabs.some(({ key }) => key === chosenTab) ? chosenTab : map ? firstTab(map) : undefined;
   const isSearching = search.trim() !== "";
+
+  const otherTerms = terms.filter(
+    (other) => other.school_year.id === term?.school_year.id && other.id !== term?.id,
+  );
 
   const renderContent = () => {
     if (!term && !isTermPending) {
@@ -184,20 +190,31 @@ const Schedule = () => {
             </p>
           </div>
         </div>
-        <InputGroup className="h-11 sm:w-64 shrink-0">
-          <InputGroupInput
-            aria-label="Search rooms and sections"
-            className="h-11"
-            placeholder="Search..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <InputGroupAddon align="inline-start">
-            <SearchIcon className="text-muted-foreground" />
-          </InputGroupAddon>
-        </InputGroup>
+        <div className="flex flex-col gap-2 sm:flex-row shrink-0">
+          {otherTerms.length > 0 && (
+            <Button type="button" variant="outline" className="h-11" onClick={() => setIsCopyOpen(true)}>
+              <Copy />
+              Copy from another term
+            </Button>
+          )}
+          <InputGroup className="h-11 sm:w-64">
+            <InputGroupInput
+              aria-label="Search rooms and sections"
+              className="h-11"
+              placeholder="Search..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <InputGroupAddon align="inline-start">
+              <SearchIcon className="text-muted-foreground" />
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
       </div>
       {renderContent()}
+      {isCopyOpen && term && (
+        <CopyScheduleSheet term={term} otherTerms={otherTerms} onClose={() => setIsCopyOpen(false)} />
+      )}
     </div>
   );
 };

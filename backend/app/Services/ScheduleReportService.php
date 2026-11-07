@@ -77,13 +77,17 @@ class ScheduleReportService
     }
 
     /**
+     * @param  bool  $approvedOnly  a teacher's own view shows only what is final
      * @return array<string, mixed>
      */
-    public function teacherProgram(SchoolTerm $term, Teacher $teacher): array
+    public function teacherProgram(SchoolTerm $term, Teacher $teacher, bool $approvedOnly = false): array
     {
         $term->loadMissing('schoolYear');
 
-        $entries = $this->entries($term)->where('teacher_id', $teacher->id)->get();
+        $entries = $this->entries($term)
+            ->where('teacher_id', $teacher->id)
+            ->when($approvedOnly, fn ($query) => $query->where('status', 'approved'))
+            ->get();
 
         $department = DB::table('departments')->where('id', $teacher->department_id)->value('name');
         $designation = DB::table('designations')->where('id', $teacher->designation_id)->value('name');

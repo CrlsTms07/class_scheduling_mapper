@@ -96,6 +96,14 @@ it('creates an SHS section with a track and no home room', function () {
         ->assertJsonPath('data.track', 'Academic');
 });
 
+it('lets an SHS section have a usual room', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody([
+        'grade_level_id' => sectionGradeId(11), 'track_id' => $this->trackId, 'shift' => 'AM', 'home_room_id' => $this->roomId,
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('data.home_room', 'Main – 101');
+});
+
 it('lists only the sections of that year, by grade and then name', function () {
     insertSection($this, ['grade_level_id' => sectionGradeId(8), 'name' => 'Alpha']);
     insertSection($this, ['name' => 'Zeta']);
@@ -126,7 +134,6 @@ it('rejects bad sections', function (callable $change, string $field) {
     'unknown shift' => [fn ($test) => ['shift' => 'NIGHT'], 'shift'],
     'negative class size' => [fn ($test) => ['class_size' => -1], 'class_size'],
     'track on a JHS section' => [fn ($test) => ['track_id' => $test->trackId], 'track_id'],
-    'home room on an SHS section' => [fn ($test) => ['grade_level_id' => sectionGradeId(11), 'home_room_id' => $test->roomId], 'home_room_id'],
 ]);
 
 it('allows the same name in another grade or another school year', function () {

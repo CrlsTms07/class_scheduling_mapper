@@ -194,6 +194,33 @@ describe('Guest view, with no sign-in', function () {
             ->assertJsonPath('data.week.rows.0.cells.1.subject', 'Math 7');
     });
 
+    it('keeps two bell schedules apart, even when a period starts at the same time', function () {
+        $yearPattern = DB::table('day_patterns')->where('school_year_id', $this->yearId)->first();
+        DB::table('day_patterns')->where('id', $yearPattern->id)->update(['name' => 'Monday – Thursday', 'days' => '{1,2,3,4}']);
+        $friday = DB::table('day_patterns')->insertGetId([
+            'school_year_id' => $this->yearId, 'level' => 'JHS', 'shift' => 'WHOLE_DAY', 'name' => 'Friday', 'days' => '{5}',
+        ]);
+        DB::table('time_slots')->insert([
+            'day_pattern_id' => $friday, 'period_no' => 1, 'label' => null, 'start_time' => '07:00', 'end_time' => '07:40', 'is_break' => false,
+        ]);
+        viewsEntry($this, 'approved', 1);
+
+        $week = $this->getJson("/api/guest/sections/{$this->sectionId}")->assertOk()->json('data.week');
+
+        expect($week['patterns'])->toBe([
+            ['name' => 'Monday – Thursday', 'days' => [1, 2, 3, 4]],
+            ['name' => 'Friday', 'days' => [5]],
+        ]);
+
+        $friday40 = collect($week['rows'])->firstWhere('minutes', 40);
+        $monday45 = collect($week['rows'])->first(fn ($row) => $row['minutes'] === 45 && str_starts_with($row['start_time'], '07:00'));
+
+        expect($friday40['days'])->toBe([5])
+            ->and($friday40['cells']['1'])->toBeNull()
+            ->and($monday45['days'])->toBe([1, 2, 3, 4])
+            ->and($monday45['cells']['1']['subject'])->toBe('Math 7');
+    });
+
     it('says it is being updated unless every entry is approved, showing nothing else', function (string $other) {
         viewsEntry($this, 'approved');
         viewsEntry($this, $other, 2);

@@ -1,4 +1,4 @@
-import type { ScheduleEntry, ScheduleStatus, TimeSlot } from "@/types/api";
+import type { DayPattern, ScheduleEntry, ScheduleStatus, TimeSlot } from "@/types/api";
 
 export const DAY_NAMES: Record<number, string> = {
   1: "Monday",
@@ -55,6 +55,59 @@ export function formatTime(time: string): string {
 
 export function slotTimeLabel(slot: TimeSlot): string {
   return `${formatTime(slot.start_time)} – ${formatTime(slot.end_time)}`;
+}
+
+/** An open slot, copied from another term, has a time but no subject yet. */
+export function hasSubject(entry: ScheduleEntry | undefined): boolean {
+  return entry !== undefined && entry.section_subject_id !== null;
+}
+
+type DragEnd = {
+  active: { data: { current?: unknown } };
+  over: { data: { current?: unknown } } | null;
+};
+
+export type Drop = {
+  loadingId: number;
+  slot: TimeSlot;
+  day: number;
+  /** Where the class came from, when it was already on the schedule. */
+  from?: { slot: TimeSlot; day: number };
+};
+
+/** Which subject was dropped on which slot. Dropping outside any slot places nothing. */
+export function readDrop({ active, over }: DragEnd): Drop | null {
+  const dragged = active.data.current as Pick<Drop, "loadingId" | "from"> | undefined;
+  const place = over?.data.current as { slot: TimeSlot; day: number } | undefined;
+
+  return dragged && place ? { loadingId: dragged.loadingId, slot: place.slot, day: place.day, from: dragged.from } : null;
+}
+
+/**
+ * Which classes a drag moves, and to which days. JHS keeps a subject together across its bell
+ * schedule, so dragging one class to another time moves all of them. Anything else is one class.
+ */
+export function planMove(
+  drop: Drop & { from: NonNullable<Drop["from"]> },
+  patterns: DayPattern[],
+  entries: ScheduleEntry[],
+  level: "JHS" | "SHS",
+): { from_days: number[]; days: number[] } | null {
+  const { from, slot, day, loadingId } = drop;
+  const fromPattern = patterns.find(({ slots }) => slots.some(({ id }) => id === from.slot.id));
+  const isSamePattern = fromPattern?.slots.some(({ id }) => id === slot.id) ?? false;
+
+  if (level === "JHS" && isSamePattern) {
+    if (from.slot.id === slot.id) return null;
+
+    const days = (fromPattern?.days ?? []).filter(
+      (item) => entryAt(entries, item, from.slot)?.section_subject_id === loadingId,
+    );
+
+    return { from_days: days, days };
+  }
+
+  return from.slot.id === slot.id && from.day === day ? null : { from_days: [from.day], days: [day] };
 }
 
 /** The entry that a day and time slot holds, if any. */

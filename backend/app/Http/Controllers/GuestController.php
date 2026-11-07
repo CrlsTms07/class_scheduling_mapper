@@ -24,6 +24,8 @@ class GuestController extends Controller
             return response()->json(['data' => ['term' => null, 'sections' => []]]);
         }
 
+        $statuses = DB::table('section_term_status')->where('term_id', $term->id)->pluck('status', 'section_id');
+
         $sections = Section::with(['gradeLevel', 'track'])
             ->where('school_year_id', $term->school_year_id)
             ->get()
@@ -34,7 +36,7 @@ class GuestController extends Controller
                 'grade' => $section->gradeLevel->grade,
                 'level' => $section->gradeLevel->level,
                 'track' => $section->track?->name,
-                'is_ready' => $this->statusOf($term, $section) === 'approved',
+                'is_ready' => ($statuses[$section->id] ?? null) === 'approved',
             ])
             ->values();
 

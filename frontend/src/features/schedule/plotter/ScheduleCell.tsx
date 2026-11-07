@@ -1,15 +1,28 @@
 import { Lock, Plus } from "lucide-react";
 import { isLocked, subjectColor } from "@/lib/schedule";
-import type { ScheduleEntry } from "@/types/api";
+import type { ScheduleEntry, TimeSlot } from "@/types/api";
+import { useEntryDrag } from "./useEntryDrag";
 
 type ScheduleCellProp = {
   entry: ScheduleEntry | undefined;
+  slot: TimeSlot;
+  day: number;
   label: string;
+  /** The phone list only taps. It sits hidden beside the wide views, so it needs its own id. */
+  isDraggable?: boolean;
   /** Left out when the user can only view this schedule. */
   onSelect?: () => void;
 };
 
-const ScheduleCell = ({ entry, label, onSelect }: ScheduleCellProp) => {
+const ScheduleCell = ({ entry, slot, day, label, onSelect, isDraggable = true }: ScheduleCellProp) => {
+  const { dragRef, dragListeners, dragClasses } = useEntryDrag(
+    entry,
+    slot,
+    day,
+    isDraggable && onSelect !== undefined,
+    isDraggable ? "placed" : "list",
+  );
+
   const content = entry ? (
     <>
       <span className="flex items-start justify-between gap-1">
@@ -39,10 +52,12 @@ const ScheduleCell = ({ entry, label, onSelect }: ScheduleCellProp) => {
 
   return (
     <button
+      ref={dragRef}
       type="button"
       aria-label={label}
       onClick={onSelect}
-      className={`${classes} cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-[#790D16]`}
+      {...dragListeners}
+      className={`${classes} cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-[#790D16] ${dragClasses}`}
     >
       {content}
     </button>

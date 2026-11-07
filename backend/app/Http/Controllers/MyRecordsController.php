@@ -82,7 +82,6 @@ class MyRecordsController extends Controller
         return response()->json(['data' => [
             'printed_name' => $teacher->printedName(),
             'email' => $user->email,
-            'personnel_type' => $teacher->personnel_type,
             'department' => DB::table('departments')->where('id', $teacher->department_id)->value('name'),
             'designation' => DB::table('designations')->where('id', $teacher->designation_id)->value('name'),
             'shift' => $teacher->shift,

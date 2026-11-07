@@ -55,8 +55,8 @@ describe("route guards", () => {
   });
 
   it("shows a page to a role that is allowed", async () => {
-    openApp("/my-schedule", userWith("teacher"));
-    expect(await screen.findByText("This page is being built.")).toBeInTheDocument();
+    openApp("/users", userWith("super_admin"));
+    expect(await screen.findByText("Users")).toBeInTheDocument();
   });
 
   it("sends a GLC away from an Admin page to their dashboard", async () => {
@@ -66,7 +66,7 @@ describe("route guards", () => {
 
   it("sends a teacher away from staff pages to their own schedule", async () => {
     openApp("/schedule", userWith("teacher"));
-    expect(await screen.findByText("This page is being built.")).toBeInTheDocument();
+    expect(await screen.findByText("My Schedule", { selector: "p" })).toBeInTheDocument();
     expect(screen.queryByText("Schedule Configuration")).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { DataResponse, ReportGrid, ReportOptions, RoomUsage } from "@/types/api";
+import type { DataResponse, ReportGrid, ReportOptions, RoomUsage, ValidationReportData } from "@/types/api";
 import { api } from "./client";
 
 export function useReportOptions(termId: number | undefined) {
@@ -17,6 +17,14 @@ export function useReportGrid(termId: number | undefined, path: string | null) {
     enabled: termId !== undefined && path !== null,
     queryFn: async () =>
       (await api<DataResponse<ReportGrid>>(`/terms/${termId}/reports/${path}`)).data,
+  });
+}
+
+export function useValidationReport(termId: number) {
+  return useQuery({
+    queryKey: ["terms", termId, "validation-report"],
+    queryFn: async () =>
+      (await api<DataResponse<ValidationReportData>>(`/terms/${termId}/reports/validation`)).data,
   });
 }
 

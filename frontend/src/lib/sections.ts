@@ -23,7 +23,7 @@ export function toSectionInput(values: SectionFormValues, isSeniorHigh: boolean)
     name: values.name,
     shift: values.shift as Shift,
     track_id: isSeniorHigh ? idOrNull(values.track_id) : null,
-    home_room_id: isSeniorHigh ? null : idOrNull(values.home_room_id),
+    home_room_id: idOrNull(values.home_room_id),
     adviser_id: idOrNull(values.adviser_id),
     class_size: idOrNull(values.class_size),
   };

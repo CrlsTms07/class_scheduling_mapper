@@ -45,7 +45,7 @@ class AdminDashboardService
      *
      * @return array<int, array<string, mixed>>
      */
-    private function progress($sections): array
+    public function progress($sections): array
     {
         return $sections
             ->groupBy('grade')
@@ -65,13 +65,15 @@ class AdminDashboardService
     }
 
     /**
+     * @param  array<int, int>|null  $teacherIds  only these teachers, when given
      * @return array<int, array<string, mixed>>
      */
-    private function overloadedTeachers(SchoolTerm $term): array
+    public function overloadedTeachers(SchoolTerm $term, ?array $teacherIds = null): array
     {
         $rows = DB::table('teacher_load')
             ->where('term_id', $term->id)
             ->where('is_overloaded', true)
+            ->when($teacherIds !== null, fn ($query) => $query->whereIn('teacher_id', $teacherIds))
             ->orderByDesc('subject_count')
             ->get();
 

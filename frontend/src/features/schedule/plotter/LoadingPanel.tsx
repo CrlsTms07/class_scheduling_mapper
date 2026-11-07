@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { subjectColor } from "@/lib/schedule";
 import type { Loading } from "@/types/api";
 
@@ -14,14 +16,45 @@ function minutesColor({ scheduled_minutes, required_minutes }: Loading): string 
   return "text-neutral-600";
 }
 
-/** The subjects to place, with the minutes done so far. Tap one, then tap the time slots. */
+type SubjectButtonProp = {
+  item: Loading;
+  isSelected: boolean;
+  className: string;
+  onClick: () => void;
+  children: ReactNode;
+};
+
+/** Tap to pick it, or drag it onto a time slot. Both end up saving the same way. */
+const SubjectButton = ({ item, isSelected, className, onClick, children }: SubjectButtonProp) => {
+  const { setNodeRef, listeners, isDragging } = useDraggable({
+    id: `loading-${item.id}`,
+    data: { loadingId: item.id },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      aria-pressed={isSelected}
+      onClick={onClick}
+      {...listeners}
+      className={`${className} cursor-grab touch-manipulation ${isDragging ? "opacity-50" : ""} ${
+        isSelected ? "ring-2 ring-[#790D16] ring-offset-1" : ""
+      }`}
+    >
+      {children}
+    </button>
+  );
+};
+
+/** The subjects to place, with the minutes done so far. */
 const LoadingPanel = ({ loading, selectedId, onSelect }: LoadingPanelProp) => {
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-neutral-800">Subjects</p>
       {onSelect && (
         <p className="text-xs text-neutral-600">
-          Tap a subject, then tap the time slots where it belongs.
+          Tap a subject, then tap the time slots where it belongs. You can also drag it onto a slot, or drag a placed class to move it.
         </p>
       )}
       <ul className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible pb-1">
@@ -41,16 +74,14 @@ const LoadingPanel = ({ loading, selectedId, onSelect }: LoadingPanelProp) => {
           return (
             <li key={item.id} className="shrink-0 lg:shrink">
               {onSelect ? (
-                <button
-                  type="button"
-                  aria-pressed={isSelected}
+                <SubjectButton
+                  item={item}
+                  isSelected={isSelected}
+                  className={classes}
                   onClick={() => onSelect(isSelected ? null : item.id)}
-                  className={`${classes} cursor-pointer ${
-                    isSelected ? "ring-2 ring-[#790D16] ring-offset-1" : ""
-                  }`}
                 >
                   {content}
-                </button>
+                </SubjectButton>
               ) : (
                 <div className={classes}>{content}</div>
               )}

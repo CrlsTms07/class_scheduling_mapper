@@ -136,6 +136,22 @@ class ReportService
     }
 
     /**
+     * A section's approved week, for the public Guest view.
+     *
+     * @return array<string, mixed>
+     */
+    public function approvedWeek(SchoolTerm $term, Section $section): array
+    {
+        $entries = ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
+            ->where('term_id', $term->id)
+            ->where('section_id', $section->id)
+            ->where('status', 'approved')
+            ->get();
+
+        return $this->weeklyTable($section, $entries);
+    }
+
+    /**
      * The SHS form: one row per period or break, one column per day.
      *
      * A day's total counts its breaks, as the official form does, but a day with
@@ -163,16 +179,24 @@ class ReportService
         $rows = $slots->map(function ($slot) use ($patternOf, $entries) {
             $cells = [];
             $breaks = [];
+            $days = [];
 
             foreach ([1, 2, 3, 4, 5] as $day) {
                 $daySlot = ($patternOf[$day] ?? null)?->timeSlots
                     ->first(fn ($other) => $other->start_time === $slot->start_time && $other->end_time === $slot->end_time);
 
+                if ($daySlot) {
+                    $days[] = $day;
+                }
+
                 if ($daySlot?->is_break) {
                     $breaks[$day] = mb_strtoupper((string) $daySlot->label);
                 }
 
-                $entry = $entries->first(fn (ScheduleEntry $item) => $item->day_of_week === $day && $item->start_time === $slot->start_time);
+                // Both ends must match: two bell schedules can start a period at the same time.
+                $entry = $entries->first(fn (ScheduleEntry $item) => $item->day_of_week === $day
+                    && $item->start_time === $slot->start_time
+                    && $item->end_time === $slot->end_time);
 
                 $cells[$day] = $entry ? [
                     'subject' => $entry->sectionSubject?->subject->name,
@@ -182,8 +206,11 @@ class ReportService
             }
 
             return [
+                'start_time' => $slot->start_time,
+                'end_time' => $slot->end_time,
                 'time' => $this->printedTime($slot->start_time).' - '.$this->printedTime($slot->end_time),
                 'minutes' => ScheduleFormat::minutesBetween($slot->start_time, $slot->end_time),
+                'days' => $days,
                 'cells' => $cells,
                 'breaks' => $breaks,
                 // The same break on all five days prints as one wide row.
@@ -208,6 +235,10 @@ class ReportService
 
         return [
             'days' => array_map(fn (int $day) => ['day' => $day, 'name' => ScheduleFormat::dayName($day)], [1, 2, 3, 4, 5]),
+            'patterns' => $patterns
+                ->map(fn (DayPattern $pattern) => ['name' => $pattern->name, 'days' => $pattern->day_numbers])
+                ->values()
+                ->all(),
             'rows' => $rows,
             'totals' => array_map(fn (int $minutes) => $minutes > 0 ? ScheduleFormat::duration($minutes) : '–', $totals),
         ];

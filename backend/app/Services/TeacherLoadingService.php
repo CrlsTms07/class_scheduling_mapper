@@ -239,16 +239,17 @@ class TeacherLoadingService
      * Copies teachers from another term of the year, for subjects taught in both. What this
      * term already has is never overwritten, and only active teaching personnel carry over.
      *
+     * @param  array<int, int>|null  $sectionIds  only these sections, when given
      * @return array{copied: int, already_set: int, not_offered: int, teacher_unavailable: int}
      */
-    public function copyFromTerm(SchoolTerm $term, SchoolTerm $from, ?int $sectionId, User $user): array
+    public function copyFromTerm(SchoolTerm $term, SchoolTerm $from, ?array $sectionIds, User $user): array
     {
         $result = ['copied' => 0, 'already_set' => 0, 'not_offered' => 0, 'teacher_unavailable' => 0];
 
-        return DB::transaction(function () use ($term, $from, $sectionId, $user, $result) {
+        return DB::transaction(function () use ($term, $from, $sectionIds, $user, $result) {
             $sections = Section::visibleTo($user)
                 ->where('school_year_id', $term->school_year_id)
-                ->when($sectionId, fn ($query) => $query->whereKey($sectionId))
+                ->when($sectionIds !== null, fn ($query) => $query->whereKey($sectionIds))
                 ->get()
                 ->keyBy('id');
 
@@ -287,7 +288,7 @@ class TeacherLoadingService
 
             $this->audit->log($user, 'copy', 'section_subjects', $term->id, null, [
                 'from_term_id' => $from->id,
-                'section_id' => $sectionId,
+                'section_ids' => $sectionIds,
                 ...$result,
             ]);
 

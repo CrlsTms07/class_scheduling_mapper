@@ -594,3 +594,113 @@ export type RoomUsage = {
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };
+
+export type MySchedule = Omit<ReportGrid, "title" | "isDraft"> & {
+  /** Classes of this teacher that are not approved yet, so they stay hidden. */
+  not_final_count: number;
+};
+
+export type MyProfile = {
+  printed_name: string;
+  email: string;
+  department: string | null;
+  designation: string | null;
+  shift: "AM" | "PM" | "WHOLE_DAY";
+  max_subjects: number;
+  advisory: string | null;
+  assigned: number;
+  tasks: string[];
+  qualifications: {
+    degree_level: string | null;
+    degree: string;
+    major: string | null;
+    school: string | null;
+    year_completed: number | null;
+  }[];
+};
+
+export type GuestTerm = { name: string; school_year: string };
+
+export type GuestSectionList = {
+  term: GuestTerm | null;
+  sections: {
+    id: number;
+    name: string;
+    grade: number;
+    level: "JHS" | "SHS";
+    track: string | null;
+    is_ready: boolean;
+  }[];
+};
+
+export type GuestWeek = {
+  days: { day: number; name: string }[];
+  /** The bell schedules. Each shows as its own table, as on the official form. */
+  patterns: { name: string; days: number[] }[];
+  rows: {
+    start_time: string;
+    end_time: string;
+    time: string;
+    minutes: number;
+    /** The days whose bell schedule has this period. */
+    days: number[];
+    cells: Record<number, { subject: string | null; teacher: string | null; room: string | null } | null>;
+    /** PHP sends an empty list when a row has no breaks. */
+    breaks: Record<number, string> | [];
+    wide_break: string | null;
+  }[];
+  totals: Record<number, string>;
+};
+
+export type GuestSection = { id: number; label: string; term: GuestTerm } & (
+  | { state: "ready"; adviser: string | null; week: GuestWeek }
+  | { state: "updating" | "not_ready" }
+);
+
+export type NextStepKey = "revise" | "no_bell_schedule" | "add_loading" | "plot" | "submit";
+
+export type SchedulerDashboard = {
+  has_scope: boolean;
+  sections: number;
+  pending_sections: number;
+  approved_sections: number;
+  flags: AdminDashboard["flags"];
+  next_steps: { key: NextStepKey; sections: { id: number; label: string }[] }[];
+  progress: AdminDashboard["progress"];
+  overloaded_teachers: AdminDashboard["overloaded_teachers"];
+};
+
+export type CopyScheduleResult = {
+  sections_copied: number;
+  sections_with_schedule: string[];
+  sections_with_nothing: number;
+  entries: number;
+  filled: number;
+  open_slots: number;
+  left_open: number;
+  not_fitting: number;
+  loading_copied: number;
+};
+
+export type ValidationReportData = {
+  summary: {
+    sections: number;
+    sections_with_issues: number;
+    issues: number;
+    urgent: number;
+    not_acknowledged: number;
+  };
+  term_label: string;
+  sections: {
+    id: number;
+    label: string;
+    status: ScheduleStatus;
+    status_label: string;
+    issues: {
+      message: string;
+      severity: "red" | "amber";
+      level: string;
+      acknowledged: boolean;
+    }[];
+  }[];
+};

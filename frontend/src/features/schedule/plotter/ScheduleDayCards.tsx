@@ -1,7 +1,9 @@
 import { Lock, MoveRight, Pencil, Plus, UserRound } from "lucide-react";
-import { DAY_NAMES, entryAt, formatTime, isLocked, slotTimeLabel, subjectColor, WEEK_DAYS } from "@/lib/schedule";
+import { DAY_NAMES, entryAt, formatTime, hasSubject, isLocked, slotTimeLabel, subjectColor, WEEK_DAYS } from "@/lib/schedule";
 import type { DayPattern, ScheduleEntry, TimeSlot } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
+import SlotDropZone from "./SlotDropZone";
+import { useEntryDrag } from "./useEntryDrag";
 
 const TimeRange = ({ slot }: { slot: TimeSlot }) => (
   <span className="flex items-center gap-1 text-xs">
@@ -19,6 +21,8 @@ type SlotCardProp = {
 };
 
 const SlotCard = ({ slot, day, entry, onSelect }: SlotCardProp) => {
+  const { dragRef, dragListeners, dragClasses } = useEntryDrag(entry, slot, day, onSelect !== undefined);
+
   const content = (
     <>
       <span className="flex items-start justify-between gap-2">
@@ -67,10 +71,12 @@ const SlotCard = ({ slot, day, entry, onSelect }: SlotCardProp) => {
 
   return (
     <button
+      ref={dragRef}
       type="button"
       aria-label={`${DAY_NAMES[day]}, ${slotTimeLabel(slot)}`}
       onClick={onSelect}
-      className={`${classes} cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-[#790D16]`}
+      {...dragListeners}
+      className={`${classes} cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-[#790D16] ${dragClasses}`}
     >
       {content}
     </button>
@@ -120,12 +126,18 @@ const ScheduleDayCards = ({ patterns, entries, onSelect }: ScheduleDayCardsProp)
                     <Badge className="bg-[#790D16] text-white shrink-0">{slot.minutes} mins</Badge>
                   </div>
                 ) : (
-                  <SlotCard
+                  <SlotDropZone
                     slot={slot}
                     day={day}
-                    entry={entryAt(entries, day, slot)}
-                    onSelect={onSelect && (() => onSelect(slot, day))}
-                  />
+                    isDisabled={!onSelect || hasSubject(entryAt(entries, day, slot))}
+                  >
+                    <SlotCard
+                      slot={slot}
+                      day={day}
+                      entry={entryAt(entries, day, slot)}
+                      onSelect={onSelect && (() => onSelect(slot, day))}
+                    />
+                  </SlotDropZone>
                 )}
               </li>
             ))}

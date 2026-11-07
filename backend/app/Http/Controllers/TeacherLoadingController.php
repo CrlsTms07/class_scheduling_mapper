@@ -48,7 +48,7 @@ class TeacherLoadingController extends Controller
         $result = $loading->copyFromTerm(
             $term,
             SchoolTerm::find($request->integer('from_term_id')),
-            $request->input('section_id'),
+            $request->filled('section_id') ? [$request->integer('section_id')] : null,
             $request->user(),
         );
 

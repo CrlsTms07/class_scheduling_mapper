@@ -235,24 +235,31 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
             ))}
           </SelectField>
 
-          {level !== "SHS" && (
-            <div className="space-y-2">
-              <SelectField form={form} name="home_room_id" label="Home room (optional)">
-                <NativeSelectOption value="">None yet</NativeSelectOption>
-                {options?.rooms.map(({ id, label }) => (
-                  <NativeSelectOption key={id} value={String(id)}>
-                    {label}
-                  </NativeSelectOption>
-                ))}
-              </SelectField>
-              {sharedWith.length > 0 && (
+          <div className="space-y-2">
+            <SelectField
+              form={form}
+              name="home_room_id"
+              label={level === "SHS" ? "Usual room (optional)" : "Home room (optional)"}
+            >
+              <NativeSelectOption value="">None yet</NativeSelectOption>
+              {options?.rooms.map(({ id, label }) => (
+                <NativeSelectOption key={id} value={String(id)}>
+                  {label}
+                </NativeSelectOption>
+              ))}
+            </SelectField>
+            {level === "SHS" && (
+              <p className="text-xs text-neutral-700">
+                The plotter fills this in, so there are fewer taps. Each class can still use another room.
+              </p>
+            )}
+            {level !== "SHS" && sharedWith.length > 0 && (
                 <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                   This room is also the home room of {sharedWith.join(", ")} at the same time of
                   day. You can still save, but their schedules may conflict.
                 </p>
               )}
-            </div>
-          )}
+          </div>
 
           <FormTextField
             control={form.control}

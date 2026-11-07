@@ -8,6 +8,7 @@ use App\Models\Section;
 use App\Models\Teacher;
 use App\Services\ReportService;
 use App\Services\ScheduleReportService;
+use App\Services\ValidationReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -101,6 +102,27 @@ class ReportController extends Controller
         Gate::authorize('view-school-records');
 
         return $this->xlsx($reports->usageSheet($reports->roomUsage($term)), "room-usage-{$term->name}");
+    }
+
+    public function validationReport(Request $request, SchoolTerm $term, ValidationReportService $reports): JsonResponse
+    {
+        Gate::authorize('view-school-records');
+
+        return response()->json(['data' => $reports->forUser($term, $request->user())]);
+    }
+
+    public function validationPdf(Request $request, SchoolTerm $term, ValidationReportService $reports): Response
+    {
+        Gate::authorize('view-school-records');
+
+        return $this->pdf($reports->pdf($reports->forUser($term, $request->user())), "validation-report-{$term->name}");
+    }
+
+    public function validationXlsx(Request $request, SchoolTerm $term, ValidationReportService $reports): Response
+    {
+        Gate::authorize('view-school-records');
+
+        return $this->xlsx($reports->sheet($reports->forUser($term, $request->user())), "validation-report-{$term->name}");
     }
 
     /**

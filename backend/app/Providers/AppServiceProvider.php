@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-reports', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
 
         Gate::define('view-admin-dashboard', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
+        Gate::define('view-scheduler-dashboard', fn (User $user) => $user->hasAnyRole(['glc', 'master_teacher']));
 
         // Teachers and rooms are reused across school years, so they are not limited by grade level.
         // The Admin needs them too, because sections take their advisers and home rooms from them.
@@ -61,6 +62,9 @@ class AppServiceProvider extends ServiceProvider
         // Slows down password guessing against one account from one device.
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
             ->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
+
+        // The public schedule pages are open to everyone, so one device cannot overload them.
+        RateLimiter::for('guest', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
 
         RateLimiter::for('account', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 

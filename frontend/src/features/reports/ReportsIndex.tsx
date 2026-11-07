@@ -1,14 +1,15 @@
 import React from "react";
-import { Download, FolderUser } from "lucide-react";
+import { FolderUser } from "lucide-react";
 import { Link } from "react-router";
-import { downloadFile } from "@/api/client";
 import { useReportGrid, useReportOptions, useRoomUsage } from "@/api/reports";
 import { useSelectedTerm } from "@/context/selectedTerm";
-import { apiErrorMessage } from "@/lib/forms";
+import { weekFromReportGrid } from "@/lib/weekGrid";
 import type { ReportGrid } from "@/types/api";
-import FormAlert from "@/components/global-component/FormAlert";
+import DownloadButtons from "@/components/global-component/DownloadButtons";
+import { WeekTable } from "@/components/global-component/WeekView";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import ValidationReport from "./ValidationReport";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -19,6 +20,7 @@ const TABS = [
   { key: "teacher", label: "Teacher Program" },
   { key: "room", label: "Room Schedule" },
   { key: "usage", label: "Room Usage" },
+  { key: "validation", label: "Validation" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -27,43 +29,8 @@ const HOW_IT_WORKS = [
   "Choose a form, then what it is for, and download it as PDF or XLSX.",
   "Forms follow the term in the selector at the top. A form with entries not yet approved prints with a DRAFT mark.",
   "The school details, titles and signatories come from Report Settings.",
+  "Validation lists everything that needs checking in the term, section by section.",
 ];
-
-/** Two download buttons, which report a failed download where the user is looking. */
-const Downloads = ({ basePath, label }: { basePath: string; label: string }) => {
-  const [error, setError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState<string | null>(null);
-
-  const download = (extension: "pdf" | "xlsx") => {
-    setError(null);
-    setSaving(extension);
-    downloadFile(`${basePath}.${extension}`)
-      .catch((failure: unknown) => setError(apiErrorMessage(failure)))
-      .finally(() => setSaving(null));
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 sm:flex">
-        {(["pdf", "xlsx"] as const).map((extension) => (
-          <Button
-            key={extension}
-            type="button"
-            variant="outline"
-            className="h-11"
-            aria-label={`Download ${label} as ${extension.toUpperCase()}`}
-            disabled={saving !== null}
-            onClick={() => download(extension)}
-          >
-            <Download />
-            {saving === extension ? "Preparing..." : extension.toUpperCase()}
-          </Button>
-        ))}
-      </div>
-      {error && <FormAlert>{error}</FormAlert>}
-    </div>
-  );
-};
 
 type PickerProp = {
   id: string;
@@ -114,46 +81,7 @@ const GridPreview = ({ grid }: { grid: ReportGrid }) => (
     {grid.rows.length === 0 ? (
       <p className="text-sm text-neutral-700">Nothing is scheduled here in this term yet.</p>
     ) : (
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-[#790D16]/5 text-neutral-700">
-            <tr>
-              <th scope="col" className="p-2 font-medium whitespace-nowrap">Time</th>
-              <th scope="col" className="p-2 font-medium">Mins</th>
-              {grid.days.map(({ day, name }) => (
-                <th key={day} scope="col" className="p-2 font-medium">{name}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {grid.rows.map((row) => (
-              <tr key={`${row.start_time}-${row.end_time}`}>
-                <td className="p-2 whitespace-nowrap">{row.time}</td>
-                <td className="p-2">{row.minutes}</td>
-                {grid.days.map(({ day }) => (
-                  <td key={day} className="p-2 align-top">
-                    {row.cells[day].map((lines, index) => (
-                      <div key={index}>
-                        {lines.filter(Boolean).map((line, position) => (
-                          <p key={position} className={position === 0 ? "font-medium" : "text-neutral-700"}>
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    ))}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            <tr className="bg-neutral-100 font-medium">
-              <td className="p-2" colSpan={2}>Total minutes</td>
-              {grid.days.map(({ day }) => (
-                <td key={day} className="p-2">{grid.totals.per_day[day]}</td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <WeekTable week={weekFromReportGrid(grid)} />
     )}
     <p className="text-sm text-neutral-800">
       Total per week: <span className="font-medium">{grid.totals.week} minutes</span>
@@ -177,7 +105,7 @@ const GridReport = ({ termId, path, fileName, label }: GridReportProp) => {
       {isPending && <p className="hidden md:block text-sm text-neutral-600">Loading the preview...</p>}
       {isError && <p className="text-sm text-destructive">Could not load the preview.</p>}
       {data && <GridPreview grid={data} />}
-      <Downloads basePath={`/terms/${termId}/reports/${path}/${fileName}`} label={label} />
+      <DownloadButtons basePath={`/terms/${termId}/reports/${path}/${fileName}`} label={label} />
     </div>
   );
 };
@@ -187,7 +115,7 @@ const UsageReport = ({ termId }: { termId: number }) => {
 
   return (
     <div className="space-y-4">
-      <Downloads basePath={`/terms/${termId}/reports/room-usage`} label="Room Usage" />
+      <DownloadButtons basePath={`/terms/${termId}/reports/room-usage`} label="Room Usage" />
       {isPending && <p className="text-sm text-neutral-600">Loading...</p>}
       {isError && <p className="text-sm text-destructive">Could not load the room usage.</p>}
       {data?.buildings.length === 0 && (
@@ -272,7 +200,7 @@ const ReportsIndex = () => {
         </ul>
       </details>
 
-      <div role="tablist" aria-label="Form" className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:max-w-3xl">
+      <div role="tablist" aria-label="Form" className="grid grid-cols-2 sm:grid-cols-5 gap-2 lg:max-w-4xl">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
@@ -306,7 +234,7 @@ const ReportsIndex = () => {
           />
           {section && (
             <>
-              <Downloads
+              <DownloadButtons
                 basePath={`/terms/${term.id}/sections/${section.id}/class-program`}
                 label={`Class Program of ${section.label}`}
               />
@@ -366,6 +294,7 @@ const ReportsIndex = () => {
       )}
 
       {tab === "usage" && <UsageReport termId={term.id} />}
+      {tab === "validation" && <ValidationReport termId={term.id} />}
     </div>
   );
 };
