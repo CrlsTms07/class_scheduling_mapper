@@ -66,7 +66,12 @@ npm run build
   change access, deactivate, reactivate, delete); Report Settings page (school profile and logos,
   document control block, signatories per term); Admin Dashboard (counts, setup checklist,
   schedules by grade level, overloaded teachers).
-- **Not built yet:** teacher loading screen, teachers, subjects, rooms and other CRUD screens, SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
+- **Working, Admin, Chairperson and Master Teacher:** Teachers page (personnel, qualifications, tasks
+  per term) and Buildings and Rooms page.
+- **Working, Chairperson and Master Teacher within scope (Admin views):** Subjects page (per school
+  year, term, track, minutes per week); Teacher Loading page (per section and term, quick-add teacher,
+  locks with pending or approved schedules).
+- **Not built yet:** SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
 - **Front-end, not started:** all Admin screens, Guest view.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
   First Admin on a new server: `php artisan app:create-admin`.
@@ -114,7 +119,7 @@ npm run build
 
 | Role | Access |
 |------|--------|
-| `super_admin` (Admin) | **Does not plot schedules.** Manages school years and terms, time slots and breaks, **sections** (encoded yearly), users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
+| `super_admin` (Admin) | **Does not plot schedules.** Manages school years and terms, time slots and breaks, **sections** (encoded yearly), teachers and rooms (team decision, Nov 7, 2026: sections need them), users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
 | `glc` | Within assigned JHS grade levels: teacher loading, plot schedules, submit for approval, reports and exports. Manages teachers, subjects and rooms. |
 | `master_teacher` | Same as `glc`, for assigned SHS grade levels. |
 | `teacher` | Read-only: own schedule (weekly and list view) and own profile. |

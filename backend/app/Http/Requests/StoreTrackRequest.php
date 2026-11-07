@@ -2,14 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Section;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTrackRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('manage', Section::class);
+        return $this->user()->can('manage-school-records');
     }
 
     /**

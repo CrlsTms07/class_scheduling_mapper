@@ -71,7 +71,6 @@ it('keeps section management to the Admin', function () {
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody())->assertForbidden();
     $this->putJson("/api/sections/{$sectionId}", sectionBody())->assertForbidden();
     $this->deleteJson("/api/sections/{$sectionId}")->assertForbidden();
-    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertForbidden();
 });
 
 it('creates a JHS section with adviser, room and class size, and writes an audit log', function () {
@@ -243,6 +242,12 @@ it('counts an advisory only in its own school year', function () {
 
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $this->teacherId]))
         ->assertCreated();
+});
+
+it('keeps adding tracks away from people who only teach', function () {
+    $this->actingAs(User::factory()->create()->assignRole('teacher'));
+
+    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertForbidden();
 });
 
 it('adds a track once', function () {

@@ -52,6 +52,38 @@ class ConflictService
     }
 
     /**
+     * Where a teacher is already busy at the times of these entries, in words. Used when a
+     * subject that is already plotted moves to another teacher.
+     *
+     * @param  iterable<ScheduleEntry>  $entries
+     * @return array<int, string>
+     */
+    public function teacherClashes(int $termId, int $teacherId, iterable $entries): array
+    {
+        $groups = [];
+
+        foreach ($entries as $entry) {
+            if ($entry->status === 'rejected') {
+                continue;
+            }
+
+            $busy = $this->overlapping($termId, [$entry->day_of_week], $entry->start_time, $entry->end_time)
+                ->where('teacher_id', $teacherId)
+                ->with(['section.gradeLevel', 'teacher'])
+                ->get();
+
+            foreach ($busy as $other) {
+                $this->addToGroup($groups, 'teacher', "{$other->teacher->printedName()} is teaching {$other->section->label()}", $other);
+            }
+        }
+
+        return array_map(
+            fn (array $group) => "{$group['what']} on {$this->dayList($group['days'])} at {$group['time']}.",
+            array_values($groups),
+        );
+    }
+
+    /**
      * @param  array<string, array<string, mixed>>  $groups
      */
     private function addToGroup(array &$groups, string $type, string $what, ScheduleEntry $entry): void

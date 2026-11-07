@@ -24,6 +24,10 @@ const ApprovalsIndex = lazy(() => import("./features/approvals/ApprovalsIndex"))
 const SchoolYearsIndex = lazy(() => import("./features/school-years/SchoolYearsIndex"));
 const TimeSlotsIndex = lazy(() => import("./features/time-slots/TimeSlotsIndex"));
 const SectionsIndex = lazy(() => import("./features/sections/SectionsIndex"));
+const TeachersIndex = lazy(() => import("./features/teachers/TeachersIndex"));
+const BuildingsIndex = lazy(() => import("./features/buildings/BuildingsIndex"));
+const SubjectsIndex = lazy(() => import("./features/subjects/SubjectsIndex"));
+const TeacherLoadingIndex = lazy(() => import("./features/teacher-loading/TeacherLoadingIndex"));
 const ReportSettingsIndex = lazy(() => import("./features/report-settings/ReportSettingsIndex"));
 
 const PageLoading = () => (
@@ -53,17 +57,14 @@ function App() {
               <Route path="dashboard" element={<DashboardIndex />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="schedule/sections/:sectionId" element={<PlotterPage />} />
-              <Route path="teachers" element={<ComingSoonIndex title="Teachers" />} />
-              <Route path="subjects" element={<ComingSoonIndex title="Subjects" />} />
-              <Route path="buildings" element={<ComingSoonIndex title="Building" />} />
+              <Route path="teachers" element={<TeachersIndex />} />
+              <Route path="subjects" element={<SubjectsIndex />} />
+              <Route path="buildings" element={<BuildingsIndex />} />
               <Route path="reports" element={<ComingSoonIndex title="Reports" />} />
             </Route>
 
             <Route element={<RequireRole roles={ROLES.SCHEDULERS} />}>
-              <Route
-                path="teacher-loading"
-                element={<ComingSoonIndex title="Teacher Loading" />}
-              />
+              <Route path="teacher-loading" element={<TeacherLoadingIndex />} />
             </Route>
 
             <Route element={<RequireRole roles={ROLES.ADMIN} />}>

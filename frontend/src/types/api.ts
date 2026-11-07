@@ -372,6 +372,144 @@ export type AdminDashboard = {
   checklist: { key: ChecklistKey; title: string; done: boolean; detail: string }[];
 };
 
+export type ManagedRoom = {
+  id: number;
+  room_number: string;
+  room_name: string | null;
+  capacity: number | null;
+  is_active: boolean;
+  cannot_delete_reason: string | null;
+};
+
+export type ManagedBuilding = { id: number; name: string; rooms: ManagedRoom[] };
+
+export type RoomInput = Omit<ManagedRoom, "id" | "cannot_delete_reason">;
+
+export type PersonnelType = "teaching" | "non_teaching";
+
+export type Qualification = {
+  degree_level: string;
+  degree: string;
+  major: string | null;
+  school: string | null;
+  year_completed: number | null;
+};
+
+export type ManagedTeacher = {
+  id: number;
+  personnel_type: PersonnelType;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  suffix: string | null;
+  display_name: string | null;
+  printed_name: string;
+  department_id: number | null;
+  department: string | null;
+  designation_id: number | null;
+  designation: string | null;
+  shift: Shift;
+  max_subjects: number;
+  is_active: boolean;
+  account_email: string | null;
+  advisory: string | null;
+  assigned: number;
+  task_ids: number[];
+  qualifications: Qualification[];
+  cannot_delete_reason: string | null;
+};
+
+export type TeacherInput = Pick<
+  ManagedTeacher,
+  | "personnel_type"
+  | "first_name"
+  | "middle_name"
+  | "last_name"
+  | "suffix"
+  | "display_name"
+  | "department_id"
+  | "designation_id"
+  | "shift"
+  | "max_subjects"
+  | "is_active"
+  | "qualifications"
+  | "task_ids"
+>;
+
+export type NamedOption = { id: number; name: string };
+
+export type PersonnelOptions = {
+  departments: NamedOption[];
+  designations: NamedOption[];
+  tasks: NamedOption[];
+};
+
+export type PersonnelOptionType = "departments" | "designations" | "teaching-tasks";
+
+export type SubjectType = "core" | "elective" | "other";
+
+export type ManagedSubject = {
+  id: number;
+  grade_level_id: number;
+  grade: number;
+  level: SchoolLevel;
+  track_id: number | null;
+  track: string | null;
+  term_no: number | null;
+  code: string | null;
+  name: string;
+  subject_type: SubjectType;
+  minutes_per_week: number;
+  is_priority: boolean;
+  is_active: boolean;
+  locked_reason: string | null;
+};
+
+export type SubjectInput = Omit<
+  ManagedSubject,
+  "id" | "grade" | "level" | "track" | "locked_reason"
+>;
+
+export type SubjectOptions = {
+  grade_levels: { id: number; grade: number; level: SchoolLevel }[];
+  tracks: Track[];
+  terms: { term_no: number; name: string }[];
+};
+
+export type LoadingRow = {
+  subject_id: number;
+  subject: string;
+  code: string | null;
+  minutes_per_week: number;
+  is_priority: boolean;
+  is_active: boolean;
+  teacher_id: number | null;
+  teacher: string | null;
+  placed_entries: number;
+  locked_reason: string | null;
+};
+
+export type LoadingTeacher = {
+  id: number;
+  name: string;
+  shift: Shift;
+  assigned: number;
+  limit: number;
+};
+
+export type SectionLoading = {
+  section: {
+    id: number;
+    label: string;
+    level: SchoolLevel;
+    shift: Shift;
+    track: string | null;
+    adviser: string | null;
+  };
+  rows: LoadingRow[];
+  teachers: LoadingTeacher[];
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };

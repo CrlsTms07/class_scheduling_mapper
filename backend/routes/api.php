@@ -4,6 +4,7 @@ use App\Http\Controllers\ActiveTermController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\ClassProgramController;
 use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\PasswordResetController;
@@ -12,10 +13,14 @@ use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReportSettingsController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
+use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\TeacherLoadingController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\TimeSlotController;
 use App\Http\Controllers\UserActivationController;
 use App\Http\Controllers\UserController;
+use App\Services\TeacherService;
 use Illuminate\Support\Facades\Route;
 
 // Public
@@ -76,6 +81,29 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     Route::get('/terms/{term}/dashboard', [AdminDashboardController::class, 'show']);
 
+    Route::get('/buildings', [BuildingController::class, 'index']);
+    Route::post('/buildings', [BuildingController::class, 'store']);
+    Route::put('/buildings/{building}', [BuildingController::class, 'update']);
+    Route::delete('/buildings/{building}', [BuildingController::class, 'destroy']);
+    Route::post('/buildings/{building}/rooms', [BuildingController::class, 'storeRoom']);
+    Route::put('/rooms/{room}', [BuildingController::class, 'updateRoom']);
+    Route::delete('/rooms/{room}', [BuildingController::class, 'destroyRoom']);
+
+    Route::post('/teachers/quick-add', [TeacherLoadingController::class, 'quickAddTeacher']);
+    Route::get('/personnel-options', [TeacherController::class, 'options']);
+    Route::post('/personnel-options/{type}', [TeacherController::class, 'storeOption'])
+        ->whereIn('type', array_keys(TeacherService::OPTION_TABLES));
+    Route::get('/terms/{term}/teachers', [TeacherController::class, 'index']);
+    Route::post('/terms/{term}/teachers', [TeacherController::class, 'store']);
+    Route::put('/terms/{term}/teachers/{teacher}', [TeacherController::class, 'update']);
+    Route::delete('/teachers/{teacher}', [TeacherController::class, 'destroy']);
+
+    Route::get('/school-years/{schoolYear}/subjects', [SubjectController::class, 'index']);
+    Route::get('/school-years/{schoolYear}/subject-options', [SubjectController::class, 'options']);
+    Route::post('/school-years/{schoolYear}/subjects', [SubjectController::class, 'store']);
+    Route::put('/subjects/{subject}', [SubjectController::class, 'update']);
+    Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy']);
+
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);
 
@@ -89,5 +117,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/submit', [PlotterController::class, 'submit']);
         Route::post('/revise', [PlotterController::class, 'revise']);
         Route::get('/class-program.pdf', [ClassProgramController::class, 'show']);
+        Route::get('/loading', [TeacherLoadingController::class, 'show']);
+        Route::put('/loading/{subject}', [TeacherLoadingController::class, 'assign']);
+        Route::delete('/loading/{subject}', [TeacherLoadingController::class, 'remove']);
     });
 });

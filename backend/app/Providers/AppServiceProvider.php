@@ -32,6 +32,11 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-admin-dashboard', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
 
+        // Teachers and rooms are reused across school years, so they are not limited by grade level.
+        // The Admin needs them too, because sections take their advisers and home rooms from them.
+        Gate::define('view-school-records', fn (User $user) => $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']));
+        Gate::define('manage-school-records', fn (User $user) => $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']));
+
         // Same password policy as the front-end form (frontend/src/types/FieldSchema.ts).
         Password::defaults(fn () => Password::min(8)->max(64)->mixedCase()->numbers()->symbols());
 

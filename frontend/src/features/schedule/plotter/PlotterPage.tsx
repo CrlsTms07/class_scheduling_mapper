@@ -238,10 +238,20 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
       )}
 
       {loading.length === 0 && (
-        <FormAlert>
-          No teacher loading for this section in this term yet, so there are no subjects
-          to place.
-        </FormAlert>
+        <div className="space-y-2">
+          <FormAlert>
+            No teacher loading for this section in this term yet, so there are no subjects
+            to place.
+          </FormAlert>
+          {canPlot && (
+            <Link
+              to={`/teacher-loading?section=${section.id}`}
+              className={buttonVariants({ variant: "outline", className: "h-11" })}
+            >
+              Go to Teacher Loading
+            </Link>
+          )}
+        </div>
       )}
 
       {patterns.length > 0 && (
