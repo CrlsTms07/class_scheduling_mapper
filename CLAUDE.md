@@ -63,7 +63,8 @@ npm run build
 - **Working, Admin:** School Years page, Start New School Year wizard, Calendar settings and
   switching the active term; Time Slots page (bell schedules, periods, breaks, copy);
   Sections page (yearly encoding, tracks, advisers, home rooms); Users page (activate, decline,
-  change access, deactivate, reactivate).
+  change access, deactivate, reactivate, delete); Report Settings page (school profile and logos,
+  document control block, signatories per term).
 - **Not built yet:** teacher loading screen, teachers, subjects, rooms and other CRUD screens, SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
 - **Front-end, not started:** all Admin screens, Guest view.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.

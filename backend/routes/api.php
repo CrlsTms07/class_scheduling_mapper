@@ -8,6 +8,7 @@ use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlotterController;
 use App\Http\Controllers\RegistrationController;
+use App\Http\Controllers\ReportSettingsController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\TermController;
@@ -59,6 +60,18 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/sections/{section}', [ManagedSectionController::class, 'update']);
     Route::delete('/sections/{section}', [ManagedSectionController::class, 'destroy']);
     Route::post('/tracks', [ManagedSectionController::class, 'storeTrack']);
+
+    Route::get('/report-settings', [ReportSettingsController::class, 'index']);
+    Route::put('/school-profile', [ReportSettingsController::class, 'saveProfile']);
+    Route::post('/school-profile/logos', [ReportSettingsController::class, 'addLogo']);
+    Route::delete('/school-profile/logos/{index}', [ReportSettingsController::class, 'removeLogo'])->whereNumber('index');
+    Route::put('/report-settings/documents', [ReportSettingsController::class, 'saveDocument']);
+    Route::get('/terms/{term}/signatories', [ReportSettingsController::class, 'signatories']);
+    Route::post('/terms/{term}/signatories', [ReportSettingsController::class, 'addSignatory']);
+    Route::post('/terms/{term}/signatories/copy', [ReportSettingsController::class, 'copySignatories']);
+    Route::put('/signatories/{signatory}', [ReportSettingsController::class, 'updateSignatory'])->whereNumber('signatory');
+    Route::delete('/signatories/{signatory}', [ReportSettingsController::class, 'deleteSignatory'])->whereNumber('signatory');
+    Route::post('/signatories/{signatory}/move', [ReportSettingsController::class, 'moveSignatory'])->whereNumber('signatory');
 
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);

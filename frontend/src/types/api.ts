@@ -302,6 +302,50 @@ export type SectionOptions = {
   rooms: { id: number; label: string }[];
 };
 
+export type ReportType = "class_program" | "teacher_program" | "room_schedule";
+
+export type SchoolProfile = {
+  school_name: string;
+  school_id: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+};
+
+export type DocumentSetting = {
+  report_type: ReportType;
+  level: SchoolLevel | null;
+  title_format: string;
+  doc_ref_code: string | null;
+  revision_no: string | null;
+  effectivity_date: string | null;
+  reference_note: string | null;
+};
+
+export type ReportSettings = {
+  school: SchoolProfile | null;
+  /** Embedded images, in printing order. */
+  logos: string[];
+  max_logos: number;
+  documents: DocumentSetting[];
+};
+
+export type AutoSource = "section_adviser" | "teacher";
+
+export type Signatory = {
+  id: number;
+  report_type: ReportType | null;
+  level: SchoolLevel | null;
+  label: string;
+  name: string | null;
+  position: string | null;
+  auto_source: AutoSource | null;
+  sort_order: number;
+};
+
+export type SignatoryInput = Omit<Signatory, "id" | "sort_order">;
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };

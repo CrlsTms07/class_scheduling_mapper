@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
+    public function __construct(private ReportSettingsService $settings) {}
+
     public function classProgramPdf(SchoolTerm $term, Section $section): string
     {
         $pdf = Pdf::loadView('reports.class-program-jhs', $this->classProgramData($term, $section))
@@ -46,7 +48,7 @@ class ReportService
 
         return [
             'school' => DB::table('school_profile')->first(),
-            'logo' => $this->logoDataUri(),
+            'logos' => $this->settings->logoDataUris(),
             'title' => $this->title($settings?->title_format, $section),
             'term' => $term,
             'section' => $section,
@@ -135,17 +137,4 @@ class ReportService
             ->all();
     }
 
-    /**
-     * dompdf reads images most reliably when they are embedded in the page.
-     */
-    private function logoDataUri(): ?string
-    {
-        $path = DB::table('school_profile')->value('logo_path');
-
-        if (! $path || ! is_file(base_path($path))) {
-            return null;
-        }
-
-        return 'data:image/png;base64,'.base64_encode(file_get_contents(base_path($path)));
-    }
 }

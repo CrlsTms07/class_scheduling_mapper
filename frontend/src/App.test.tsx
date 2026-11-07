@@ -55,7 +55,7 @@ describe("route guards", () => {
   });
 
   it("shows a page to a role that is allowed", async () => {
-    openApp("/report-settings", userWith("super_admin"));
+    openApp("/reports", userWith("super_admin"));
     expect(await screen.findByText("This page is being built.")).toBeInTheDocument();
   });
 

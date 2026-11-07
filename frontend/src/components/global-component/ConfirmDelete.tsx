@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type ConfirmDeleteProp = {
@@ -9,6 +9,7 @@ type ConfirmDeleteProp = {
   /** What the user is warned about before confirming. */
   warning?: string;
   confirmLabel?: string;
+  icon?: LucideIcon;
   isPending?: boolean;
   onConfirm: () => void;
 };
@@ -19,6 +20,7 @@ const ConfirmDelete = ({
   blockedReason,
   warning = "This cannot be undone. Are you sure?",
   confirmLabel = "Yes, delete",
+  icon: Icon = Trash2,
   isPending,
   onConfirm,
 }: ConfirmDeleteProp) => {
@@ -40,7 +42,7 @@ const ConfirmDelete = ({
         className="h-11 w-full text-destructive"
         onClick={() => setIsAsking(true)}
       >
-        <Trash2 />
+        <Icon />
         {label}
       </Button>
     );

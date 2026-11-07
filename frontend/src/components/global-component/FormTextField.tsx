@@ -6,9 +6,11 @@ type FormTextFieldProp<T extends FieldValues> = {
   control: Control<T>;
   name: Path<T>;
   label: string;
-  type?: "text" | "date" | "time";
+  type?: "text" | "date" | "time" | "email";
   placeholder?: string;
   disabled?: boolean;
+  /** Needed when one page has the same field in several forms, so each id stays unique. */
+  idPrefix?: string;
 };
 
 /** A labelled input with its error message, 44px tall for phones. */
@@ -19,19 +21,20 @@ const FormTextField = <T extends FieldValues>({
   type = "text",
   placeholder,
   disabled,
+  idPrefix = "",
 }: FormTextFieldProp<T>) => (
   <Controller
     name={name}
     control={control}
     render={({ field, fieldState }) => (
       <Field data-invalid={fieldState.invalid}>
-        <FieldLabel htmlFor={name} className="text-sm text-neutral-800">
+        <FieldLabel htmlFor={`${idPrefix}${name}`} className="text-sm text-neutral-800">
           {label}
         </FieldLabel>
         <Input
           {...field}
           value={field.value as string}
-          id={name}
+          id={`${idPrefix}${name}`}
           type={type}
           placeholder={placeholder}
           disabled={disabled}

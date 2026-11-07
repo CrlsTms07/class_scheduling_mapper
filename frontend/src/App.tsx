@@ -24,6 +24,7 @@ const ApprovalsIndex = lazy(() => import("./features/approvals/ApprovalsIndex"))
 const SchoolYearsIndex = lazy(() => import("./features/school-years/SchoolYearsIndex"));
 const TimeSlotsIndex = lazy(() => import("./features/time-slots/TimeSlotsIndex"));
 const SectionsIndex = lazy(() => import("./features/sections/SectionsIndex"));
+const ReportSettingsIndex = lazy(() => import("./features/report-settings/ReportSettingsIndex"));
 
 const PageLoading = () => (
   <div className="flex min-h-dvh items-center justify-center text-sm text-neutral-600">
@@ -71,10 +72,7 @@ function App() {
               <Route path="school-years" element={<SchoolYearsIndex />} />
               <Route path="time-slots" element={<TimeSlotsIndex />} />
               <Route path="users" element={<UsersIndex />} />
-              <Route
-                path="report-settings"
-                element={<ComingSoonIndex title="Report Settings" />}
-              />
+              <Route path="report-settings" element={<ReportSettingsIndex />} />
             </Route>
 
             <Route element={<RequireRole roles={ROLES.TEACHER} />}>

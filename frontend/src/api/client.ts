@@ -36,16 +36,18 @@ async function fetchCsrfCookie(): Promise<void> {
 
 function send(path: string, method: string, body?: unknown): Promise<Response> {
   const csrfToken = readCsrfCookie();
+  // A file upload sets its own content type, so the browser can add the file boundary.
+  const isUpload = body instanceof FormData;
 
   return fetch(`${API_URL}/api${path}`, {
     method,
     credentials: "include", // sends the session cookie
     headers: {
       Accept: "application/json",
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(body === undefined || isUpload ? {} : { "Content-Type": "application/json" }),
       ...(csrfToken ? { "X-XSRF-TOKEN": csrfToken } : {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined || isUpload ? (body as FormData | undefined) : JSON.stringify(body),
   });
 }
 

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -26,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Only the Admin sets what the printed forms are made from.
+        Gate::define('manage-reports', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
+
         // Same password policy as the front-end form (frontend/src/types/FieldSchema.ts).
         Password::defaults(fn () => Password::min(8)->max(64)->mixedCase()->numbers()->symbols());
 
