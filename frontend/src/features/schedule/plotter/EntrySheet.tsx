@@ -5,7 +5,7 @@ import {
   useClearSlot,
 } from "@/api/schedule";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { DAY_NAMES, entryAt, isLocked, slotTimeLabel } from "@/lib/schedule";
+import { DAY_NAMES, entryAt, hasSubject, isLocked, slotTimeLabel } from "@/lib/schedule";
 import { apiErrorMessage } from "@/lib/forms";
 import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
@@ -50,7 +50,10 @@ const EntrySheet = ({ target, plotter, termId, onClose }: EntrySheetProp) => {
 
   const currentEntry = entryAt(plotter.entries, day, slot);
   // JHS usually keeps a subject across the pattern; SHS changes it day by day.
-  const defaultDays = plotter.section.level === "JHS" ? pattern.days : [day];
+  // Days that already have a subject stay as they are, unless the user turns them on.
+  const defaultDays = (plotter.section.level === "JHS" ? pattern.days : [day]).filter(
+    (item) => item === day || !hasSubject(entryAt(plotter.entries, item, slot)),
+  );
 
   const [loadingId, setLoadingId] = React.useState<number | null>(
     target.loadingId ?? currentEntry?.section_subject_id ?? null,
@@ -59,7 +62,7 @@ const EntrySheet = ({ target, plotter, termId, onClose }: EntrySheetProp) => {
     currentEntry?.room_id ?? plotter.section.home_room_id,
   );
   const [days, setDays] = React.useState<number[]>(
-    target.days ?? (currentEntry ? [day] : defaultDays),
+    target.days ?? (hasSubject(currentEntry) ? [day] : defaultDays),
   );
   const [error, setError] = React.useState<unknown>(target.error ?? null);
   const [validation, setValidation] = React.useState<string | null>(null);

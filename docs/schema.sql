@@ -327,9 +327,15 @@ CREATE TABLE school_profile (              -- single row
     address       VARCHAR(255),
     phone         VARCHAR(50),
     email         VARCHAR(150),
-    website       VARCHAR(150),
-    logo_path     VARCHAR(255),              -- school logo
-    extra_logos   JSONB NOT NULL DEFAULT '[]' -- DepEd, Bagong Pilipinas, ...
+    website       VARCHAR(150)
+);
+
+-- Kept here and not on disk, because free hosting erases its disk on every restart.
+CREATE TABLE school_logos (
+    id            BIGSERIAL PRIMARY KEY,
+    mime_type     VARCHAR(50) NOT NULL,
+    image_base64  TEXT        NOT NULL,      -- the first logo is the school's own
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TYPE report_type AS ENUM ('class_program', 'teacher_program', 'room_schedule');

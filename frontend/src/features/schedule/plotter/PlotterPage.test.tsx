@@ -147,6 +147,73 @@ describe("tap to assign", () => {
   });
 });
 
+describe("open slots copied from another term", () => {
+  const openSlot = (day: number, overrides = {}) => ({
+    id: day,
+    day,
+    start_time: "08:00",
+    end_time: "09:20",
+    section_subject_id: null,
+    subject: null,
+    teacher: null,
+    room_id: 11,
+    room: "Building – 102",
+    status: "draft",
+    ...overrides,
+  });
+
+  it("saves the picked subject in the room of the open slot", async () => {
+    const plotter = plotterData({
+      status: "draft",
+      entries: [openSlot(1), openSlot(2), openSlot(3), openSlot(4)] as Plotter["entries"],
+    });
+    const fetchMock = stubApi(plotter, () => reply(200, { data: plotter }));
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Mathematics/ }));
+    await userEvent.click(await firstCell(MONDAY_SLOT));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(1));
+    expect(JSON.parse(changeCalls(fetchMock)[0][1].body as string)).toMatchObject({
+      section_subject_id: 50,
+      room_id: 11,
+      days: [1, 2, 3, 4],
+    });
+  });
+
+  it("does not replace a subject on another day", async () => {
+    const plotter = plotterData({
+      status: "draft",
+      entries: [openSlot(1), openSlot(2, { section_subject_id: 51, subject: "Science", teacher: "Ben" })] as Plotter["entries"],
+    });
+    const fetchMock = stubApi(plotter, () => reply(200, { data: plotter }));
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Mathematics/ }));
+    await userEvent.click(await firstCell(MONDAY_SLOT));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(1));
+    expect(JSON.parse(changeCalls(fetchMock)[0][1].body as string).days).toEqual([1, 3, 4]);
+  });
+
+  it("opens the sheet when an open slot lost its room", async () => {
+    const plotter = plotterData({
+      status: "draft",
+      section: { ...plotterData().section, home_room_id: null },
+      entries: [openSlot(1, { room_id: null, room: null })] as Plotter["entries"],
+    });
+    const fetchMock = stubApi(plotter);
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Mathematics/ }));
+    await userEvent.click(await firstCell(MONDAY_SLOT));
+
+    expect(await screen.findByLabelText("Room")).toHaveValue("");
+    expect(screen.getByLabelText("Subject")).toHaveValue("50");
+    expect(changeCalls(fetchMock)).toHaveLength(0);
+  });
+});
+
 describe("conflicts", () => {
   it("shows who conflicts and lets the user pick a suggested room", async () => {
     const fetchMock = stubApi(plotterData(), () =>
@@ -378,8 +445,27 @@ describe("screen states", () => {
     stubApi(plotterData());
     openPlotter();
 
+    await userEvent.click(await screen.findByRole("tab", { name: "Weekly grid" }));
     await userEvent.click(await screen.findByRole("tab", { name: "Friday" }));
 
     expect(screen.getAllByRole("button", { name: "Friday, 7:50 AM – 9:10 AM" }).length).toBeGreaterThan(0);
+  });
+
+  it("opens on day cards, showing every day of the week", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    expect(await screen.findByRole("region", { name: "Monday" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Friday" })).toHaveTextContent("7:50 AM");
+    expect(screen.getByRole("tab", { name: "Day cards" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("remembers the view the user chose", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Weekly grid" }));
+    expect(screen.queryByRole("region", { name: "Monday" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("plotter-view")).toBe("grid");
   });
 });

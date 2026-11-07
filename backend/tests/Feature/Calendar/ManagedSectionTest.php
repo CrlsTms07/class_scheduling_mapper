@@ -71,7 +71,6 @@ it('keeps section management to the Admin', function () {
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody())->assertForbidden();
     $this->putJson("/api/sections/{$sectionId}", sectionBody())->assertForbidden();
     $this->deleteJson("/api/sections/{$sectionId}")->assertForbidden();
-    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertForbidden();
 });
 
 it('creates a JHS section with adviser, room and class size, and writes an audit log', function () {
@@ -95,6 +94,14 @@ it('creates an SHS section with a track and no home room', function () {
         ->assertCreated()
         ->assertJsonPath('data.level', 'SHS')
         ->assertJsonPath('data.track', 'Academic');
+});
+
+it('lets an SHS section have a usual room', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody([
+        'grade_level_id' => sectionGradeId(11), 'track_id' => $this->trackId, 'shift' => 'AM', 'home_room_id' => $this->roomId,
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('data.home_room', 'Main – 101');
 });
 
 it('lists only the sections of that year, by grade and then name', function () {
@@ -127,7 +134,6 @@ it('rejects bad sections', function (callable $change, string $field) {
     'unknown shift' => [fn ($test) => ['shift' => 'NIGHT'], 'shift'],
     'negative class size' => [fn ($test) => ['class_size' => -1], 'class_size'],
     'track on a JHS section' => [fn ($test) => ['track_id' => $test->trackId], 'track_id'],
-    'home room on an SHS section' => [fn ($test) => ['grade_level_id' => sectionGradeId(11), 'home_room_id' => $test->roomId], 'home_room_id'],
 ]);
 
 it('allows the same name in another grade or another school year', function () {
@@ -243,6 +249,12 @@ it('counts an advisory only in its own school year', function () {
 
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $this->teacherId]))
         ->assertCreated();
+});
+
+it('keeps adding tracks away from people who only teach', function () {
+    $this->actingAs(User::factory()->create()->assignRole('teacher'));
+
+    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertForbidden();
 });
 
 it('adds a track once', function () {

@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { ME_QUERY_KEY } from "@/api/queryClient";
 import SelectedTermProvider from "@/context/SelectedTermProvider";
-import type { AdminDashboard, RoleName, Term, User } from "@/types/api";
+import type { AdminDashboard, RoleName, SchedulerDashboard, Term, User } from "@/types/api";
 import DashboardIndex from "./DashboardIndex";
 
 const TERM: Term = {
@@ -43,6 +43,41 @@ const userWith = (role: RoleName): User => ({
   personnel: null,
   grade_levels: [],
 });
+
+const MINE: SchedulerDashboard = {
+  has_scope: true,
+  sections: 5,
+  pending_sections: 1,
+  approved_sections: 2,
+  flags: { total: 3, urgent: 1, sections: 2 },
+  next_steps: [
+    { key: "revise", sections: [{ id: 11, label: "Grade 7 – Faith" }] },
+    { key: "no_bell_schedule", sections: [{ id: 12, label: "Grade 7 – Love" }] },
+    { key: "add_loading", sections: [{ id: 13, label: "Grade 7 – Hope" }] },
+    { key: "submit", sections: [{ id: 14, label: "Grade 7 – Honesty" }] },
+  ],
+  progress: DASHBOARD.progress,
+  overloaded_teachers: [],
+};
+
+function openScheduler(mine: SchedulerDashboard = MINE) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  client.setQueryData(ME_QUERY_KEY, userWith("glc"));
+  client.setQueryData(["terms"], [TERM]);
+  client.setQueryData(["terms", 2, "my-dashboard"], mine);
+
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <SelectedTermProvider>
+          <DashboardIndex />
+        </SelectedTermProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
 function openPage(role: RoleName, terms: Term[] = [TERM], dashboard: AdminDashboard = DASHBOARD) {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: dashboard })));
@@ -139,12 +174,55 @@ describe("admin dashboard", () => {
   });
 });
 
-describe("other roles", () => {
-  it("never asks a Chairperson's screen for the Admin's data", () => {
+describe("Chairperson and Master Teacher dashboard", () => {
+  it("never asks for the Admin's data", async () => {
     const fetchMock = openPage("glc");
 
-    expect(screen.getByText("Active term")).toBeInTheDocument();
     expect(screen.queryByText("Setup checklist")).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(String(fetchMock.mock.lastCall?.[0 as never])).toContain("/terms/2/my-dashboard");
+  });
+
+  it("shows the counts of their own sections", () => {
+    openScheduler();
+
+    expect(within(tile("Waiting for approval")).getByText("of 5 sections")).toBeInTheDocument();
+    expect(within(screen.getByRole("link", { name: /^Approved/ })).getByText("2")).toBeInTheDocument();
+    expect(within(tile("Flags to check")).getByText("In 2 sections, 1 urgent")).toBeInTheDocument();
+  });
+
+  it("links each section to where its next step is done", () => {
+    openScheduler();
+
+    expect(screen.getByText("Revise what the Admin rejected (1)")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Grade 7 – Faith" })).toHaveAttribute("href", "/schedule/sections/11");
+    expect(screen.getByRole("link", { name: "Grade 7 – Hope" })).toHaveAttribute("href", "/teacher-loading?section=13");
+    expect(screen.getByRole("link", { name: "Grade 7 – Honesty" })).toHaveAttribute("href", "/schedule/sections/14");
+  });
+
+  it("does not link a step that only the Admin can do", () => {
+    openScheduler();
+
+    expect(screen.getByText("Waiting for a bell schedule (1)")).toBeInTheDocument();
+    expect(screen.getByText("Grade 7 – Love")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Grade 7 – Love" })).not.toBeInTheDocument();
+  });
+
+  it("says when there is nothing to do", () => {
+    openScheduler({ ...MINE, next_steps: [] });
+
+    expect(screen.getByText(/Nothing for now/)).toBeInTheDocument();
+  });
+
+  it("says when their grade levels have no sections", () => {
+    openScheduler({ ...MINE, sections: 0, next_steps: [] });
+
+    expect(screen.getByText(/have no sections in this school year/)).toBeInTheDocument();
+  });
+
+  it("says when no grade level is assigned yet", () => {
+    openScheduler({ ...MINE, has_scope: false });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("No grade level is assigned");
   });
 });

@@ -61,12 +61,8 @@ const SectionCard = ({ section, onEdit }: SectionRowProp) => (
       <dl className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-2 text-xs text-neutral-800">
         <dt className="text-neutral-600">Adviser</dt>
         <dd><EmptyValue value={section.adviser} /></dd>
-        {section.level === "JHS" && (
-          <>
-            <dt className="text-neutral-600">Home room</dt>
-            <dd><EmptyValue value={section.home_room} /></dd>
-          </>
-        )}
+        <dt className="text-neutral-600">{section.level === "SHS" ? "Usual room" : "Home room"}</dt>
+        <dd><EmptyValue value={section.home_room} /></dd>
         <dt className="text-neutral-600">Class size</dt>
         <dd><EmptyValue value={section.class_size} /></dd>
       </dl>
@@ -89,7 +85,7 @@ const SectionsTable = ({
           <th scope="col" className="p-3 font-medium">Track</th>
           <th scope="col" className="p-3 font-medium">Shift</th>
           <th scope="col" className="p-3 font-medium">Adviser</th>
-          <th scope="col" className="p-3 font-medium">Home room</th>
+          <th scope="col" className="p-3 font-medium">Room</th>
           <th scope="col" className="p-3 font-medium">Size</th>
           <th scope="col" className="p-3"><span className="sr-only">Actions</span></th>
         </tr>
@@ -102,7 +98,7 @@ const SectionsTable = ({
             <td className="p-3">{SHIFT_LABELS[section.shift]}</td>
             <td className="p-3"><EmptyValue value={section.adviser} /></td>
             <td className="p-3">
-              {section.level === "SHS" ? "–" : <EmptyValue value={section.home_room} />}
+              <EmptyValue value={section.home_room} />
             </td>
             <td className="p-3"><EmptyValue value={section.class_size} /></td>
             <td className="p-1 text-right">

@@ -67,6 +67,82 @@ class ScheduleService
     }
 
     /**
+     * Moves classes to another period, keeping their subject, teacher and room. An open slot
+     * there gives way, but a subject does not. Either every class moves, or none.
+     *
+     * @param  array<int, int>  $fromDays
+     * @param  array<int, int>  $toDays  the day each class of $fromDays goes to, in the same order
+     */
+    public function move(int $termId, Section $section, TimeSlot $from, TimeSlot $to, array $fromDays, array $toDays, User $user): void
+    {
+        $this->rejectUnlessEditable($termId, $section);
+
+        $entries = ScheduleEntry::where('term_id', $termId)
+            ->where('section_id', $section->id)
+            ->whereIn('day_of_week', $fromDays)
+            ->where('start_time', $from->start_time)
+            ->where('end_time', $from->end_time)
+            ->whereNotNull('section_subject_id')
+            ->get()
+            ->keyBy('day_of_week');
+
+        if ($entries->count() !== count($fromDays)) {
+            throw ValidationException::withMessages(['from_days' => 'There is no class to move on one of these days.']);
+        }
+
+        $isTaken = $this->ownEntries($termId, $section, $to, $toDays)
+            ->whereNotIn('id', $entries->pluck('id'))
+            ->whereNotNull('section_subject_id')
+            ->exists();
+
+        if ($isTaken) {
+            throw ValidationException::withMessages(['days' => 'That period already has a subject on one of these days. Clear it first.']);
+        }
+
+        $stopOnAnyConflict = function () use ($termId, $section, $to, $fromDays, $toDays, $entries) {
+            foreach ($fromDays as $index => $fromDay) {
+                $entry = $entries[$fromDay];
+                $this->stopOnConflict($termId, $section, $to, (int) $entry->teacher_id, (int) $entry->room_id, [$toDays[$index]]);
+            }
+        };
+
+        $stopOnAnyConflict();
+
+        try {
+            DB::transaction(function () use ($termId, $section, $from, $to, $fromDays, $toDays, $entries, $user) {
+                $this->ownEntries($termId, $section, $to, $toDays)
+                    ->whereNotIn('id', $entries->pluck('id'))
+                    ->delete();
+
+                foreach ($fromDays as $index => $fromDay) {
+                    $entries[$fromDay]->update([
+                        'day_of_week' => $toDays[$index],
+                        'start_time' => $to->start_time,
+                        'end_time' => $to->end_time,
+                    ]);
+                }
+
+                $this->audit->log($user, 'move', 'schedule_entries', $section->id, null, [
+                    'term_id' => $termId,
+                    'from_slot_id' => $from->id,
+                    'to_slot_id' => $to->id,
+                    'from_days' => $fromDays,
+                    'to_days' => $toDays,
+                ]);
+            });
+        } catch (QueryException $exception) {
+            if ($exception->getCode() !== self::EXCLUSION_VIOLATION) {
+                throw $exception;
+            }
+
+            // Another user saved the same teacher or room after our check above.
+            $stopOnAnyConflict();
+
+            throw $exception;
+        }
+    }
+
+    /**
      * Empties a time slot on the selected days.
      *
      * @param  array<int, int>  $days

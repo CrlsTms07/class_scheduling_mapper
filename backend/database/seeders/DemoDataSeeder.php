@@ -239,7 +239,11 @@ class DemoDataSeeder extends Seeder
             'phone' => '(000) 000-0000',
             'email' => 'school@deped.gov.ph',
             'website' => 'https://www.example.com',
-            'logo_path' => 'resources/report-assets/school-logo.png',
+        ]);
+
+        DB::table('school_logos')->insert([
+            'mime_type' => 'image/png',
+            'image_base64' => base64_encode(file_get_contents(resource_path('report-assets/school-logo.png'))),
         ]);
 
         DB::table('report_settings')->insert([

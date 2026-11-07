@@ -6,8 +6,6 @@ use App\Models\SchoolTerm;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -35,40 +33,18 @@ class ReportSettingsService
     }
 
     /**
-     * Paths of the logos in printing order. The first one is the school's own logo.
-     *
-     * @return array<int, string>
-     */
-    public function logoPaths(): array
-    {
-        $profile = DB::table('school_profile')->first();
-
-        if (! $profile) {
-            return [];
-        }
-
-        return array_values(array_filter([$profile->logo_path, ...json_decode($profile->extra_logos, true)]));
-    }
-
-    /**
-     * The logos as embedded images. The PDF library and the browser both read these directly,
-     * so the files never need to be public. A file that is missing on disk is left out.
+     * The logos as embedded images, in printing order. The first one is the school's own.
+     * The PDF library and the browser both read these directly.
      *
      * @return array<int, string>
      */
     public function logoDataUris(): array
     {
-        $uris = [];
-
-        foreach ($this->logoPaths() as $path) {
-            $file = base_path($path);
-
-            if (is_file($file)) {
-                $uris[] = 'data:'.mime_content_type($file).';base64,'.base64_encode(file_get_contents($file));
-            }
-        }
-
-        return $uris;
+        return DB::table('school_logos')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($logo) => "data:{$logo->mime_type};base64,{$logo->image_base64}")
+            ->all();
     }
 
     public function addLogo(UploadedFile $file, User $admin): void
@@ -77,16 +53,16 @@ class ReportSettingsService
             throw ValidationException::withMessages(['logo' => 'Save the school name first.']);
         }
 
-        $paths = $this->logoPaths();
-
-        if (count($paths) >= self::MAX_LOGOS) {
+        if (DB::table('school_logos')->count() >= self::MAX_LOGOS) {
             throw ValidationException::withMessages(['logo' => 'A form can have up to '.self::MAX_LOGOS.' logos. Remove one first.']);
         }
 
-        $stored = Storage::disk('local')->putFile('report-assets', $file);
-        $relative = str_replace('\\', '/', Str::after(Storage::disk('local')->path($stored), base_path().DIRECTORY_SEPARATOR));
+        $id = DB::table('school_logos')->insertGetId([
+            'mime_type' => $file->getMimeType(),
+            'image_base64' => base64_encode($file->getContent()),
+        ]);
 
-        $this->saveLogoPaths([...$paths, $relative], $admin);
+        $this->audit->log($admin, 'create', 'school_logos', $id);
     }
 
     /**
@@ -94,33 +70,15 @@ class ReportSettingsService
      */
     public function removeLogo(int $index, User $admin): void
     {
-        $paths = $this->logoPaths();
+        $id = DB::table('school_logos')->orderBy('id')->offset($index)->value('id');
 
-        if (! isset($paths[$index])) {
+        if (! $id) {
             throw ValidationException::withMessages(['logo' => 'This logo no longer exists.']);
         }
 
-        $removed = $paths[$index];
-        unset($paths[$index]);
-        $this->saveLogoPaths(array_values($paths), $admin);
+        DB::table('school_logos')->where('id', $id)->delete();
 
-        // Only uploaded files are deleted, never the images that ship with the system.
-        if (str_starts_with($removed, 'storage/') && is_file(base_path($removed))) {
-            unlink(base_path($removed));
-        }
-    }
-
-    /**
-     * @param  array<int, string>  $paths
-     */
-    private function saveLogoPaths(array $paths, User $admin): void
-    {
-        DB::table('school_profile')->where('id', 1)->update([
-            'logo_path' => $paths[0] ?? null,
-            'extra_logos' => json_encode(array_slice($paths, 1)),
-        ]);
-
-        $this->audit->log($admin, 'update', 'school_profile', 1, null, ['logos' => count($paths)]);
+        $this->audit->log($admin, 'delete', 'school_logos', $id);
     }
 
     /**

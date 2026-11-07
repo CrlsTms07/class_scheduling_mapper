@@ -57,7 +57,7 @@ npm run build
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
-- **Working, JHS flow:** section list, plotter (tap-to-assign, conflicts with suggestions, flags),
+- **Working, JHS flow:** section list, plotter (tap-to-assign and drag-and-drop, also to move a placed class, conflicts with suggestions, flags),
   term selector, submit with flag acknowledgements, approvals by scope (approve, reject, reopen),
   revise after rejection, and Class Program PDF.
 - **Working, Admin:** School Years page, Start New School Year wizard, Calendar settings and
@@ -66,10 +66,26 @@ npm run build
   change access, deactivate, reactivate, delete); Report Settings page (school profile and logos,
   document control block, signatories per term); Admin Dashboard (counts, setup checklist,
   schedules by grade level, overloaded teachers).
-- **Not built yet:** teacher loading screen, teachers, subjects, rooms and other CRUD screens, SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
-- **Front-end, not started:** all Admin screens, Guest view.
+- **Working, Admin, Chairperson and Master Teacher:** Teachers page (personnel, qualifications, tasks
+  per term) and Buildings and Rooms page.
+- **Working, Chairperson and Master Teacher within scope (Admin views):** Subjects page (per school
+  year, term, track, minutes per week); Teacher Loading page (per section and term, quick-add teacher,
+  locks with pending or approved schedules, copy from another term).
+- **Working, Schedule module:** Building tabs, room cards, Room Schedule page, and plotter with day
+  cards (team decision, Nov 7, 2026: the default on wide screens) and the weekly grid as a choice.
+- **Working, Copy schedule:** from another term of the year, by section, grade or all, with a review
+  first. Periods become draft open slots; teachers and subjects that continue can be filled in.
+- **Working, Reports page:** JHS and SHS Class Program, Teacher Program, Room Schedule, room usage and
+  the Conflict and Validation Report, in PDF and XLSX. Teacher Program and Room Schedule have no official form yet, so their layout is to be
+  confirmed with the school.
+- **Working, Teacher:** My Schedule (approved entries only, PDF and XLSX) and My Profile. Chairpersons
+  and Master Teachers with a personnel record have them too.
+- **Working, Chairperson and Master Teacher:** dashboard with their own counts and next steps.
+- **Working, Guest:** pick department, grade and section; approved schedules of the active term only;
+  Print, PDF, shareable link and QR code.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
-  First Admin on a new server: `php artisan app:create-admin`.
+- **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
+  the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.
 
 ---
 
@@ -114,7 +130,7 @@ npm run build
 
 | Role | Access |
 |------|--------|
-| `super_admin` (Admin) | **Does not plot schedules.** Manages school years and terms, time slots and breaks, **sections** (encoded yearly), users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
+| `super_admin` (Admin) | **Does not plot schedules.** Manages school years and terms, time slots and breaks, **sections** (encoded yearly), teachers and rooms (team decision, Nov 7, 2026: sections need them), users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
 | `glc` | Within assigned JHS grade levels: teacher loading, plot schedules, submit for approval, reports and exports. Manages teachers, subjects and rooms. |
 | `master_teacher` | Same as `glc`, for assigned SHS grade levels. |
 | `teacher` | Read-only: own schedule (weekly and list view) and own profile. |
@@ -139,7 +155,8 @@ npm run build
 ### Sections
 - Encoded by the **Admin** once per **school year** (they change yearly). Each has a
   grade level, an optional track (SHS), a shift, an **adviser** (one advisory per
-  teacher per year), a home room (JHS) and a class size.
+  teacher per year), a home room (JHS) or optional usual room (SHS; team decision, Nov 7,
+  2026: the plotter's default, each class can still use another room) and a class size.
 - Teacher loading (`section_subjects`) is **per term**: section + subject + teacher.
 
 ### Day patterns, time slots and breaks

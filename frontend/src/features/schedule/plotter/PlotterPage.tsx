@@ -1,11 +1,34 @@
 import React from "react";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  pointerWithin,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { Link, useParams } from "react-router";
 import { ArrowLeft, Download, Send, TableProperties } from "lucide-react";
-import { useAssignSlot, usePlotter, useReviseSchedule } from "@/api/schedule";
+import { conflictDetailsOf, useAssignSlot, useMoveEntry, usePlotter, useReviseSchedule } from "@/api/schedule";
 import { downloadFile } from "@/api/client";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { apiErrorMessage } from "@/lib/forms";
-import { entryAt, STATUS_COLORS, STATUS_LABELS } from "@/lib/schedule";
+import {
+  entryAt,
+  hasSubject,
+  planMove,
+  PLOTTER_VIEWS,
+  readDrop,
+  readPlotterView,
+  savePlotterView,
+  STATUS_COLORS,
+  STATUS_LABELS,
+  subjectColor,
+  type PlotterView,
+} from "@/lib/schedule";
 import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +36,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import EntrySheet, { type SheetTarget } from "./EntrySheet";
 import FlagsPanel from "./FlagsPanel";
 import LoadingPanel from "./LoadingPanel";
+import ScheduleDayCards from "./ScheduleDayCards";
 import ScheduleDayList from "./ScheduleDayList";
 import ScheduleGrid from "./ScheduleGrid";
 import SubmitSheet from "./SubmitSheet";
@@ -68,7 +92,17 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
   const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const [isSubmitOpen, setIsSubmitOpen] = React.useState(false);
   const [removedByRevise, setRemovedByRevise] = React.useState<string[]>([]);
+  const [view, setView] = React.useState<PlotterView>(readPlotterView);
+  const [draggedId, setDraggedId] = React.useState<number | null>(null);
   const assign = useAssignSlot(termId, section.id);
+  const move = useMoveEntry(termId, section.id);
+
+  // A short click stays a tap. On a touch screen, hold first, so that swiping still scrolls.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
+  const dragged = loading.find(({ id }) => id === draggedId);
   const revise = useReviseSchedule(termId, section.id);
 
   const pattern = patterns.find(({ id }) => id === patternId) ?? patterns[0];
@@ -77,32 +111,36 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     patterns.find(({ slots }) => slots.some(({ id }) => id === slot.id)) as DayPattern;
 
   /**
-   * With a subject picked, tapping an empty slot saves right away. Anything else,
+   * With a subject picked or dragged, an empty slot saves right away. Anything else,
    * including a conflict or a missing room, opens the sheet to finish it there.
    */
-  const handleSelect = (slot: TimeSlot, slotDay: number) => {
+  const placeSubject = (slot: TimeSlot, slotDay: number, loadingId: number | null) => {
     const slotPattern = patternFor(slot);
     const entry = entryAt(entries, slotDay, slot);
-    if (!selectedLoadingId || entry || !section.home_room_id) {
+    const isTaken = hasSubject(entry);
+    // An open slot keeps the room it was copied with.
+    const roomId = entry?.room_id ?? section.home_room_id;
+
+    if (!loadingId || isTaken || !roomId) {
       setTarget({
         pattern: slotPattern,
         slot,
         day: slotDay,
-        loadingId: entry ? undefined : selectedLoadingId,
+        loadingId: isTaken ? undefined : loadingId,
       });
       return;
     }
 
     // JHS fills the whole pattern, SHS one day. Days that already have a subject stay as they are.
     const days = (section.level === "JHS" ? slotPattern.days : [slotDay]).filter(
-      (item) => !entryAt(entries, item, slot),
+      (item) => !hasSubject(entryAt(entries, item, slot)),
     );
 
     assign.mutate(
       {
         slotId: slot.id,
-        section_subject_id: selectedLoadingId,
-        room_id: section.home_room_id,
+        section_subject_id: loadingId,
+        room_id: roomId,
         days,
       },
       {
@@ -111,7 +149,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
             pattern: slotPattern,
             slot,
             day: slotDay,
-            loadingId: selectedLoadingId,
+            loadingId,
             days,
             error,
           }),
@@ -119,10 +157,37 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     );
   };
 
-  const handleDownload = () => {
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setDraggedId((active.data.current as { loadingId: number }).loadingId);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setDraggedId(null);
+    const drop = readDrop(event);
+
+    if (!drop) return;
+
+    if (!drop.from) {
+      placeSubject(drop.slot, drop.day, drop.loadingId);
+      return;
+    }
+
+    const plan = planMove({ ...drop, from: drop.from }, patterns, entries, section.level);
+
+    if (plan) {
+      move.mutate({ slotId: drop.slot.id, from_slot_id: drop.from.slot.id, ...plan });
+    }
+  };
+
+  const changeView = (next: PlotterView) => {
+    setView(next);
+    savePlotterView(next);
+  };
+
+  const handleDownload = (extension: "pdf" | "xlsx") => {
     setDownloadError(null);
     downloadFile(
-      `/terms/${termId}/sections/${section.id}/class-program.pdf`,
+      `/terms/${termId}/sections/${section.id}/class-program.${extension}`,
     ).catch((error: Error) => setDownloadError(error.message));
   };
 
@@ -132,7 +197,11 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     });
   };
 
-  const onSelect = canEdit ? handleSelect : undefined;
+  const moveConflict = conflictDetailsOf(move.error);
+
+  const onSelect = canEdit
+    ? (slot: TimeSlot, slotDay: number) => placeSubject(slot, slotDay, selectedLoadingId)
+    : undefined;
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -154,17 +223,21 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
           </Badge>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-          {section.level === "JHS" && (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              onClick={handleDownload}
-            >
-              <Download />
-              Class Program PDF
-            </Button>
-          )}
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            {(["pdf", "xlsx"] as const).map((extension) => (
+              <Button
+                key={extension}
+                type="button"
+                variant="outline"
+                className="h-11"
+                aria-label={`Class Program ${extension.toUpperCase()}`}
+                onClick={() => handleDownload(extension)}
+              >
+                <Download />
+                {extension.toUpperCase()}
+              </Button>
+            ))}
+          </div>
           {canEdit && status === "draft" && (
             <Button
               type="button"
@@ -228,6 +301,14 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
       )}
 
       {downloadError && <FormAlert>{downloadError}</FormAlert>}
+      {move.isError && (
+        <FormAlert>
+          Not moved.{" "}
+          {moveConflict
+            ? moveConflict.conflicts.map(({ message }) => message).join(" ")
+            : apiErrorMessage(move.error)}
+        </FormAlert>
+      )}
       <FlagsPanel flags={flags} />
 
       {patterns.length === 0 && (
@@ -238,64 +319,113 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
       )}
 
       {loading.length === 0 && (
-        <FormAlert>
-          No teacher loading for this section in this term yet, so there are no subjects
-          to place.
-        </FormAlert>
+        <div className="space-y-2">
+          <FormAlert>
+            No teacher loading for this section in this term yet, so there are no subjects
+            to place.
+          </FormAlert>
+          {canPlot && (
+            <Link
+              to={`/teacher-loading?section=${section.id}`}
+              className={buttonVariants({ variant: "outline", className: "h-11" })}
+            >
+              Go to Teacher Loading
+            </Link>
+          )}
+        </div>
       )}
 
       {patterns.length > 0 && (
-        <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] gap-4 space-y-4 lg:space-y-0">
-          {loading.length > 0 && (
-            <div className="max-md:portrait:hidden lg:max-h-[75dvh] lg:overflow-y-auto">
-              <LoadingPanel
-                loading={loading}
-                selectedId={selectedLoadingId}
-                onSelect={canEdit ? setSelectedLoadingId : undefined}
-              />
-            </div>
-          )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setDraggedId(null)}
+        >
+          <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] gap-4 space-y-4 lg:space-y-0">
+            {loading.length > 0 && (
+              <div className="max-md:portrait:hidden lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+                <LoadingPanel
+                  loading={loading}
+                  selectedId={selectedLoadingId}
+                  onSelect={canEdit ? setSelectedLoadingId : undefined}
+                />
+              </div>
+            )}
 
-          <div className={`min-w-0 ${loading.length === 0 ? "lg:col-span-2" : ""}`}>
-            {/* Wide screens and landscape */}
-            <div className="max-md:portrait:hidden space-y-3">
-              {patterns.length > 1 && (
-                <div role="tablist" aria-label="Bell schedule" className="flex gap-2">
-                  {patterns.map(({ id, name }) => (
+            <div className={`min-w-0 ${loading.length === 0 ? "lg:col-span-2" : ""}`}>
+              {/* Wide screens and landscape */}
+              <div className="max-md:portrait:hidden space-y-3">
+                <div role="tablist" aria-label="View" className="grid grid-cols-2 gap-2 sm:w-80">
+                  {PLOTTER_VIEWS.map(({ value, label }) => (
                     <button
-                      key={id}
+                      key={value}
                       type="button"
                       role="tab"
-                      aria-selected={id === pattern?.id}
-                      onClick={() => setPatternId(id)}
-                      className={`min-h-11 flex-1 sm:flex-none rounded-md border px-4 text-sm font-medium ${
-                        id === pattern?.id
+                      aria-selected={value === view}
+                      onClick={() => changeView(value)}
+                      className={`min-h-11 rounded-md border px-3 text-sm font-medium ${
+                        value === view
                           ? "bg-[#790D16] text-white border-[#790D16]"
                           : "bg-background text-neutral-700"
                       }`}
                     >
-                      {name}
+                      {label}
                     </button>
                   ))}
                 </div>
-              )}
-              {pattern && (
-                <ScheduleGrid pattern={pattern} entries={entries} onSelect={onSelect} />
-              )}
-            </div>
 
-            {/* Phones in portrait */}
-            <div className="hidden max-md:portrait:block">
-              <ScheduleDayList
-                patterns={patterns}
-                entries={entries}
-                day={day}
-                onDayChange={setDay}
-                onSelect={onSelect}
-              />
+                {view === "days" && (
+                  <ScheduleDayCards patterns={patterns} entries={entries} onSelect={onSelect} />
+                )}
+
+                {view === "grid" && patterns.length > 1 && (
+                  <div role="tablist" aria-label="Bell schedule" className="flex gap-2">
+                    {patterns.map(({ id, name }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={id === pattern?.id}
+                        onClick={() => setPatternId(id)}
+                        className={`min-h-11 flex-1 sm:flex-none rounded-md border px-4 text-sm font-medium ${
+                          id === pattern?.id
+                            ? "bg-[#790D16] text-white border-[#790D16]"
+                            : "bg-background text-neutral-700"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {view === "grid" && pattern && (
+                  <ScheduleGrid pattern={pattern} entries={entries} onSelect={onSelect} />
+                )}
+              </div>
+
+              {/* Phones in portrait */}
+              <div className="hidden max-md:portrait:block">
+                <ScheduleDayList
+                  patterns={patterns}
+                  entries={entries}
+                  day={day}
+                  onDayChange={setDay}
+                  onSelect={onSelect}
+                />
+              </div>
             </div>
           </div>
-        </div>
+          <DragOverlay dropAnimation={null}>
+            {dragged && (
+              <div className={`w-56 rounded-md border p-2 text-left shadow-lg ${subjectColor(dragged.id)}`}>
+                <span className="block text-xs font-medium">{dragged.subject}</span>
+                <span className="block text-[11px] opacity-80">{dragged.teacher}</span>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {isSubmitOpen && (

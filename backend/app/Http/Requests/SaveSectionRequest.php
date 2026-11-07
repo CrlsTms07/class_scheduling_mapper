@@ -85,10 +85,6 @@ class SaveSectionRequest extends FormRequest
         if ($level === 'JHS' && $this->filled('track_id')) {
             $validator->errors()->add('track_id', 'Only Senior High sections have a track.');
         }
-
-        if ($level === 'SHS' && $this->filled('home_room_id')) {
-            $validator->errors()->add('home_room_id', 'Only Junior High sections have a fixed home room.');
-        }
     }
 
     private function validateAdviser(Validator $validator): void

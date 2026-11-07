@@ -41,6 +41,23 @@ describe("navigationFor", () => {
     expect(menuPaths("teacher")).toEqual(["/my-schedule", "/my-profile"]);
   });
 
+  it.each<RoleName>(["glc", "master_teacher"])(
+    "gives %s their own schedule only when they have a personnel record",
+    (role) => {
+      const pathsWith = (hasPersonnel: boolean) =>
+        navigationFor(role, hasPersonnel).flatMap((group) => group.items.map((item) => item.path));
+
+      expect(pathsWith(false)).not.toContain("/my-schedule");
+      expect(pathsWith(true)).toEqual(expect.arrayContaining(["/my-schedule", "/my-profile"]));
+    },
+  );
+
+  it("never gives the Admin a schedule of their own", () => {
+    expect(
+      navigationFor("super_admin", true).flatMap((group) => group.items.map((item) => item.path)),
+    ).not.toContain("/my-schedule");
+  });
+
   it("hides a group with nothing to show", () => {
     expect(navigationFor("teacher").map((group) => group.label)).toEqual(["Main"]);
   });

@@ -51,8 +51,8 @@ describe("toSectionInput", () => {
     });
   });
 
-  it("keeps the track and drops the home room for Senior High", () => {
-    expect(toSectionInput(form, true)).toMatchObject({ track_id: 2, home_room_id: null });
+  it("keeps the track and the usual room for Senior High", () => {
+    expect(toSectionInput(form, true)).toMatchObject({ track_id: 2, home_room_id: 4 });
   });
 
   it("keeps a class size of zero", () => {

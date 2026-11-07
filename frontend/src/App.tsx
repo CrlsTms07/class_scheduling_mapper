@@ -6,7 +6,6 @@ import {
   RequireAuth,
   RequireRole,
 } from "./components/global-component/RouteGuards";
-import ComingSoonIndex from "./features/coming-soon/ComingSoonIndex";
 import { ROLES } from "./lib/navigation";
 
 // Each page downloads only when opened, so phones do not load the whole system at once.
@@ -17,13 +16,22 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const PlotterPage = lazy(() => import("./features/schedule/plotter/PlotterPage"));
+const RoomSchedulePage = lazy(() => import("./features/schedule/RoomSchedulePage"));
 const DashboardIndex = lazy(() => import("./features/dashboard/DashboardIndex"));
 const GuestViewIndex = lazy(() => import("./features/guest/GuestViewIndex"));
+const GuestSectionPage = lazy(() => import("./features/guest/GuestSectionPage"));
+const MySchedulePage = lazy(() => import("./features/my-records/MySchedulePage"));
+const MyProfilePage = lazy(() => import("./features/my-records/MyProfilePage"));
 const UsersIndex = lazy(() => import("./features/users/UsersIndex"));
 const ApprovalsIndex = lazy(() => import("./features/approvals/ApprovalsIndex"));
 const SchoolYearsIndex = lazy(() => import("./features/school-years/SchoolYearsIndex"));
 const TimeSlotsIndex = lazy(() => import("./features/time-slots/TimeSlotsIndex"));
 const SectionsIndex = lazy(() => import("./features/sections/SectionsIndex"));
+const TeachersIndex = lazy(() => import("./features/teachers/TeachersIndex"));
+const BuildingsIndex = lazy(() => import("./features/buildings/BuildingsIndex"));
+const ReportsIndex = lazy(() => import("./features/reports/ReportsIndex"));
+const SubjectsIndex = lazy(() => import("./features/subjects/SubjectsIndex"));
+const TeacherLoadingIndex = lazy(() => import("./features/teacher-loading/TeacherLoadingIndex"));
 const ReportSettingsIndex = lazy(() => import("./features/report-settings/ReportSettingsIndex"));
 
 const PageLoading = () => (
@@ -38,6 +46,7 @@ function App() {
       <Routes>
         {/* Public */}
         <Route path="guest" element={<GuestViewIndex />} />
+        <Route path="guest/sections/:sectionId" element={<GuestSectionPage />} />
         <Route path="reset-password" element={<ResetPassword />} />
 
         <Route element={<GuestOnly />}>
@@ -53,17 +62,15 @@ function App() {
               <Route path="dashboard" element={<DashboardIndex />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="schedule/sections/:sectionId" element={<PlotterPage />} />
-              <Route path="teachers" element={<ComingSoonIndex title="Teachers" />} />
-              <Route path="subjects" element={<ComingSoonIndex title="Subjects" />} />
-              <Route path="buildings" element={<ComingSoonIndex title="Building" />} />
-              <Route path="reports" element={<ComingSoonIndex title="Reports" />} />
+              <Route path="schedule/rooms/:roomId" element={<RoomSchedulePage />} />
+              <Route path="teachers" element={<TeachersIndex />} />
+              <Route path="subjects" element={<SubjectsIndex />} />
+              <Route path="buildings" element={<BuildingsIndex />} />
+              <Route path="reports" element={<ReportsIndex />} />
             </Route>
 
             <Route element={<RequireRole roles={ROLES.SCHEDULERS} />}>
-              <Route
-                path="teacher-loading"
-                element={<ComingSoonIndex title="Teacher Loading" />}
-              />
+              <Route path="teacher-loading" element={<TeacherLoadingIndex />} />
             </Route>
 
             <Route element={<RequireRole roles={ROLES.ADMIN} />}>
@@ -75,9 +82,9 @@ function App() {
               <Route path="report-settings" element={<ReportSettingsIndex />} />
             </Route>
 
-            <Route element={<RequireRole roles={ROLES.TEACHER} />}>
-              <Route path="my-schedule" element={<ComingSoonIndex title="My Schedule" />} />
-              <Route path="my-profile" element={<ComingSoonIndex title="My Profile" />} />
+            <Route element={<RequireRole roles={ROLES.TEACHING} />}>
+              <Route path="my-schedule" element={<MySchedulePage />} />
+              <Route path="my-profile" element={<MyProfilePage />} />
             </Route>
           </Route>
         </Route>

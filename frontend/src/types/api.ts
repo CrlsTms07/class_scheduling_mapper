@@ -372,6 +372,335 @@ export type AdminDashboard = {
   checklist: { key: ChecklistKey; title: string; done: boolean; detail: string }[];
 };
 
+export type ManagedRoom = {
+  id: number;
+  room_number: string;
+  room_name: string | null;
+  capacity: number | null;
+  is_active: boolean;
+  cannot_delete_reason: string | null;
+};
+
+export type ManagedBuilding = { id: number; name: string; rooms: ManagedRoom[] };
+
+export type RoomInput = Omit<ManagedRoom, "id" | "cannot_delete_reason">;
+
+export type PersonnelType = "teaching" | "non_teaching";
+
+export type Qualification = {
+  degree_level: string;
+  degree: string;
+  major: string | null;
+  school: string | null;
+  year_completed: number | null;
+};
+
+export type ManagedTeacher = {
+  id: number;
+  personnel_type: PersonnelType;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  suffix: string | null;
+  display_name: string | null;
+  printed_name: string;
+  department_id: number | null;
+  department: string | null;
+  designation_id: number | null;
+  designation: string | null;
+  shift: Shift;
+  max_subjects: number;
+  is_active: boolean;
+  account_email: string | null;
+  advisory: string | null;
+  assigned: number;
+  task_ids: number[];
+  qualifications: Qualification[];
+  cannot_delete_reason: string | null;
+};
+
+export type TeacherInput = Pick<
+  ManagedTeacher,
+  | "personnel_type"
+  | "first_name"
+  | "middle_name"
+  | "last_name"
+  | "suffix"
+  | "display_name"
+  | "department_id"
+  | "designation_id"
+  | "shift"
+  | "max_subjects"
+  | "is_active"
+  | "qualifications"
+  | "task_ids"
+>;
+
+export type NamedOption = { id: number; name: string };
+
+export type PersonnelOptions = {
+  departments: NamedOption[];
+  designations: NamedOption[];
+  tasks: NamedOption[];
+};
+
+export type PersonnelOptionType = "departments" | "designations" | "teaching-tasks";
+
+export type SubjectType = "core" | "elective" | "other";
+
+export type ManagedSubject = {
+  id: number;
+  grade_level_id: number;
+  grade: number;
+  level: SchoolLevel;
+  track_id: number | null;
+  track: string | null;
+  term_no: number | null;
+  code: string | null;
+  name: string;
+  subject_type: SubjectType;
+  minutes_per_week: number;
+  is_priority: boolean;
+  is_active: boolean;
+  locked_reason: string | null;
+};
+
+export type SubjectInput = Omit<
+  ManagedSubject,
+  "id" | "grade" | "level" | "track" | "locked_reason"
+>;
+
+export type SubjectOptions = {
+  grade_levels: { id: number; grade: number; level: SchoolLevel }[];
+  tracks: Track[];
+  terms: { term_no: number; name: string }[];
+};
+
+export type LoadingRow = {
+  subject_id: number;
+  subject: string;
+  code: string | null;
+  minutes_per_week: number;
+  is_priority: boolean;
+  is_active: boolean;
+  teacher_id: number | null;
+  teacher: string | null;
+  placed_entries: number;
+  locked_reason: string | null;
+};
+
+export type LoadingTeacher = {
+  id: number;
+  name: string;
+  shift: Shift;
+  assigned: number;
+  limit: number;
+};
+
+export type SectionLoading = {
+  section: {
+    id: number;
+    label: string;
+    level: SchoolLevel;
+    shift: Shift;
+    track: string | null;
+    adviser: string | null;
+  };
+  rows: LoadingRow[];
+  teachers: LoadingTeacher[];
+};
+
+export type MapRoom = {
+  id: number;
+  room_number: string;
+  room_name: string | null;
+  is_active: boolean;
+  sections: SectionSummary[];
+};
+
+export type ScheduleMap = {
+  buildings: { id: number; name: string; rooms: MapRoom[] }[];
+  unassigned: SectionSummary[];
+};
+
+export type RoomSchedule = {
+  room: {
+    id: number;
+    label: string;
+    room_name: string | null;
+    capacity: number | null;
+    building: string;
+  };
+  sections: string[];
+  entries: {
+    id: number;
+    day: number;
+    start_time: string;
+    end_time: string;
+    minutes: number;
+    status: ScheduleEntry["status"];
+    subject: string | null;
+    teacher: string | null;
+    section_id: number;
+    section: string;
+    can_open: boolean;
+  }[];
+};
+
+export type CopyLoadingResult = {
+  copied: number;
+  already_set: number;
+  not_offered: number;
+  teacher_unavailable: number;
+};
+
+export type ReportOptions = {
+  sections: { id: number; label: string; level: SchoolLevel }[];
+  teachers: { id: number; label: string }[];
+  rooms: { id: number; label: string }[];
+};
+
+/** A Teacher Program or Room Schedule, for the preview on screen. */
+export type ReportGrid = {
+  title: string;
+  term_label: string;
+  heading: string;
+  details: string[];
+  days: { day: number; name: string }[];
+  rows: {
+    start_time: string;
+    end_time: string;
+    time: string;
+    minutes: number;
+    cells: Record<number, (string | null)[][]>;
+  }[];
+  totals: { per_day: Record<number, number>; week: number; week_duration: string };
+  isDraft: boolean;
+};
+
+export type RoomUsage = {
+  buildings: {
+    name: string;
+    rooms: {
+      id: number;
+      room_number: string;
+      room_name: string | null;
+      periods_per_week: number;
+      sections: { label: string; periods_per_week: number }[];
+    }[];
+  }[];
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };
+
+export type MySchedule = Omit<ReportGrid, "title" | "isDraft"> & {
+  /** Classes of this teacher that are not approved yet, so they stay hidden. */
+  not_final_count: number;
+};
+
+export type MyProfile = {
+  printed_name: string;
+  email: string;
+  department: string | null;
+  designation: string | null;
+  shift: "AM" | "PM" | "WHOLE_DAY";
+  max_subjects: number;
+  advisory: string | null;
+  assigned: number;
+  tasks: string[];
+  qualifications: {
+    degree_level: string | null;
+    degree: string;
+    major: string | null;
+    school: string | null;
+    year_completed: number | null;
+  }[];
+};
+
+export type GuestTerm = { name: string; school_year: string };
+
+export type GuestSectionList = {
+  term: GuestTerm | null;
+  sections: {
+    id: number;
+    name: string;
+    grade: number;
+    level: "JHS" | "SHS";
+    track: string | null;
+    is_ready: boolean;
+  }[];
+};
+
+export type GuestWeek = {
+  days: { day: number; name: string }[];
+  /** The bell schedules. Each shows as its own table, as on the official form. */
+  patterns: { name: string; days: number[] }[];
+  rows: {
+    start_time: string;
+    end_time: string;
+    time: string;
+    minutes: number;
+    /** The days whose bell schedule has this period. */
+    days: number[];
+    cells: Record<number, { subject: string | null; teacher: string | null; room: string | null } | null>;
+    /** PHP sends an empty list when a row has no breaks. */
+    breaks: Record<number, string> | [];
+    wide_break: string | null;
+  }[];
+  totals: Record<number, string>;
+};
+
+export type GuestSection = { id: number; label: string; term: GuestTerm } & (
+  | { state: "ready"; adviser: string | null; week: GuestWeek }
+  | { state: "updating" | "not_ready" }
+);
+
+export type NextStepKey = "revise" | "no_bell_schedule" | "add_loading" | "plot" | "submit";
+
+export type SchedulerDashboard = {
+  has_scope: boolean;
+  sections: number;
+  pending_sections: number;
+  approved_sections: number;
+  flags: AdminDashboard["flags"];
+  next_steps: { key: NextStepKey; sections: { id: number; label: string }[] }[];
+  progress: AdminDashboard["progress"];
+  overloaded_teachers: AdminDashboard["overloaded_teachers"];
+};
+
+export type CopyScheduleResult = {
+  sections_copied: number;
+  sections_with_schedule: string[];
+  sections_with_nothing: number;
+  entries: number;
+  filled: number;
+  open_slots: number;
+  left_open: number;
+  not_fitting: number;
+  loading_copied: number;
+};
+
+export type ValidationReportData = {
+  summary: {
+    sections: number;
+    sections_with_issues: number;
+    issues: number;
+    urgent: number;
+    not_acknowledged: number;
+  };
+  term_label: string;
+  sections: {
+    id: number;
+    label: string;
+    status: ScheduleStatus;
+    status_label: string;
+    issues: {
+      message: string;
+      severity: "red" | "amber";
+      level: string;
+      acknowledged: boolean;
+    }[];
+  }[];
+};
