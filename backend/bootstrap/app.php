@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Lets the React app sign in with session cookies (Sanctum SPA auth).
         $middleware->statefulApi();
 
+        // The host ends HTTPS at its own proxy, so the app must believe it about the address.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,
             'role' => RoleMiddleware::class,

@@ -84,7 +84,8 @@ npm run build
 - **Working, Guest:** pick department, grade and section; approved schedules of the active term only;
   Print, PDF, shareable link and QR code.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
-  First Admin on a new server: `php artisan app:create-admin`.
+- **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
+  the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.
 
 ---
 
