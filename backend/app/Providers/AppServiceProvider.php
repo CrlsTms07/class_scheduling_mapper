@@ -30,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
         // Only the Admin sets what the printed forms are made from.
         Gate::define('manage-reports', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
 
+        Gate::define('view-admin-dashboard', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
+
         // Same password policy as the front-end form (frontend/src/types/FieldSchema.ts).
         Password::defaults(fn () => Password::min(8)->max(64)->mixedCase()->numbers()->symbols());
 

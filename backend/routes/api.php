@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActiveTermController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassProgramController;
@@ -72,6 +73,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/signatories/{signatory}', [ReportSettingsController::class, 'updateSignatory'])->whereNumber('signatory');
     Route::delete('/signatories/{signatory}', [ReportSettingsController::class, 'deleteSignatory'])->whereNumber('signatory');
     Route::post('/signatories/{signatory}/move', [ReportSettingsController::class, 'moveSignatory'])->whereNumber('signatory');
+
+    Route::get('/terms/{term}/dashboard', [AdminDashboardController::class, 'show']);
 
     Route::get('/terms', [TermController::class, 'index']);
     Route::get('/terms/{term}/sections', [SectionController::class, 'index']);

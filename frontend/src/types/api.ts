@@ -346,6 +346,32 @@ export type Signatory = {
 
 export type SignatoryInput = Omit<Signatory, "id" | "sort_order">;
 
+export type ChecklistKey =
+  | "calendar"
+  | "school_profile"
+  | "time_slots"
+  | "sections"
+  | "signatories"
+  | "schedulers";
+
+export type AdminDashboard = {
+  pending_sections: number;
+  pending_accounts: number;
+  flags: { total: number; urgent: number; sections: number };
+  progress: {
+    grade: number;
+    level: SchoolLevel;
+    sections: number;
+    not_started: number;
+    draft: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  }[];
+  overloaded_teachers: { id: number; name: string; assigned: number; limit: number }[];
+  checklist: { key: ChecklistKey; title: string; done: boolean; detail: string }[];
+};
+
 export type DataResponse<T> = { data: T };
 
 export type MessageResponse = { message: string };
