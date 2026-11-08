@@ -75,6 +75,7 @@ class DemoDataSeeder extends Seeder
         $activeTermId = $this->seedTerms($schoolYearId);
         $this->seedBellSchedule($schoolYearId);
         $this->seedGradeSeven($schoolYearId, $activeTermId);
+        $this->seedActivities($schoolYearId);
         $this->seedDocumentSettings();
 
         foreach (['Academic', 'TechPro'] as $track) {
@@ -225,6 +226,16 @@ class DemoDataSeeder extends Seeder
                     'teacher_id' => $teacherIds[$index],
                 ]);
             }
+        }
+    }
+
+    /**
+     * Activities take a period but have no teacher. Recess and lunch are breaks instead.
+     */
+    private function seedActivities(int $schoolYearId): void
+    {
+        foreach ([['FLAG', 'Flag Ceremony'], ['CUF', 'Catch-up Friday']] as [$code, $name]) {
+            DB::table('activities')->insert(['school_year_id' => $schoolYearId, 'code' => $code, 'name' => $name]);
         }
     }
 

@@ -20,6 +20,8 @@ export type User = {
   status: AccountStatus;
   role: RoleName | null;
   personnel: { id: number; name: string } | null;
+  /** Screen choices kept on the account, so they follow the user to any device. */
+  preferences?: { color_coding: boolean };
   /** Sent on the Users page only. */
   cannot_delete_reason?: string | null;
   grade_levels: GradeLevel[];
@@ -75,6 +77,8 @@ export type DayPattern = {
 
 export type Loading = {
   id: number;
+  subject_id: number;
+  teacher_id: number;
   subject: string;
   is_priority: boolean;
   required_minutes: number;
@@ -89,6 +93,10 @@ export type ScheduleEntry = {
   end_time: string;
   status: "draft" | "pending" | "approved" | "rejected";
   section_subject_id: number | null;
+  /** Set for an activity such as Flag Ceremony: no teacher or room. */
+  activity_id: number | null;
+  /** Placed by auto-fill and not changed by hand since. */
+  auto_filled?: boolean;
   subject: string | null;
   teacher: string | null;
   room_id: number | null;
@@ -131,6 +139,11 @@ export type Plotter = {
   patterns: DayPattern[];
   loading: Loading[];
   entries: ScheduleEntry[];
+  activities: { id: number; name: string }[];
+  /** How many sections "Apply to" reaches. */
+  apply_counts: { grade: number; all: number };
+  /** The latest auto-fill that still has classes here, so it can be undone. */
+  last_auto_fill?: { id: number; created_at: string; entries: number } | null;
   rooms: RoomOption[];
   flags: ScheduleFlag[];
 };
@@ -139,6 +152,17 @@ export type ScheduleConflict = {
   type: "teacher" | "room";
   days: number[];
   message: string;
+  section: string;
+  subject: string;
+  time: string;
+};
+
+export type FreeTeacher = {
+  id: number;
+  name: string;
+  /** Already teaches this subject in the term. */
+  teaches_subject: boolean;
+  hours_per_week: number;
 };
 
 export type ConflictDetails = {
@@ -146,6 +170,7 @@ export type ConflictDetails = {
   suggestions: {
     rooms: RoomOption[];
     slots: { id: number; label: string }[];
+    teachers: FreeTeacher[];
   };
 };
 
@@ -413,6 +438,7 @@ export type ManagedTeacher = {
   designation: string | null;
   shift: Shift;
   max_subjects: number;
+  max_hours_per_week: number;
   is_active: boolean;
   account_email: string | null;
   advisory: string | null;
@@ -434,6 +460,7 @@ export type TeacherInput = Pick<
   | "designation_id"
   | "shift"
   | "max_subjects"
+  | "max_hours_per_week"
   | "is_active"
   | "qualifications"
   | "task_ids"
@@ -672,6 +699,26 @@ export type SchedulerDashboard = {
   next_steps: { key: NextStepKey; sections: { id: number; label: string }[] }[];
   progress: AdminDashboard["progress"];
   overloaded_teachers: AdminDashboard["overloaded_teachers"];
+  steps: SchedulerStep[];
+};
+
+/** The four steps of making a schedule, in order, with how far along each is. */
+export type SchedulerStep =
+  | { key: "subjects"; done: boolean; counts: { subjects: number; activities: number; sections: number } }
+  | { key: "teachers"; done: boolean; counts: { teachers: number } }
+  | { key: "loading"; done: boolean; counts: { loaded: number; needed: number; over_hours: number } }
+  | { key: "plot"; done: boolean; counts: { sections: number; started: number; submitted: number } };
+
+export type ImportResult = {
+  copied: number;
+  already_set: number;
+  no_section: number;
+  no_subject: number;
+  not_offered: number;
+  teacher_unavailable: number;
+  /** Sections that got loading. */
+  sections: number;
+  missing: string[];
 };
 
 export type CopyScheduleResult = {
@@ -711,7 +758,7 @@ export type ValidationReportData = {
 
 export type TeacherLoadData = {
   term_label: string;
-  summary: { teachers: number; overloaded: number };
+  summary: { teachers: number; overloaded: number; over_hours: number };
   teachers: {
     id: number;
     name: string;
@@ -722,6 +769,11 @@ export type TeacherLoadData = {
     minutes: number;
     duration: string;
     classes: string[];
+    /** From the teacher loading, plotted or not. */
+    hours_per_week: number;
+    max_hours: number;
+    is_over_hours: boolean;
+    loads: { section_id: number; section: string; subject: string; hours_per_week: number }[];
   }[];
 };
 
@@ -750,4 +802,35 @@ export type AppNotification = {
   /** Where the user goes to deal with it. */
   link: string;
   at: string;
+};
+
+export type ActivityScope = "section" | "grade" | "all";
+
+export type ActivityPlacement = {
+  activity: string;
+  time: string;
+  sections: {
+    id: number;
+    label: string;
+    days: number[];
+    /** Why this section was left out, if it was. */
+    skipped: string | null;
+    /** Classes the activity takes the place of, such as "Filipino (Monday)". */
+    unplaced: string[];
+  }[];
+  placed_sections: number;
+  unplaced_classes: number;
+};
+
+export type Activity = { id: number; code: string | null; name: string; in_use: boolean };
+
+export type AutoFillPlan = {
+  /** Sent back with Confirm, so nothing is saved if the schedules changed since. */
+  plan_hash: string;
+  placed: number;
+  unplaced_count: number;
+  sections: { id: number; label: string; placed: number; minutes: number; unplaced: number }[];
+  unplaced: { section: string; subject: string; teacher: string; minutes_left: number; reason: string }[];
+  skipped: { section: string; reason: string }[];
+  run_id?: number;
 };

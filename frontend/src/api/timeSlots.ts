@@ -50,6 +50,12 @@ export const useAddSlot = (patternId: number) =>
     api(`/day-patterns/${patternId}/slots`, { method: "POST", body }),
   );
 
+/** Fills an empty bell schedule at once, from a preset. */
+export const usePresetSlots = (patternId: number) =>
+  useTimeSlotChange((slots: SlotInput[]) =>
+    api(`/day-patterns/${patternId}/slots/preset`, { method: "POST", body: { slots } }),
+  );
+
 export const useUpdateSlot = (slotId: number) =>
   useTimeSlotChange((body: SlotInput) => api(`/time-slots/${slotId}`, { method: "PUT", body }));
 

@@ -18,6 +18,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import ActivitiesSection from "./ActivitiesSection";
 import SubjectSheet from "./SubjectSheet";
 
 const HOW_IT_WORKS = [
@@ -293,6 +294,8 @@ const SubjectsIndex = () => {
           </div>
         </>
       )}
+
+      <ActivitiesSection yearId={year.id} canManage={canManage} />
 
       {selected !== undefined && (
         <SubjectSheet

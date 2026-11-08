@@ -66,6 +66,7 @@ class TeacherService
                 'designation' => $designations[$teacher->designation_id] ?? null,
                 'shift' => $teacher->shift,
                 'max_subjects' => $teacher->max_subjects,
+                'max_hours_per_week' => $teacher->max_hours_per_week,
                 'is_active' => $teacher->is_active,
                 'account_email' => $accounts[$teacher->user_id] ?? null,
                 'advisory' => $advisories->get($teacher->id)?->label(),

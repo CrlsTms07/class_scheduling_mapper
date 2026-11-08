@@ -32,6 +32,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'preferences' => 'array',
         ];
     }
 

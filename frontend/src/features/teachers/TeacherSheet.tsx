@@ -303,6 +303,12 @@ const TeacherSheet = ({ term, teacher, onClose }: TeacherSheetProp) => {
               label="Maximum load (0 to 8)"
             />
 
+            <FormTextField
+              control={form.control}
+              name="max_hours_per_week"
+              label="Maximum hours a week (1 to 60)"
+            />
+
             <Controller
               name="is_active"
               control={form.control}

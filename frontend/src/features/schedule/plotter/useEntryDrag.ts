@@ -1,5 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
-import { hasSubject, isLocked } from "@/lib/schedule";
+import { hasSubject, isActivity, isLocked } from "@/lib/schedule";
 import type { ScheduleEntry, TimeSlot } from "@/types/api";
 
 /** Lets a class already on the schedule be dragged to another slot. */
@@ -10,7 +10,8 @@ export function useEntryDrag(
   canEdit: boolean,
   idPrefix = "placed",
 ) {
-  const canDrag = canEdit && entry !== undefined && hasSubject(entry) && !isLocked(entry);
+  // An activity is placed again from its sheet, often for many sections, so it is not dragged.
+  const canDrag = canEdit && entry !== undefined && hasSubject(entry) && !isActivity(entry) && !isLocked(entry);
 
   const { setNodeRef, listeners, isDragging } = useDraggable({
     id: `${idPrefix}-${slot.id}-${day}`,

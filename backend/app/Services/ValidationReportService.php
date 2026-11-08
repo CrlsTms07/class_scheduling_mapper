@@ -88,7 +88,7 @@ class ValidationReportService
 
         $model = Section::find($section['id']);
 
-        return ScheduleEntry::with('sectionSubject.subject')
+        return ScheduleEntry::with(['sectionSubject.subject', 'activity'])
             ->where('term_id', $term->id)
             ->where('section_id', $section['id'])
             ->where('status', 'rejected')
@@ -100,7 +100,7 @@ class ValidationReportService
                     $term->id, $model, (int) $entry->teacher_id, (int) $entry->room_id,
                     [$entry->day_of_week], $entry->start_time, $entry->end_time,
                 );
-                $subject = $entry->sectionSubject?->subject->name ?? 'Open slot';
+                $subject = $entry->subjectName() ?? 'Open slot';
                 $when = ScheduleFormat::dayName($entry->day_of_week).' at '.ScheduleFormat::time($entry->start_time);
 
                 return array_map(fn (array $clash) => [

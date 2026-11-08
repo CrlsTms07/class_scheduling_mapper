@@ -6,9 +6,12 @@ use App\Models\DayPattern;
 use App\Models\Room;
 use App\Models\ScheduleEntry;
 use App\Models\Section;
+use App\Models\Subject;
+use App\Models\Teacher;
 use App\Models\TimeSlot;
 use App\Support\ScheduleFormat;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Checks hard conflicts before saving, to give a clear message. The PostgreSQL
@@ -27,7 +30,7 @@ class ConflictService
         $entries = $this->overlapping($termId, $days, $start, $end)
             ->where('section_id', '<>', $section->id)
             ->where(fn (Builder $query) => $query->where('teacher_id', $teacherId)->orWhere('room_id', $roomId))
-            ->with(['section.gradeLevel', 'teacher', 'room.building'])
+            ->with(['section.gradeLevel', 'sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->orderBy('day_of_week')
             ->get();
 
@@ -48,7 +51,64 @@ class ConflictService
             'type' => $group['type'],
             'days' => $group['days'],
             'message' => "{$group['what']} on {$this->dayList($group['days'])} at {$group['time']}.",
+            // The same facts one by one, so the screen can show them its own way.
+            'section' => $group['section'],
+            'subject' => $group['subject'],
+            'time' => $group['range'],
         ], array_values($groups));
+    }
+
+    /**
+     * Teaching personnel who are free at this time, for when the chosen teacher is not.
+     * Those who already teach this subject in the term come first, then the lightest load.
+     *
+     * @param  array<int, int>  $days
+     * @return array<int, array{id: int, name: string, teaches_subject: bool, hours_per_week: float}>
+     */
+    public function availableTeachers(int $termId, Section $section, array $days, string $start, string $end, int $exceptTeacherId, ?int $subjectId = null): array
+    {
+        $busy = $this->overlapping($termId, $days, $start, $end)
+            ->whereNotNull('teacher_id')
+            ->pluck('teacher_id')
+            ->push($exceptTeacherId)
+            ->unique()
+            ->all();
+
+        $subjectName = $subjectId ? Subject::whereKey($subjectId)->value('name') : null;
+
+        $teachesIt = $subjectName === null ? collect() : DB::table('section_subjects')
+            ->join('subjects', 'subjects.id', '=', 'section_subjects.subject_id')
+            ->where('section_subjects.term_id', $termId)
+            ->where('subjects.name', $subjectName)
+            ->pluck('section_subjects.teacher_id')
+            ->flip();
+
+        $minutes = DB::table('section_subjects')
+            ->join('subjects', 'subjects.id', '=', 'section_subjects.subject_id')
+            ->where('section_subjects.term_id', $termId)
+            ->groupBy('section_subjects.teacher_id')
+            ->selectRaw('section_subjects.teacher_id, SUM(subjects.minutes_per_week) AS minutes')
+            ->pluck('minutes', 'teacher_id');
+
+        return Teacher::where('personnel_type', 'teaching')
+            ->where('is_active', true)
+            ->whereNotIn('id', $busy)
+            ->when($section->shift !== 'WHOLE_DAY', fn (Builder $query) => $query->whereIn('shift', [$section->shift, 'WHOLE_DAY']))
+            ->get()
+            ->sortBy([
+                fn (Teacher $a, Teacher $b) => $teachesIt->has($b->id) <=> $teachesIt->has($a->id),
+                fn (Teacher $a, Teacher $b) => (int) ($minutes[$a->id] ?? 0) <=> (int) ($minutes[$b->id] ?? 0),
+                fn (Teacher $a, Teacher $b) => [$a->last_name, $a->first_name, $a->id] <=> [$b->last_name, $b->first_name, $b->id],
+            ])
+            ->take(5)
+            ->map(fn (Teacher $teacher) => [
+                'id' => $teacher->id,
+                'name' => $teacher->printedName(),
+                'teaches_subject' => $teachesIt->has($teacher->id),
+                'hours_per_week' => round(((int) ($minutes[$teacher->id] ?? 0)) / 60, 1),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -69,7 +129,7 @@ class ConflictService
 
             $busy = $this->overlapping($termId, [$entry->day_of_week], $entry->start_time, $entry->end_time)
                 ->where('teacher_id', $teacherId)
-                ->with(['section.gradeLevel', 'teacher'])
+                ->with(['section.gradeLevel', 'sectionSubject.subject', 'activity', 'teacher'])
                 ->get();
 
             foreach ($busy as $other) {
@@ -88,11 +148,15 @@ class ConflictService
      */
     private function addToGroup(array &$groups, string $type, string $what, ScheduleEntry $entry): void
     {
-        $key = "{$type}|{$what}|{$entry->start_time}";
+        $subject = $entry->subjectName() ?? 'Open slot';
+        $key = "{$type}|{$what}|{$subject}|{$entry->start_time}";
 
         $groups[$key]['type'] = $type;
         $groups[$key]['what'] = $what;
         $groups[$key]['time'] = ScheduleFormat::time($entry->start_time);
+        $groups[$key]['range'] = ScheduleFormat::time($entry->start_time).' – '.ScheduleFormat::time($entry->end_time);
+        $groups[$key]['section'] = $entry->section->label();
+        $groups[$key]['subject'] = $subject;
         $groups[$key]['days'][] = $entry->day_of_week;
     }
 
@@ -113,10 +177,12 @@ class ConflictService
      * Rooms that are free at this time, and other periods when the teacher and room are free.
      *
      * @param  array<int, int>  $days
-     * @return array{rooms: array<int, array<string, mixed>>, slots: array<int, array<string, mixed>>}
+     * @return array{rooms: array<int, array<string, mixed>>, slots: array<int, array<string, mixed>>, teachers: array<int, array<string, mixed>>}
      */
-    public function suggest(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days): array
+    public function suggest(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days, ?int $subjectId = null): array
     {
+        $teachers = $this->availableTeachers($termId, $section, $days, $slot->start_time, $slot->end_time, $teacherId, $subjectId);
+
         $usedRoomIds = $this->overlapping($termId, $days, $slot->start_time, $slot->end_time)
             ->where('section_id', '<>', $section->id)
             ->whereNotNull('room_id')
@@ -146,7 +212,7 @@ class ConflictService
             ->values()
             ->all();
 
-        return ['rooms' => $rooms, 'slots' => $slots];
+        return ['rooms' => $rooms, 'slots' => $slots, 'teachers' => $teachers];
     }
 
     /**

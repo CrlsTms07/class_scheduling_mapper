@@ -247,3 +247,28 @@ describe("periods and breaks", () => {
     expect(calls[0].url).toMatch(/\/time-slots\/50$/);
   });
 });
+
+describe("presets", () => {
+  it("fills an empty bell schedule with 8, 10, 14 or 16 rows", async () => {
+    const calls = openPage([{ ...PATTERN, slots: [] }]);
+
+    await click("Use a preset");
+    expect(screen.getByRole("list", { name: "Preview" }).children).toHaveLength(10);
+
+    await click("8");
+    expect(screen.getByRole("list", { name: "Preview" }).children).toHaveLength(8);
+    await click("Create these 8 rows");
+
+    await waitFor(() => expect(calls[0]?.url).toMatch(/\/day-patterns\/5\/slots\/preset$/));
+    const slots = calls[0].body.slots as { is_break: boolean; label: string; start_time: string }[];
+    expect(slots).toHaveLength(8);
+    expect(slots.filter(({ is_break }) => is_break).map(({ label }) => label)).toEqual(["Recess", "Lunch"]);
+    expect(slots[0].start_time).toBe("07:30");
+  });
+
+  it("is not offered once a bell schedule has periods", () => {
+    openPage();
+
+    expect(screen.queryByRole("button", { name: "Use a preset" })).not.toBeInTheDocument();
+  });
+});

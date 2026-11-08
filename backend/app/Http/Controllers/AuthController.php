@@ -26,6 +26,19 @@ class AuthController extends Controller
         return new UserResource($request->user()->load('gradeLevels'));
     }
 
+    /**
+     * Screen choices the user keeps on any device.
+     */
+    public function updatePreferences(Request $request): UserResource
+    {
+        $validated = $request->validate(['color_coding' => ['required', 'boolean']]);
+        $user = $request->user();
+
+        $user->forceFill(['preferences' => [...($user->preferences ?? []), ...$validated]])->save();
+
+        return new UserResource($user->load('gradeLevels'));
+    }
+
     public function logout(Request $request): JsonResponse
     {
         Auth::guard('web')->logout();

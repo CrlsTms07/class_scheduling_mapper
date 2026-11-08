@@ -83,6 +83,11 @@ npm run build
 - **Working, Chairperson and Master Teacher:** dashboard with their own counts and next steps.
 - **Working, Guest:** pick department, grade and section; approved schedules of the active term only;
   Print, PDF, shareable link and QR code.
+- **Working, schedule-creation flow (team decisions, Nov 9, 2026, see `docs/client-notes.md`):**
+  four steps on the scheduler dashboard with Import previous data (teacher loading only), activities
+  applied to a section, grade or all sections with an Unplaced list, Load Distribution in hours a week
+  (`max_hours_per_week`, default 30), free teachers on a conflict, bell schedule presets (8/10/14/16 rows),
+  color coding per user, and Auto-fill with preview and undo.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
 - **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
   the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.

@@ -98,6 +98,10 @@ class ScheduleReportService
             ->where('adviser_id', $teacher->id)
             ->first();
 
+        $entries = $entries->concat($this->activitiesFor($term, $advisory, $approvedOnly))
+            ->sortBy(fn (ScheduleEntry $entry) => "{$entry->start_time}|{$entry->end_time}")
+            ->values();
+
         return [
             ...$this->documentParts('teacher_program', 'TEACHER PROGRAM', $term, $entries),
             'heading' => mb_strtoupper($teacher->printedName()),
@@ -107,12 +111,42 @@ class ScheduleReportService
                 $advisory ? "Adviser of {$advisory->label()}" : null,
             ])),
             'signatories' => $this->reports->signatories($term, 'teacher_program', null, ['teacher' => $teacher->printedName()]),
-            ...$this->grid($entries, fn (ScheduleEntry $entry) => [
-                $entry->section->label(),
-                $entry->sectionSubject?->subject->name,
-                $entry->room?->label(),
-            ]),
+            ...$this->grid($entries, fn (ScheduleEntry $entry) => $entry->activity_id !== null
+                ? [$entry->subjectName()]
+                : [
+                    $entry->section->label(),
+                    $entry->subjectName(),
+                    $entry->room?->label(),
+                ]),
         ];
+    }
+
+    /**
+     * Activities a teacher takes part in: those of their advisory class, and those that every
+     * section of the school year has at the same time. Each shows once.
+     *
+     * @return Collection<int, ScheduleEntry>
+     */
+    private function activitiesFor(SchoolTerm $term, ?Section $advisory, bool $approvedOnly): Collection
+    {
+        $sectionCount = Section::where('school_year_id', $term->school_year_id)->count();
+
+        $activities = $this->entries($term)
+            ->whereNotNull('activity_id')
+            ->when($approvedOnly, fn ($query) => $query->where('status', 'approved'))
+            ->get();
+
+        $keyOf = fn (ScheduleEntry $entry) => "{$entry->activity_id}|{$entry->day_of_week}|{$entry->start_time}|{$entry->end_time}";
+
+        $everywhere = $activities->groupBy($keyOf)
+            ->filter(fn (Collection $group) => $group->pluck('section_id')->unique()->count() === $sectionCount)
+            ->keys()
+            ->flip();
+
+        return $activities
+            ->filter(fn (ScheduleEntry $entry) => $entry->section_id === $advisory?->id || $everywhere->has($keyOf($entry)))
+            ->unique($keyOf)
+            ->values();
     }
 
     /**
@@ -135,7 +169,7 @@ class ScheduleReportService
             'signatories' => $this->reports->signatories($term, 'room_schedule', null),
             ...$this->grid($entries, fn (ScheduleEntry $entry) => [
                 $entry->section->label(),
-                $entry->sectionSubject?->subject->name,
+                $entry->subjectName(),
                 $entry->teacher?->printedName(),
             ]),
         ];
@@ -339,7 +373,7 @@ class ScheduleReportService
 
     private function entries(SchoolTerm $term)
     {
-        return ScheduleEntry::with(['section.gradeLevel', 'sectionSubject.subject', 'teacher', 'room.building'])
+        return ScheduleEntry::with(['section.gradeLevel', 'sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->where('term_id', $term->id)
             ->where('status', '<>', 'rejected')
             ->orderBy('start_time')
@@ -375,8 +409,10 @@ class ScheduleReportService
             ->values()
             ->all();
 
+        // Activities show on the form but are not teaching time.
         $minutesOn = fn (int $day) => $entries
             ->where('day_of_week', $day)
+            ->whereNull('activity_id')
             ->sum(fn (ScheduleEntry $entry) => ScheduleFormat::minutesBetween($entry->start_time, $entry->end_time));
 
         $perDay = [];

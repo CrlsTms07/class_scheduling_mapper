@@ -1,5 +1,6 @@
-import { Lock, Plus } from "lucide-react";
-import { isLocked, subjectColor } from "@/lib/schedule";
+import { Lock, Plus, Sparkles } from "lucide-react";
+import { useColorCoding } from "@/api/auth";
+import { ACTIVITY_COLOR, isActivity, isLocked, subjectColor } from "@/lib/schedule";
 import type { ScheduleEntry, TimeSlot } from "@/types/api";
 import { useEntryDrag } from "./useEntryDrag";
 
@@ -15,6 +16,7 @@ type ScheduleCellProp = {
 };
 
 const ScheduleCell = ({ entry, slot, day, label, onSelect, isDraggable = true }: ScheduleCellProp) => {
+  const isColored = useColorCoding();
   const { dragRef, dragListeners, dragClasses } = useEntryDrag(
     entry,
     slot,
@@ -30,6 +32,7 @@ const ScheduleCell = ({ entry, slot, day, label, onSelect, isDraggable = true }:
           {entry.subject ?? "Open slot"}
         </span>
         {isLocked(entry) && <Lock className="size-3 shrink-0" aria-label={entry.status} />}
+        {!isLocked(entry) && entry.auto_filled && <Sparkles className="size-3 shrink-0 opacity-70" aria-label="Auto-filled" />}
       </span>
       {entry.teacher && (
         <span className="block text-[11px] leading-tight mt-0.5">{entry.teacher}</span>
@@ -51,7 +54,9 @@ const ScheduleCell = ({ entry, slot, day, label, onSelect, isDraggable = true }:
   );
 
   const classes = `block w-full h-full min-h-11 rounded-md border p-1.5 text-left ${
-    entry ? subjectColor(entry.section_subject_id) : "border-dashed border-neutral-300"
+    entry
+      ? isActivity(entry) ? ACTIVITY_COLOR : subjectColor(entry.section_subject_id, isColored)
+      : "border-dashed border-neutral-300"
   }`;
 
   if (!onSelect) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveDayPatternRequest;
+use App\Http\Requests\PresetSlotsRequest;
 use App\Http\Requests\SaveTimeSlotRequest;
 use App\Http\Resources\DayPatternResource;
 use App\Models\DayPattern;
@@ -63,6 +64,13 @@ class TimeSlotController extends Controller
     public function storeSlot(SaveTimeSlotRequest $request, DayPattern $dayPattern, TimeSlotService $service): JsonResponse
     {
         $service->addSlot($dayPattern, $request->validated(), $request->user());
+
+        return (new DayPatternResource($dayPattern->load('timeSlots.dayPattern')))->response()->setStatusCode(201);
+    }
+
+    public function presetSlots(PresetSlotsRequest $request, DayPattern $dayPattern, TimeSlotService $service): JsonResponse
+    {
+        $service->addSlots($dayPattern, $request->validated('slots'), $request->user());
 
         return (new DayPatternResource($dayPattern->load('timeSlots.dayPattern')))->response()->setStatusCode(201);
     }

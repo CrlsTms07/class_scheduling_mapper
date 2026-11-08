@@ -22,6 +22,10 @@ class UserResource extends JsonResource
             'suffix' => $this->suffix,
             'status' => $this->status,
             'role' => $this->getRoleNames()->first(),
+            'preferences' => [
+                // Subjects in color on the schedule. On unless the user turned it off.
+                'color_coding' => (bool) ($this->preferences['color_coding'] ?? true),
+            ],
             'personnel' => $this->teacher
                 ? ['id' => $this->teacher->id, 'name' => $this->teacher->printedName()]
                 : null,

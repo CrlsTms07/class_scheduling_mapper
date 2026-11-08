@@ -5,6 +5,7 @@ import { termWord } from "@/lib/schedule";
 import type { NextStepKey } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import { OverloadedTeachers, ProgressSection, StatTile } from "./DashboardParts";
+import SchedulerSteps from "./SchedulerSteps";
 
 /** What each step asks of the user, and where each section goes to do it. */
 const STEPS: Record<NextStepKey, { title: string; detail: string; pathOf?: (sectionId: number) => string }> = {
@@ -98,6 +99,8 @@ const SchedulerDashboardPanel = () => {
           to="/schedule"
         />
       </div>
+
+      <SchedulerSteps steps={data.steps} term={term} terms={terms} />
 
       <section className="space-y-3">
         <p className="font-medium text-teal-700">What to do next</p>

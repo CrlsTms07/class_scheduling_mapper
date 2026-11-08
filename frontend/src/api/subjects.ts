@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  Activity,
   DataResponse,
   ManagedSubject,
   SubjectInput,
@@ -48,3 +49,24 @@ export const useUpdateSubject = (subjectId: number) =>
 
 export const useDeleteSubject = (subjectId: number) =>
   useSubjectChange(() => api(`/subjects/${subjectId}`, { method: "DELETE" }));
+
+export function useActivities(yearId: number | undefined) {
+  return useQuery({
+    queryKey: ["school-years", yearId, "activities"],
+    enabled: yearId !== undefined,
+    queryFn: async () => (await api<DataResponse<Activity[]>>(`/school-years/${yearId}/activities`)).data,
+  });
+}
+
+export const useCreateActivity = (yearId: number) =>
+  useSubjectChange((body: { code: string | null; name: string }) =>
+    api(`/school-years/${yearId}/activities`, { method: "POST", body }),
+  );
+
+export const useUpdateActivity = (activityId: number) =>
+  useSubjectChange((body: { code: string | null; name: string }) =>
+    api(`/activities/${activityId}`, { method: "PUT", body }),
+  );
+
+export const useDeleteActivity = (activityId: number) =>
+  useSubjectChange(() => api(`/activities/${activityId}`, { method: "DELETE" }));

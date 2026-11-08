@@ -10,6 +10,8 @@ export const PERSONNEL_TYPE_LABELS: Record<PersonnelType, string> = {
 export const DEGREE_LEVELS = ["Bachelor", "Master", "Doctorate", "Units"];
 
 export const DEFAULT_MAX_LOAD = 5;
+/** Load Distribution flags a teacher above this many hours a week, unless their own limit differs. */
+export const DEFAULT_MAX_HOURS = 30;
 
 const QualificationSchema = z.object({
   degree_level: z.string().min(1, "Choose a level"),
@@ -31,6 +33,10 @@ export const TeacherFormSchema = z.object({
   designation_id: z.string(),
   shift: z.enum(["AM", "PM", "WHOLE_DAY"]),
   max_subjects: z.string().regex(/^[0-8]$/, "Enter a number from 0 to 8"),
+  max_hours_per_week: z
+    .string()
+    .regex(/^\d{1,2}$/, "Enter a number from 1 to 60")
+    .refine((value) => Number(value) >= 1 && Number(value) <= 60, "Enter a number from 1 to 60"),
   is_active: z.boolean(),
   qualifications: z.array(QualificationSchema),
   task_ids: z.array(z.number()),
@@ -58,6 +64,7 @@ export function toTeacherForm(teacher: ManagedTeacher | null): TeacherFormValues
     designation_id: teacher?.designation_id == null ? "" : String(teacher.designation_id),
     shift: teacher?.shift ?? "WHOLE_DAY",
     max_subjects: String(teacher?.max_subjects ?? DEFAULT_MAX_LOAD),
+    max_hours_per_week: String(teacher?.max_hours_per_week ?? DEFAULT_MAX_HOURS),
     is_active: teacher?.is_active ?? true,
     qualifications: (teacher?.qualifications ?? []).map((item) => ({
       degree_level: item.degree_level,
@@ -84,6 +91,7 @@ export function toTeacherInput(values: TeacherFormValues): TeacherInput {
     designation_id: idOrNull(values.designation_id),
     shift: values.shift,
     max_subjects: Number(values.max_subjects),
+    max_hours_per_week: Number(values.max_hours_per_week),
     is_active: values.is_active,
     qualifications: values.qualifications.map((item) => ({
       degree_level: item.degree_level,

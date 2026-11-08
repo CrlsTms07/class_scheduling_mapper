@@ -44,7 +44,7 @@ const plotterData = (overrides: Partial<Plotter> = {}): Plotter => ({
     },
   ],
   loading: [
-    { id: 50, subject: "Mathematics", is_priority: false, required_minutes: 400, scheduled_minutes: 0, teacher: "Teacher Three" },
+    { id: 50, subject_id: 5, teacher_id: 3, subject: "Mathematics", is_priority: false, required_minutes: 400, scheduled_minutes: 0, teacher: "Teacher Three" },
   ],
   entries: [],
   rooms: [
@@ -52,6 +52,8 @@ const plotterData = (overrides: Partial<Plotter> = {}): Plotter => ({
     { id: 11, label: "Building – 102" },
   ],
   flags: [],
+  activities: [{ id: 3, name: "Catch-up Friday" }],
+  apply_counts: { grade: 4, all: 9 },
   ...overrides,
 });
 
@@ -133,7 +135,7 @@ describe("tap to assign", () => {
   it("does not overwrite other days that already have a subject", async () => {
     const plotter = plotterData({
       entries: [
-        { id: 1, day: 2, start_time: "08:00", end_time: "09:20", status: "draft", section_subject_id: 60, subject: "English", teacher: "T", room_id: 10, room: "R" },
+        { id: 1, day: 2, start_time: "08:00", end_time: "09:20", status: "draft", activity_id: null, section_subject_id: 60, subject: "English", teacher: "T", room_id: 10, room: "R" },
       ],
     });
     const fetchMock = stubApi(plotter, () => reply(200, { data: plotter }));
@@ -184,7 +186,7 @@ describe("open slots copied from another term", () => {
   it("does not replace a subject on another day", async () => {
     const plotter = plotterData({
       status: "draft",
-      entries: [openSlot(1), openSlot(2, { section_subject_id: 51, subject: "Science", teacher: "Ben" })] as Plotter["entries"],
+      entries: [openSlot(1), openSlot(2, { activity_id: null, section_subject_id: 51, subject: "Science", teacher: "Ben" })] as Plotter["entries"],
     });
     const fetchMock = stubApi(plotter, () => reply(200, { data: plotter }));
     openPlotter();
@@ -267,6 +269,7 @@ describe("guidance", () => {
 
 describe("clearing the schedule", () => {
   const placed = {
+    activity_id: null,
     id: 1,
     day: 1,
     start_time: "08:00",
@@ -312,7 +315,7 @@ describe("conflicts", () => {
         message: "This schedule conflicts with another entry.",
         code: "schedule_conflict",
         conflicts: [{ type: "room", days: [1], message: "Building – 101 is used by Grade 7 – Sample B on Monday at 8:00 AM." }],
-        suggestions: { rooms: [{ id: 11, label: "Building – 102" }], slots: [] },
+        suggestions: { rooms: [{ id: 11, label: "Building – 102" }], slots: [], teachers: [] },
       }),
     );
     openPlotter();
@@ -329,6 +332,199 @@ describe("conflicts", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(2));
     expect(JSON.parse(changeCalls(fetchMock)[1][1].body).room_id).toBe(11);
+  });
+
+  it("offers free teachers, and changes the teacher loading before saving again", async () => {
+    let attempts = 0;
+    const fetchMock = stubApi(plotterData(), (url) => {
+      if (url.includes("/loading/")) return reply(200, { data: { section: {}, rows: [], teachers: [] } });
+      attempts += 1;
+      return attempts === 1
+        ? reply(422, {
+            message: "This schedule conflicts with another entry.",
+            code: "schedule_conflict",
+            conflicts: [{
+              type: "teacher", days: [1], section: "Grade 7 – Sample A", subject: "Mathematics", time: "8:00 AM – 9:20 AM",
+              message: "Teacher Three is teaching Grade 7 – Sample A on Monday at 8:00 AM.",
+            }],
+            suggestions: {
+              rooms: [],
+              slots: [],
+              teachers: [{ id: 8, name: "Teacher Eight", teaches_subject: true, hours_per_week: 12 }],
+            },
+          })
+        : reply(200, { data: plotterData() });
+    });
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Mathematics/ }));
+    await userEvent.click(await firstCell(MONDAY_SLOT));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Teachers free at this time");
+    expect(alert).toHaveTextContent("Teaches Mathematics · 12 hrs/week");
+
+    await userEvent.click(within(alert).getByRole("button", { name: /Teacher Eight/ }));
+    expect(screen.getByLabelText("Teacher")).toHaveValue("8");
+    expect(screen.getByText(/for all of its periods/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(3));
+    const [, loadingCall, saveCall] = changeCalls(fetchMock);
+    expect(String(loadingCall[0])).toContain("/sections/1/loading/5");
+    expect(JSON.parse(loadingCall[1].body).teacher_id).toBe(8);
+    expect(String(saveCall[0])).toContain("/slots/100");
+  });
+});
+
+describe("auto-fill", () => {
+  const PLAN = {
+    plan_hash: "a".repeat(40),
+    placed: 30,
+    unplaced_count: 1,
+    sections: [{ id: 1, label: "Grade 7 – Sample A", placed: 30, minutes: 1500, unplaced: 1 }],
+    unplaced: [
+      { section: "Grade 7 – Sample A", subject: "MAPEH", teacher: "Teacher Eight", minutes_left: 45, reason: "Teacher Eight has no free period that matches the section's free periods." },
+    ],
+    skipped: [],
+  };
+
+  it("previews first, then places on Confirm with the plan that was shown", async () => {
+    const fetchMock = stubApi(plotterData({ status: "draft" }), (url) =>
+      url.endsWith("/auto-fill/preview")
+        ? reply(200, { data: PLAN })
+        : reply(201, { summary: { ...PLAN, run_id: 4 }, data: plotterData({ status: "draft" }) }),
+    );
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Auto-fill" }));
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "This section only" }));
+    expect(await screen.findByText(/30 classes will be placed/)).toBeInTheDocument();
+    expect(screen.getByText(/has no free period that matches/)).toBeInTheDocument();
+    expect(changeCalls(fetchMock)).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(await screen.findByText("Done: 30 classes placed as drafts.")).toBeInTheDocument();
+    const [url, init] = changeCalls(fetchMock)[1];
+    expect(String(url)).toMatch(/\/sections\/1\/auto-fill$/);
+    expect(JSON.parse(init.body)).toEqual({ scope: "section", plan_hash: PLAN.plan_hash });
+  });
+
+  it("marks auto-filled classes, and offers to undo the last run", async () => {
+    const fetchMock = stubApi(
+      plotterData({
+        status: "draft",
+        last_auto_fill: { id: 4, created_at: "2026-11-09T08:00:00+08:00", entries: 12 },
+        entries: [
+          { id: 1, day: 1, start_time: "08:00", end_time: "09:20", status: "draft", activity_id: null, auto_filled: true, section_subject_id: 50, subject: "Mathematics", teacher: "T", room_id: 10, room: "R" },
+        ],
+      }),
+      () => reply(200, { summary: { removed: 12, kept_locked: 0 }, data: plotterData({ status: "not_started" }) }),
+    );
+    openPlotter();
+
+    expect(await screen.findAllByLabelText("Auto-filled")).not.toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Undo the last auto-fill" }));
+    await userEvent.click(screen.getByRole("button", { name: "Yes, undo it" }));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(1));
+    const [url, init] = changeCalls(fetchMock)[0];
+    expect(String(url)).toMatch(/\/auto-fill\/4$/);
+    expect(init.method).toBe("DELETE");
+  });
+});
+
+describe("color coding", () => {
+  it("turns subject colors off, and keeps the choice on the account", async () => {
+    const placed = plotterData({
+      entries: [
+        { id: 1, day: 1, start_time: "08:00", end_time: "09:20", status: "draft", activity_id: null, section_subject_id: 50, subject: "Mathematics", teacher: "T", room_id: 10, room: "R" },
+      ],
+    });
+    const fetchMock = stubApi(placed, (url) =>
+      url.includes("/me/preferences")
+        ? reply(200, { data: { id: 7, role: "glc", preferences: { color_coding: false } } })
+        : reply(200, { data: placed }),
+    );
+    openPlotter();
+
+    const cell = await firstCell(MONDAY_SLOT);
+    expect(cell.className).not.toContain("bg-background text-neutral-900");
+
+    const toggle = screen.getByRole("switch", { name: "Color coding" });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(toggle);
+
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Color coding" })).toHaveAttribute("aria-checked", "false"));
+    expect((await firstCell(MONDAY_SLOT)).className).toContain("bg-background text-neutral-900");
+    const [url, init] = changeCalls(fetchMock)[0];
+    expect(String(url)).toContain("/me/preferences");
+    expect(JSON.parse(init.body)).toEqual({ color_coding: false });
+  });
+});
+
+describe("activities", () => {
+  const summary = {
+    activity: "Catch-up Friday",
+    time: "8:00 AM – 9:20 AM",
+    sections: [
+      { id: 1, label: "Grade 7 – Sample A", days: [1], skipped: null, unplaced: ["Filipino (Monday)"] },
+      { id: 2, label: "Grade 7 – Sample B", days: [], skipped: "The schedule is pending, so it cannot change now.", unplaced: [] },
+    ],
+    placed_sections: 1,
+    unplaced_classes: 1,
+  };
+
+  it("reviews first, then places the activity on the whole grade", async () => {
+    const fetchMock = stubApi(plotterData(), (_url, init) =>
+      reply(200, { summary, data: JSON.parse(String(init.body)).preview ? null : plotterData() }),
+    );
+    openPlotter();
+
+    await userEvent.click(await firstCell(MONDAY_SLOT));
+    await userEvent.click(await screen.findByRole("button", { name: "Activity" }));
+    await userEvent.selectOptions(screen.getByLabelText("Activity"), "3");
+    await userEvent.click(screen.getByRole("button", { name: "All Grade 7 sections (4)" }));
+    await userEvent.click(screen.getByRole("button", { name: "Review" }));
+
+    expect(await screen.findByText(/1 section will get it/)).toBeInTheDocument();
+    expect(screen.getByText(/Left out: Grade 7 – Sample B/)).toBeInTheDocument();
+    expect(screen.getByText(/Grade 7 – Sample A: Filipino \(Monday\)/)).toBeInTheDocument();
+    expect(JSON.parse(changeCalls(fetchMock)[0][1].body)).toEqual({
+      activity_id: 3, scope: "grade", days: [1], preview: true,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Apply to 1 section" }));
+
+    expect(await screen.findByText("Catch-up Friday was placed on 1 section.")).toBeInTheDocument();
+    expect(String(changeCalls(fetchMock)[1][0])).toContain("/slots/100/activity");
+    expect(JSON.parse(changeCalls(fetchMock)[1][1].body).preview).toBe(false);
+  });
+
+  it("shows a placed activity in grey, and opens it as an activity", async () => {
+    stubApi(
+      plotterData({
+        entries: [
+          { id: 9, day: 1, start_time: "08:00", end_time: "09:20", status: "draft", section_subject_id: null, activity_id: 3, subject: "Catch-up Friday", teacher: null, room_id: null, room: null },
+        ],
+      }),
+    );
+    openPlotter();
+
+    const cell = await firstCell(MONDAY_SLOT);
+    expect(cell).toHaveTextContent("Catch-up Friday");
+    expect(cell.className).toContain("bg-slate-200");
+
+    await userEvent.click(cell);
+
+    expect(await screen.findByRole("button", { name: "Activity" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Activity")).toHaveValue("3");
+    expect(screen.getByRole("button", { name: "Remove from Monday" })).toBeInTheDocument();
   });
 });
 
@@ -359,7 +555,7 @@ describe("the entry sheet", () => {
   it("removes an entry from the selected days", async () => {
     const plotter = plotterData({
       entries: [
-        { id: 1, day: 1, start_time: "08:00", end_time: "09:20", status: "draft", section_subject_id: 50, subject: "Mathematics", teacher: "T", room_id: 10, room: "R" },
+        { id: 1, day: 1, start_time: "08:00", end_time: "09:20", status: "draft", activity_id: null, section_subject_id: 50, subject: "Mathematics", teacher: "T", room_id: 10, room: "R" },
       ],
     });
     const fetchMock = stubApi(plotter, () => reply(200, { data: plotterData() }));
@@ -377,7 +573,7 @@ describe("the entry sheet", () => {
   it("does not offer to change an approved entry", async () => {
     const plotter = plotterData({
       entries: [
-        { id: 1, day: 1, start_time: "08:00", end_time: "09:20", status: "approved", section_subject_id: 50, subject: "Mathematics", teacher: "T", room_id: 10, room: "R" },
+        { id: 1, day: 1, start_time: "08:00", end_time: "09:20", status: "approved", activity_id: null, section_subject_id: 50, subject: "Mathematics", teacher: "T", room_id: 10, room: "R" },
       ],
     });
     stubApi(plotter);

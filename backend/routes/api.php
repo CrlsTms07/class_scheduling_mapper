@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\ActiveTermController;
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AutoFillController;
 use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\ClassProgramController;
 use App\Http\Controllers\GuestController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\MyRecordsController;
 use App\Http\Controllers\NotificationController;
@@ -50,6 +53,7 @@ Route::middleware('throttle:account')->group(function () {
 // Signed-in users with an active account
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me/preferences', [AuthController::class, 'updatePreferences']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/notifications', [NotificationController::class, 'index']);
 
@@ -71,6 +75,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::delete('/day-patterns/{dayPattern}', [TimeSlotController::class, 'destroyPattern']);
     Route::post('/day-patterns/{dayPattern}/copy', [TimeSlotController::class, 'copyPattern']);
     Route::post('/day-patterns/{dayPattern}/slots', [TimeSlotController::class, 'storeSlot']);
+    Route::post('/day-patterns/{dayPattern}/slots/preset', [TimeSlotController::class, 'presetSlots']);
     Route::put('/time-slots/{timeSlot}', [TimeSlotController::class, 'updateSlot']);
     Route::delete('/time-slots/{timeSlot}', [TimeSlotController::class, 'destroySlot']);
 
@@ -108,6 +113,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/terms/{term}/schedule-map', [ScheduleMapController::class, 'index']);
     Route::get('/terms/{term}/rooms/{room}/schedule', [ScheduleMapController::class, 'room']);
     Route::post('/terms/{term}/loading/copy', [TeacherLoadingController::class, 'copy']);
+    Route::post('/terms/{term}/import-previous', [ImportController::class, 'store']);
     Route::post('/terms/{term}/schedule-copy', [TermCopyController::class, 'store']);
     Route::post('/teachers/quick-add', [TeacherLoadingController::class, 'quickAddTeacher']);
     Route::get('/personnel-options', [TeacherController::class, 'options']);
@@ -126,6 +132,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/school-years/{schoolYear}/subjects', [SubjectController::class, 'store']);
     Route::put('/subjects/{subject}', [SubjectController::class, 'update']);
     Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy']);
+    Route::get('/school-years/{schoolYear}/activities', [ActivityController::class, 'index']);
+    Route::post('/school-years/{schoolYear}/activities', [ActivityController::class, 'store']);
+    Route::put('/activities/{activity}', [ActivityController::class, 'update']);
+    Route::delete('/activities/{activity}', [ActivityController::class, 'destroy']);
 
     Route::prefix('/terms/{term}/reports')->group(function () {
         Route::get('/options', [ReportController::class, 'options']);
@@ -165,6 +175,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/slots/{timeSlot}', [PlotterController::class, 'assign']);
         Route::delete('/slots/{timeSlot}', [PlotterController::class, 'clear']);
         Route::post('/slots/{timeSlot}/move', [PlotterController::class, 'move']);
+        Route::post('/slots/{timeSlot}/activity', [ActivityController::class, 'place']);
+        Route::post('/auto-fill/preview', [AutoFillController::class, 'preview']);
+        Route::post('/auto-fill', [AutoFillController::class, 'store']);
+        Route::delete('/auto-fill/{run}', [AutoFillController::class, 'destroy']);
         Route::delete('/schedule', [PlotterController::class, 'clearAll']);
         Route::post('/submit', [PlotterController::class, 'submit']);
         Route::post('/revise', [PlotterController::class, 'revise']);

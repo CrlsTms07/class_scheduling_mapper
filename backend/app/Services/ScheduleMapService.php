@@ -101,7 +101,7 @@ class ScheduleMapService
         $room->loadMissing('building');
         $inScope = $user->gradeLevelIdsInScope();
 
-        $entries = ScheduleEntry::with(['section.gradeLevel', 'sectionSubject.subject', 'teacher'])
+        $entries = ScheduleEntry::with(['section.gradeLevel', 'sectionSubject.subject', 'activity', 'teacher'])
             ->where('term_id', $term->id)
             ->where('room_id', $room->id)
             ->where('status', '<>', 'rejected')
@@ -115,7 +115,7 @@ class ScheduleMapService
                 'end_time' => ScheduleFormat::shortTime($entry->end_time),
                 'minutes' => ScheduleFormat::minutesBetween($entry->start_time, $entry->end_time),
                 'status' => $entry->status,
-                'subject' => $entry->sectionSubject?->subject->name,
+                'subject' => $entry->subjectName(),
                 'teacher' => $entry->teacher?->printedName(),
                 'section_id' => $entry->section_id,
                 'section' => $entry->section->label(),

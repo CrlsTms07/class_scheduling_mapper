@@ -1,13 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type {
-  ConflictDetails,
-  CopyScheduleResult,
-  DataResponse,
-  Plotter,
-  RoomSchedule,
-  ScheduleMap,
-  SectionSummary,
-} from "@/types/api";
+import type { ActivityPlacement, ActivityScope, AutoFillPlan, ConflictDetails, CopyScheduleResult, DataResponse, Plotter, RoomSchedule, ScheduleMap, SectionSummary } from "@/types/api";
 import { api, ApiError } from "./client";
 
 export function useSections(termId: number | undefined) {
@@ -138,6 +130,75 @@ export function useClearSlot(termId: number | undefined, sectionId: number) {
     ({ slotId, days }, basePath) =>
       api(`${basePath}/${slotId}`, { method: "DELETE", body: { days } }),
   );
+}
+
+export type PlaceActivityInput = {
+  slotId: number;
+  activity_id: number;
+  scope: ActivityScope;
+  days: number[];
+  preview: boolean;
+};
+
+/**
+ * Puts an activity on one section, its grade level, or all sections. With preview, the reply
+ * only says what would happen. Otherwise other sections changed too, so their screens refresh.
+ */
+export function usePlaceActivity(termId: number | undefined, sectionId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ slotId, ...body }: PlaceActivityInput) =>
+      api<{ summary: ActivityPlacement; data: Plotter | null }>(
+        `/terms/${termId}/sections/${sectionId}/slots/${slotId}/activity`,
+        { method: "POST", body },
+      ),
+    onSuccess: ({ data }) => {
+      if (!data) return;
+      queryClient.setQueryData(plotterKey(termId, sectionId), data);
+      queryClient.invalidateQueries({
+        queryKey: ["terms", termId],
+        predicate: ({ queryKey }) => !(queryKey[2] === "sections" && queryKey[3] === sectionId && queryKey[4] === "plotter"),
+      });
+    },
+  });
+}
+
+/** Auto-fill: a preview first, then Confirm with the plan that was previewed. */
+export function useAutoFill(termId: number | undefined, sectionId: number) {
+  const queryClient = useQueryClient();
+  const base = `/terms/${termId}/sections/${sectionId}/auto-fill`;
+
+  const preview = useMutation({
+    mutationFn: async (scope: ActivityScope) =>
+      (await api<DataResponse<AutoFillPlan>>(`${base}/preview`, { method: "POST", body: { scope } })).data,
+  });
+
+  const confirm = useMutation({
+    mutationFn: (body: { scope: ActivityScope; plan_hash: string }) =>
+      api<{ summary: AutoFillPlan; data: Plotter }>(base, { method: "POST", body }),
+    onSuccess: ({ data }) => {
+      queryClient.setQueryData(plotterKey(termId, sectionId), data);
+      queryClient.invalidateQueries({
+        queryKey: ["terms", termId],
+        predicate: ({ queryKey }) => !(queryKey[2] === "sections" && queryKey[3] === sectionId && queryKey[4] === "plotter"),
+      });
+    },
+  });
+
+  const undo = useMutation({
+    mutationFn: (runId: number) =>
+      api<{ summary: { removed: number; kept_locked: number }; data: Plotter }>(`${base}/${runId}`, { method: "DELETE" }),
+    onSuccess: ({ data }) => {
+      queryClient.setQueryData(plotterKey(termId, sectionId), data);
+      queryClient.invalidateQueries({
+        queryKey: ["terms", termId],
+        predicate: ({ queryKey }) => !(queryKey[2] === "sections" && queryKey[3] === sectionId && queryKey[4] === "plotter"),
+      });
+    },
+  });
+
+  return { preview, confirm, undo };
 }
 
 export function useSubmitSchedule(termId: number | undefined, sectionId: number) {

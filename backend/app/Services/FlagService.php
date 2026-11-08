@@ -90,6 +90,7 @@ class FlagService
             ->where('section_id', $section->id)
             ->where('status', '<>', 'rejected')
             ->whereNull('section_subject_id')
+            ->whereNull('activity_id')
             ->count();
 
         return $count === 0 ? [] : [[

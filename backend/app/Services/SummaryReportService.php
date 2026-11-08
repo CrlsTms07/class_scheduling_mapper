@@ -42,6 +42,7 @@ class SummaryReportService
             ->pluck('section_subjects.teacher_id')
             ->unique();
 
+        // Load Distribution: the hours each loading asks for, plotted or not.
         $loadings = SectionSubject::with(['subject', 'section.gradeLevel'])
             ->where('term_id', $term->id)
             ->whereIn('teacher_id', $inScope)
@@ -64,6 +65,7 @@ class SummaryReportService
             ->map(function (Teacher $teacher) use ($loadings, $minutes, $departments) {
                 $load = $loadings->get($teacher->id, collect());
                 $scheduled = (int) $minutes->get($teacher->id, 0);
+                $loadedMinutes = (int) $load->sum(fn (SectionSubject $row) => $row->subject->minutes_per_week);
 
                 return [
                     'id' => $teacher->id,
@@ -79,6 +81,19 @@ class SummaryReportService
                         ->sort()
                         ->values()
                         ->all(),
+                    'hours_per_week' => round($loadedMinutes / 60, 1),
+                    'max_hours' => $teacher->max_hours_per_week,
+                    'is_over_hours' => $loadedMinutes > $teacher->max_hours_per_week * 60,
+                    'loads' => $load
+                        ->sortBy(fn (SectionSubject $row) => [$row->section->gradeLevel->grade, $row->section->name, $row->subject->name])
+                        ->map(fn (SectionSubject $row) => [
+                            'section_id' => $row->section_id,
+                            'section' => $row->section->label(),
+                            'subject' => $row->subject->name,
+                            'hours_per_week' => round($row->subject->minutes_per_week / 60, 1),
+                        ])
+                        ->values()
+                        ->all(),
                 ];
             })
             ->values();
@@ -88,6 +103,7 @@ class SummaryReportService
             'summary' => [
                 'teachers' => $teachers->count(),
                 'overloaded' => $teachers->where('is_overloaded', true)->count(),
+                'over_hours' => $teachers->where('is_over_hours', true)->count(),
             ],
             'teachers' => $teachers->all(),
         ];
@@ -108,7 +124,7 @@ class SummaryReportService
             ->orderBy('name')
             ->get();
 
-        $entries = ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
+        $entries = ScheduleEntry::with(['sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->where('term_id', $term->id)
             ->whereIn('section_id', $sections->pluck('id'))
             ->where('status', '<>', 'rejected')
@@ -187,7 +203,7 @@ class SummaryReportService
                 $isEveryDay = $group->count() === count($pattern->day_numbers);
 
                 return [
-                    'subject' => $first->sectionSubject?->subject->name ?? 'Open slot',
+                    'subject' => $first->subjectName() ?? 'Open slot',
                     'teacher' => $first->teacher?->printedName(),
                     'room' => $first->room?->label(),
                     'days' => $isEveryDay ? null : $group

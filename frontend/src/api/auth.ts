@@ -83,3 +83,18 @@ export function useResetPassword() {
       api<MessageResponse>("/reset-password", { method: "POST", body: input }),
   });
 }
+
+/** Subjects in color on the schedule. On unless the user turned it off. */
+export function useColorCoding(): boolean {
+  return useMe().data?.preferences?.color_coding ?? true;
+}
+
+export function useUpdatePreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: { color_coding: boolean }) =>
+      api<DataResponse<User>>("/me/preferences", { method: "PUT", body }),
+    onSuccess: ({ data }) => queryClient.setQueryData(ME_QUERY_KEY, data),
+  });
+}

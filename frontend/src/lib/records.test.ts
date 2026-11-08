@@ -77,6 +77,7 @@ const teacher = (overrides: Partial<ManagedTeacher> = {}): ManagedTeacher => ({
   designation: null,
   shift: "AM",
   max_subjects: 5,
+  max_hours_per_week: 30,
   is_active: true,
   account_email: null,
   advisory: null,
@@ -95,6 +96,7 @@ describe("teacher form", () => {
       personnel_type: "teaching",
       shift: "WHOLE_DAY",
       max_subjects: "5",
+      max_hours_per_week: "30",
       is_active: true,
       qualifications: [],
     });
@@ -115,6 +117,7 @@ describe("teacher form", () => {
       designation_id: null,
       shift: "AM",
       max_subjects: 5,
+      max_hours_per_week: 30,
       is_active: true,
       qualifications: original.qualifications,
       task_ids: [7],
@@ -126,6 +129,15 @@ describe("teacher form", () => {
 
     expect(TeacherFormSchema.safeParse({ ...form, max_subjects: "0" }).success).toBe(true);
     expect(TeacherFormSchema.safeParse({ ...form, max_subjects: "9" }).success).toBe(false);
+  });
+
+  it("accepts 1 to 60 hours a week only", () => {
+    const form = toTeacherForm(teacher());
+
+    expect(TeacherFormSchema.safeParse({ ...form, max_hours_per_week: "1" }).success).toBe(true);
+    expect(TeacherFormSchema.safeParse({ ...form, max_hours_per_week: "60" }).success).toBe(true);
+    expect(TeacherFormSchema.safeParse({ ...form, max_hours_per_week: "0" }).success).toBe(false);
+    expect(TeacherFormSchema.safeParse({ ...form, max_hours_per_week: "61" }).success).toBe(false);
   });
 
   it("needs a degree and a real year in a qualification", () => {

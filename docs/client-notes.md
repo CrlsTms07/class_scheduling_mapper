@@ -24,6 +24,32 @@ Last updated: Nov 6, 2026.
 | 15 | Names on the schedule form (signatories) must be inputtable; sample JHS Class Program shows Prepared by (Head Teacher III), Conforme (Class Adviser), Recommending Approval (School Principal II), Approved by (PSDS Cluster IV) | `report_signatories` per term, document type and level; Conforme auto-filled from the section adviser; header/footer from `school_profile` and `report_settings` | Must |
 | 16 | Schedule format should be enhanced and look better in the system | Enhanced interactive on-screen view; printed PDF/XLSX keeps the official structure but cleaner (auto totals, signature grid, document control footer). Mon–Thu and Friday bell schedules handled by `day_patterns` | Must |
 
+## Team decisions on the schedule-creation flow (Nov 9, 2026)
+
+Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
+
+- **Four steps** on the Chairperson / Master Teacher dashboard: Subjects & Sections → Teachers →
+  Load Distribution → Plot, each with its progress, plus **Import previous data**.
+- **Import previous data** copies only the teacher loading of the user's grade levels, from any
+  earlier term (also last school year, matched by grade and the names of the section and subject).
+  Subjects, activities, bell schedules and sections already belong to the school year; the Admin's
+  Start New School Year wizard copies them. Plotted schedules are never imported.
+- **Activities** (Flag Ceremony, Catch-up Friday...) are kept apart from subjects: no teacher, room or
+  minutes. They can be applied to one section, a grade level or all sections. A class they replace
+  goes to **Unplaced** (its teacher loading stays). Recess and lunch stay as breaks of the bell schedule.
+- **Teacher program:** shows the activities of the teacher's advisory class and those that every
+  section has at the same time. Activities do not count as teaching minutes.
+- **Load Distribution:** hours a week from the teacher loading, against a limit per teacher
+  (`teachers.max_hours_per_week`, default 30). The subject limit (`max_subjects`) stays as well.
+- **Changing the teacher in the plotter** changes the teacher loading of that subject in the section,
+  so all its periods follow. A conflict lists up to 5 free teachers.
+- **SHS shift:** placing by hand keeps it a flag; auto-fill never places outside a shift.
+- **Bell schedule presets** of 8, 10, 14 or 16 rows fill an empty bell schedule. Bell schedules stay per
+  school year, level and shift.
+- **Color coding** on the schedule can be turned off; the choice is kept on the account.
+- **Auto-fill** (greedy, no backtracking for now): preview first, saved as drafts in one transaction,
+  can be undone per run. No queue is needed: a whole school fills in about a second.
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade

@@ -11,15 +11,17 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { Link, useParams } from "react-router";
-import { ArrowLeft, Download, Eraser, Send, TableProperties, X } from "lucide-react";
+import { ArrowLeft, Download, Eraser, Send, Sparkles, TableProperties, Undo2, X } from "lucide-react";
 import {
   conflictDetailsOf,
   useAssignSlot,
+  useAutoFill,
   useClearSchedule,
   useMoveEntry,
   usePlotter,
   useReviseSchedule,
 } from "@/api/schedule";
+import { useColorCoding } from "@/api/auth";
 import { downloadFile } from "@/api/client";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { apiErrorMessage } from "@/lib/forms";
@@ -44,6 +46,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import EntrySheet, { type SheetTarget } from "./EntrySheet";
 import FlagsPanel from "./FlagsPanel";
 import LoadingPanel from "./LoadingPanel";
+import AutoFillSheet from "./AutoFillSheet";
+import ColorCodingSwitch from "./ColorCodingSwitch";
 import PlotterGuide from "./PlotterGuide";
 import ScheduleDayCards from "./ScheduleDayCards";
 import ScheduleDayList from "./ScheduleDayList";
@@ -100,12 +104,15 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
   const [target, setTarget] = React.useState<SheetTarget | null>(null);
   const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const [isSubmitOpen, setIsSubmitOpen] = React.useState(false);
+  const [isAutoFillOpen, setIsAutoFillOpen] = React.useState(false);
   const [removedByRevise, setRemovedByRevise] = React.useState<string[]>([]);
   const [view, setView] = React.useState<PlotterView>(readPlotterView);
   const [draggedId, setDraggedId] = React.useState<number | null>(null);
   const assign = useAssignSlot(termId, section.id);
+  const isColored = useColorCoding();
   const move = useMoveEntry(termId, section.id);
   const clearSchedule = useClearSchedule(termId, section.id);
+  const { undo: undoAutoFill } = useAutoFill(termId, section.id);
 
   // A short click stays a tap. On a touch screen, hold first, so that swiping still scrolls.
   const sensors = useSensors(
@@ -250,6 +257,12 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
               </Button>
             ))}
           </div>
+          {canEdit && (
+            <Button type="button" variant="outline" className="h-11" onClick={() => setIsAutoFillOpen(true)}>
+              <Sparkles />
+              Auto-fill
+            </Button>
+          )}
           {canEdit && status === "draft" && (
             <Button
               type="button"
@@ -388,6 +401,8 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
               </div>
             )}
 
+              <ColorCodingSwitch />
+
               {/* Wide screens and landscape */}
               <div className="max-md:portrait:hidden space-y-3">
                 <div role="tablist" aria-label="View" className="grid grid-cols-2 gap-2 sm:w-80">
@@ -452,7 +467,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
           </div>
           <DragOverlay dropAnimation={null}>
             {dragged && (
-              <div className={`w-56 rounded-md border p-2 text-left shadow-lg ${subjectColor(dragged.id)}`}>
+              <div className={`w-56 rounded-md border p-2 text-left shadow-lg ${subjectColor(dragged.id, isColored)}`}>
                 <span className="block text-xs font-medium">{dragged.subject}</span>
                 <span className="block text-[11px] opacity-80">{dragged.teacher}</span>
               </div>
@@ -473,6 +488,24 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
             onConfirm={() => clearSchedule.mutate()}
           />
         </div>
+      )}
+
+      {canEdit && plotter.last_auto_fill && (
+        <div className="space-y-2 border-t pt-4 sm:max-w-sm">
+          {undoAutoFill.isError && <FormAlert>{apiErrorMessage(undoAutoFill.error)}</FormAlert>}
+          <ConfirmDelete
+            label="Undo the last auto-fill"
+            icon={Undo2}
+            confirmLabel="Yes, undo it"
+            warning={`This removes the ${plotter.last_auto_fill.entries} classes the last auto-fill placed here (and in the other sections it filled). Classes you placed or moved yourself stay.`}
+            isPending={undoAutoFill.isPending}
+            onConfirm={() => plotter.last_auto_fill && undoAutoFill.mutate(plotter.last_auto_fill.id)}
+          />
+        </div>
+      )}
+
+      {isAutoFillOpen && (
+        <AutoFillSheet plotter={plotter} termId={termId} onClose={() => setIsAutoFillOpen(false)} />
       )}
 
       {isSubmitOpen && (

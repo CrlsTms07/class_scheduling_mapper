@@ -1,5 +1,6 @@
 import { Lock, MoveRight, Pencil, Plus, UserRound } from "lucide-react";
-import { DAY_NAMES, entryAt, formatTime, hasSubject, isLocked, slotTimeLabel, subjectColor, WEEK_DAYS } from "@/lib/schedule";
+import { useColorCoding } from "@/api/auth";
+import { ACTIVITY_COLOR, DAY_NAMES, entryAt, formatTime, hasSubject, isActivity, isLocked, slotTimeLabel, subjectColor, WEEK_DAYS } from "@/lib/schedule";
 import type { DayPattern, ScheduleEntry, TimeSlot } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import SlotDropZone from "./SlotDropZone";
@@ -21,6 +22,7 @@ type SlotCardProp = {
 };
 
 const SlotCard = ({ slot, day, entry, onSelect }: SlotCardProp) => {
+  const isColored = useColorCoding();
   const { dragRef, dragListeners, dragClasses } = useEntryDrag(entry, slot, day, onSelect !== undefined);
 
   const content = (
@@ -62,7 +64,9 @@ const SlotCard = ({ slot, day, entry, onSelect }: SlotCardProp) => {
   );
 
   const classes = `block w-full h-full min-h-11 rounded-lg border p-3 text-left ${
-    entry ? subjectColor(entry.section_subject_id) : "border-dashed border-neutral-300 bg-background"
+    entry
+      ? isActivity(entry) ? ACTIVITY_COLOR : subjectColor(entry.section_subject_id, isColored)
+      : "border-dashed border-neutral-300 bg-background"
   }`;
 
   if (!onSelect) {

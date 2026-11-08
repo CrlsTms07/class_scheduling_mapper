@@ -19,6 +19,7 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import PatternSheet, { type PatternAction } from "./PatternSheet";
+import PresetSheet from "./PresetSheet";
 import SlotSheet, { type SlotAction } from "./SlotSheet";
 
 const HOW_IT_WORKS = [
@@ -36,6 +37,7 @@ type PatternCardProp = {
 
 const PatternCard = ({ pattern, onPattern, onSlot }: PatternCardProp) => {
   const { classMinutes, breakMinutes } = minutesTotals(pattern);
+  const [isPresetOpen, setIsPresetOpen] = React.useState(false);
 
   return (
     <Card className="shadow shadow-[#790D16]/40">
@@ -70,9 +72,16 @@ const PatternCard = ({ pattern, onPattern, onSlot }: PatternCardProp) => {
         </div>
 
         {pattern.slots.length === 0 ? (
-          <p className="border-t pt-3 text-sm text-neutral-700">
-            No periods yet. Add the first one below.
-          </p>
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-sm text-neutral-700">
+              No periods yet. Use a preset of 8, 10, 14 or 16 rows, or add them one by one below.
+            </p>
+            <Button type="button" className="h-11 w-full sm:w-auto" onClick={() => setIsPresetOpen(true)}>
+              <Clock />
+              Use a preset
+            </Button>
+            {isPresetOpen && <PresetSheet pattern={pattern} onClose={() => setIsPresetOpen(false)} />}
+          </div>
         ) : (
           <ul className="divide-y border-t">
             {pattern.slots.map((slot) => (

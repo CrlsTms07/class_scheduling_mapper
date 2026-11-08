@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Activity;
 use App\Models\DayPattern;
 use App\Models\Room;
 use App\Models\ScheduleEntry;
@@ -57,7 +58,38 @@ class PlotterService
                 ->map(fn (Room $room) => ['id' => $room->id, 'label' => $room->label()])
                 ->values(),
             'flags' => $this->flags->forSection($section, $termId),
+            'activities' => Activity::where('school_year_id', $section->school_year_id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->toArray(),
+            'last_auto_fill' => $this->lastAutoFill($section, $termId),
+            // How many sections "Apply to" reaches, for its labels.
+            'apply_counts' => [
+                'grade' => Section::visibleTo($user)->where('school_year_id', $section->school_year_id)
+                    ->where('grade_level_id', $section->grade_level_id)->count(),
+                'all' => Section::visibleTo($user)->where('school_year_id', $section->school_year_id)->count(),
+            ],
         ];
+    }
+
+    /**
+     * The latest auto-fill run that still has entries in this section, so it can be undone.
+     *
+     * @return array{id: int, created_at: string, entries: int}|null
+     */
+    private function lastAutoFill(Section $section, int $termId): ?array
+    {
+        $run = DB::table('auto_fill_runs')
+            ->join('schedule_entries', 'schedule_entries.auto_fill_run_id', '=', 'auto_fill_runs.id')
+            ->where('auto_fill_runs.term_id', $termId)
+            ->whereNull('auto_fill_runs.undone_at')
+            ->where('schedule_entries.section_id', $section->id)
+            ->groupBy('auto_fill_runs.id', 'auto_fill_runs.created_at')
+            ->orderByDesc('auto_fill_runs.id')
+            ->selectRaw('auto_fill_runs.id, auto_fill_runs.created_at, COUNT(*) AS entries')
+            ->first();
+
+        return $run ? ['id' => $run->id, 'created_at' => $run->created_at, 'entries' => (int) $run->entries] : null;
     }
 
     /**
@@ -121,6 +153,8 @@ class PlotterService
             ->sortBy(fn (SectionSubject $loading) => [! $loading->subject->is_priority, $loading->subject->name])
             ->map(fn (SectionSubject $loading) => [
                 'id' => $loading->id,
+                'subject_id' => $loading->subject_id,
+                'teacher_id' => $loading->teacher_id,
                 'subject' => $loading->subject->name,
                 'is_priority' => $loading->subject->is_priority,
                 'required_minutes' => $loading->subject->minutes_per_week,
@@ -136,7 +170,7 @@ class PlotterService
      */
     private function entries(Section $section, int $termId, ?string $status)
     {
-        return ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
+        return ScheduleEntry::with(['sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->where('term_id', $termId)
             ->where('section_id', $section->id)
             ->when($status !== 'rejected', fn ($query) => $query->where('status', '<>', 'rejected'))
@@ -148,7 +182,9 @@ class PlotterService
                 'end_time' => ScheduleFormat::shortTime($entry->end_time),
                 'status' => $entry->status,
                 'section_subject_id' => $entry->section_subject_id,
-                'subject' => $entry->sectionSubject?->subject->name,
+                'activity_id' => $entry->activity_id,
+                'auto_filled' => $entry->auto_fill_run_id !== null,
+                'subject' => $entry->subjectName(),
                 'teacher' => $entry->teacher?->printedName(),
                 'room_id' => $entry->room_id,
                 'room' => $entry->room?->label(),

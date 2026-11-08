@@ -52,6 +52,15 @@ export const useRemoveLoading = (termId: number, sectionId: number, subjectId: n
     api(`/terms/${termId}/sections/${sectionId}/loading/${subjectId}`, { method: "DELETE" }),
   );
 
+/** Changes who teaches a subject of a section. Its plotted periods follow the new teacher. */
+export const useChangeTeacher = (termId: number, sectionId: number) =>
+  useLoadingChange(termId, sectionId, ({ subjectId, teacherId }: { subjectId: number; teacherId: number }) =>
+    api(`/terms/${termId}/sections/${sectionId}/loading/${subjectId}`, {
+      method: "PUT",
+      body: { teacher_id: teacherId },
+    }),
+  );
+
 export function useCopyLoading(termId: number) {
   const queryClient = useQueryClient();
 

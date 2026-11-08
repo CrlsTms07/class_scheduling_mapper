@@ -107,10 +107,20 @@ export function remainingHint(item: Loading, context: PlotContext): string {
   return fit ? `${left} mins left. This fits: ${fit}` : `${left} mins left`;
 }
 
-/** An open slot, copied from another term, has a time but no subject yet. */
+/**
+ * Whether the period is taken, by a subject or an activity. An open slot, copied from
+ * another term, has a time but nothing in it yet.
+ */
 export function hasSubject(entry: ScheduleEntry | undefined): boolean {
-  return entry !== undefined && entry.section_subject_id !== null;
+  return entry !== undefined && (entry.section_subject_id !== null || isActivity(entry));
 }
+
+/** Flag Ceremony, Catch-up Friday and the like. */
+export function isActivity(entry: ScheduleEntry | undefined): boolean {
+  return entry !== undefined && (entry.activity_id ?? null) !== null;
+}
+
+export const ACTIVITY_COLOR = "bg-slate-200 text-slate-900 border-slate-400";
 
 type DragEnd = {
   active: { data: { current?: unknown } };
@@ -189,8 +199,10 @@ const SUBJECT_COLORS = [
   "bg-cyan-100 text-cyan-950 border-cyan-300",
 ];
 
-/** Each subject of a section keeps one color across the screen. */
-export function subjectColor(sectionSubjectId: number | null): string {
+/** Each subject of a section keeps one color across the screen. Plain when color coding is off. */
+export function subjectColor(sectionSubjectId: number | null, isColored = true): string {
+  if (!isColored && sectionSubjectId !== null) return "bg-background text-neutral-900 border-neutral-400";
+
   return sectionSubjectId === null
     ? "bg-neutral-100 text-neutral-700 border-neutral-300"
     : SUBJECT_COLORS[sectionSubjectId % SUBJECT_COLORS.length];

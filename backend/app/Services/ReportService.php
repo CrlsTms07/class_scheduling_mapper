@@ -67,7 +67,7 @@ class ReportService
         $section->loadMissing(['gradeLevel', 'adviser', 'coAdviser']);
         $term->loadMissing('schoolYear');
 
-        $entries = ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
+        $entries = ScheduleEntry::with(['sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->where('term_id', $term->id)
             ->where('section_id', $section->id)
             ->where('status', '<>', 'rejected')
@@ -123,7 +123,7 @@ class ReportService
                         'is_break' => $slot->is_break,
                         'subject' => $slot->is_break
                             ? strtoupper((string) $slot->label)
-                            : $slotEntries->map(fn ($entry) => $entry->sectionSubject?->subject->name)->filter()->unique()->implode(' / '),
+                            : $slotEntries->map(fn ($entry) => $entry->subjectName())->filter()->unique()->implode(' / '),
                         'teacher' => $slotEntries->map(fn ($entry) => $entry->teacher?->printedName())->filter()->unique()->implode(' / '),
                     ];
                 })->values();
@@ -148,7 +148,7 @@ class ReportService
      */
     public function approvedWeek(SchoolTerm $term, Section $section): array
     {
-        $entries = ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
+        $entries = ScheduleEntry::with(['sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->where('term_id', $term->id)
             ->where('section_id', $section->id)
             ->where('status', 'approved')
@@ -215,7 +215,7 @@ class ReportService
                     && $item->end_time === $slot->end_time);
 
                 $cells[$day] = $entry ? [
-                    'subject' => $entry->sectionSubject?->subject->name,
+                    'subject' => $entry->subjectName(),
                     'teacher' => $entry->teacher?->printedName(),
                     'room' => $entry->room?->label(),
                 ] : null;

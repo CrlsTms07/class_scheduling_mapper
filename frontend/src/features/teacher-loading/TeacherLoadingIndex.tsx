@@ -25,6 +25,7 @@ import {
   teachersForRow,
 } from "@/lib/teacherLoading";
 import type { LoadingRow, SectionLoading, Term } from "@/types/api";
+import LoadDistribution from "./LoadDistribution";
 import FormAlert from "@/components/global-component/FormAlert";
 import FormTextField from "@/components/global-component/FormTextField";
 import { Badge } from "@/components/ui/badge";
@@ -315,6 +316,7 @@ const TeacherLoadingIndex = () => {
   const [params, setParams] = useSearchParams();
 
   const requestedId = Number(params.get("section"));
+  const isByTeacher = params.get("view") === "teachers";
   const section = sections?.find(({ id }) => id === requestedId) ?? sections?.[0];
 
   const { data: loading, isPending, isError } = useSectionLoading(term?.id, section?.id);
@@ -357,91 +359,120 @@ const TeacherLoadingIndex = () => {
         </ul>
       </details>
 
-      {isSectionsPending && <p className="text-sm text-neutral-600">Loading...</p>}
+      <div role="tablist" aria-label="Show" className="grid grid-cols-2 gap-2 sm:max-w-md">
+        {[
+          { key: false, label: "By section" },
+          { key: true, label: "By teacher (Load Distribution)" },
+        ].map(({ key, label }) => (
+          <button
+            key={label}
+            type="button"
+            role="tab"
+            aria-selected={key === isByTeacher}
+            onClick={() => setParams(key ? { view: "teachers" } : section ? { section: String(section.id) } : {})}
+            className={`min-h-11 rounded-md border px-1 text-xs sm:text-sm font-medium ${
+              key === isByTeacher ? "bg-[#790D16] text-white border-[#790D16]" : "bg-background text-neutral-700"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {sections?.length === 0 && (
-        <p className="text-sm text-neutral-700">
-          There are no sections in your grade levels for this school year yet. The Admin encodes
-          them in Sections.
-        </p>
-      )}
+      {isByTeacher ? (
+        <LoadDistribution termId={term.id} />
+      ) : (
+        <BySection>
+          {isSectionsPending && <p className="text-sm text-neutral-600">Loading...</p>}
 
-      {section && (
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end sm:justify-between">
-          <div className="space-y-1 sm:w-80">
-            <label htmlFor="loading-section" className="text-sm text-neutral-800">
-              Section
-            </label>
-            <NativeSelect
-              id="loading-section"
-              className="w-full [&_select]:h-11"
-              value={section.id}
-              onChange={(event) => setParams({ section: event.target.value })}
-            >
-              {sections?.map(({ id, grade, name }) => (
-                <NativeSelectOption key={id} value={id}>
-                  Grade {grade} – {name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-            {otherTerms.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11"
-                onClick={() => setIsCopying(true)}
-              >
-                <Copy />
-                Copy from another {termWord(term)}
-              </Button>
-            )}
-            <Link
-              to={`/schedule/sections/${section.id}`}
-              className={buttonVariants({ variant: "outline", className: "h-11" })}
-            >
-              Open the plotter
-              <ArrowUpRight />
-            </Link>
-          </div>
-        </div>
-      )}
+          {sections?.length === 0 && (
+            <p className="text-sm text-neutral-700">
+              There are no sections in your grade levels for this school year yet. The Admin encodes
+              them in Sections.
+            </p>
+          )}
 
-      {isCopying && section && (
-        <CopySheet
-          termId={term.id}
-          termName={term.name}
-          word={termWord(term)}
-          otherTerms={otherTerms}
-          section={section}
-          onClose={() => setIsCopying(false)}
-        />
-      )}
+          {section && (
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-end sm:justify-between">
+              <div className="space-y-1 sm:w-80">
+                <label htmlFor="loading-section" className="text-sm text-neutral-800">
+                  Section
+                </label>
+                <NativeSelect
+                  id="loading-section"
+                  className="w-full [&_select]:h-11"
+                  value={section.id}
+                  onChange={(event) => setParams({ section: event.target.value })}
+                >
+                  {sections?.map(({ id, grade, name }) => (
+                    <NativeSelectOption key={id} value={id}>
+                      Grade {grade} – {name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                {otherTerms.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11"
+                    onClick={() => setIsCopying(true)}
+                  >
+                    <Copy />
+                    Copy from another {termWord(term)}
+                  </Button>
+                )}
+                <Link
+                  to={`/schedule/sections/${section.id}`}
+                  className={buttonVariants({ variant: "outline", className: "h-11" })}
+                >
+                  Open the plotter
+                  <ArrowUpRight />
+                </Link>
+              </div>
+            </div>
+          )}
 
-      {section && isPending && <p className="text-sm text-neutral-600">Loading...</p>}
-      {isError && <p className="text-sm text-destructive">Could not load the subjects.</p>}
+          {isCopying && section && (
+            <CopySheet
+              termId={term.id}
+              termName={term.name}
+              word={termWord(term)}
+              otherTerms={otherTerms}
+              section={section}
+              onClose={() => setIsCopying(false)}
+            />
+          )}
 
-      {loading && loading.rows.length === 0 && (
-        <p className="text-sm text-neutral-700">
-          No subjects are offered to this section yet. Add them on the Subjects page.
-        </p>
-      )}
+          {section && isPending && <p className="text-sm text-neutral-600">Loading...</p>}
+          {isError && <p className="text-sm text-destructive">Could not load the subjects.</p>}
 
-      {loading && loading.rows.length > 0 && (
-        <>
-          <p className="text-sm text-neutral-700" aria-live="polite">
-            {done} of {loading.rows.length} subjects have a teacher.
-          </p>
-          <ol className="space-y-3">
-            {loading.rows.map((row) => (
-              <LoadingRowCard key={row.subject_id} termId={term.id} loading={loading} row={row} />
-            ))}
-          </ol>
-        </>
+          {loading && loading.rows.length === 0 && (
+            <p className="text-sm text-neutral-700">
+              No subjects are offered to this section yet. Add them on the Subjects page.
+            </p>
+          )}
+
+          {loading && loading.rows.length > 0 && (
+            <>
+              <p className="text-sm text-neutral-700" aria-live="polite">
+                {done} of {loading.rows.length} subjects have a teacher.
+              </p>
+              <ol className="space-y-3">
+                {loading.rows.map((row) => (
+                  <LoadingRowCard key={row.subject_id} termId={term.id} loading={loading} row={row} />
+                ))}
+              </ol>
+            </>
+          )}
+        </BySection>
       )}
     </div>
   );
 };
+
+/** The per-section view, spaced like the rest of the page. */
+const BySection = ({ children }: { children: React.ReactNode }) => <div className="space-y-5">{children}</div>;
 
 export default TeacherLoadingIndex;

@@ -34,7 +34,7 @@ class ScheduleService
     public function assign(int $termId, Section $section, TimeSlot $slot, SectionSubject $loading, int $roomId, array $days, User $user): void
     {
         $this->rejectUnlessEditable($termId, $section);
-        $this->stopOnConflict($termId, $section, $slot, $loading->teacher_id, $roomId, $days);
+        $this->stopOnConflict($termId, $section, $slot, $loading->teacher_id, $roomId, $days, $loading->subject_id);
 
         try {
             DB::transaction(function () use ($termId, $section, $slot, $loading, $roomId, $days, $user) {
@@ -60,7 +60,7 @@ class ScheduleService
             }
 
             // Another user saved the same teacher or room after our check above.
-            $this->stopOnConflict($termId, $section, $slot, $loading->teacher_id, $roomId, $days);
+            $this->stopOnConflict($termId, $section, $slot, $loading->teacher_id, $roomId, $days, $loading->subject_id);
 
             throw $exception;
         }
@@ -102,7 +102,7 @@ class ScheduleService
         $stopOnAnyConflict = function () use ($termId, $section, $to, $fromDays, $toDays, $entries) {
             foreach ($fromDays as $index => $fromDay) {
                 $entry = $entries[$fromDay];
-                $this->stopOnConflict($termId, $section, $to, (int) $entry->teacher_id, (int) $entry->room_id, [$toDays[$index]]);
+                $this->stopOnConflict($termId, $section, $to, (int) $entry->teacher_id, (int) $entry->room_id, [$toDays[$index]], $entry->sectionSubject?->subject_id);
             }
         };
 
@@ -119,6 +119,8 @@ class ScheduleService
                         'day_of_week' => $toDays[$index],
                         'start_time' => $to->start_time,
                         'end_time' => $to->end_time,
+                        // Moved by hand, so it is no longer part of an auto-fill run.
+                        'auto_fill_run_id' => null,
                     ]);
                 }
 
@@ -252,7 +254,7 @@ class ScheduleService
         return DB::transaction(function () use ($termId, $section, $user) {
             $removed = [];
 
-            $entries = ScheduleEntry::with('sectionSubject.subject')
+            $entries = ScheduleEntry::with(['sectionSubject.subject', 'activity'])
                 ->where('term_id', $termId)
                 ->where('section_id', $section->id)
                 ->where('status', 'rejected')
@@ -272,7 +274,7 @@ class ScheduleService
                     continue;
                 }
 
-                $subject = $entry->sectionSubject?->subject->name ?? 'Open slot';
+                $subject = $entry->subjectName() ?? 'Open slot';
                 $removed[] = "{$subject} was removed: {$conflicts[0]['message']}";
                 $entry->delete();
             }
@@ -290,14 +292,14 @@ class ScheduleService
     /**
      * @param  array<int, int>  $days
      */
-    private function stopOnConflict(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days): void
+    private function stopOnConflict(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days, ?int $subjectId = null): void
     {
         $conflicts = $this->conflicts->findConflicts($termId, $section, $teacherId, $roomId, $days, $slot->start_time, $slot->end_time);
 
         if ($conflicts !== []) {
             throw new ScheduleConflictException(
                 $conflicts,
-                $this->conflicts->suggest($termId, $section, $slot, $teacherId, $roomId, $days),
+                $this->conflicts->suggest($termId, $section, $slot, $teacherId, $roomId, $days, $subjectId),
             );
         }
     }

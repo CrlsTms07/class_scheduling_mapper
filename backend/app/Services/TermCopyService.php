@@ -120,11 +120,11 @@ class TermCopyService
     /**
      * @param  Collection<int, Section>  $sections
      * @param  Collection<int, ScheduleEntry>  $entries
-     * @return array{entries: int, filled: int, open_slots: int, left_open: int, not_fitting: int}
+     * @return array{entries: int, filled: int, open_slots: int, left_open: int, not_fitting: int, activities: int}
      */
     private function copyEntries(SchoolTerm $target, Collection $sections, Collection $entries, bool $fillSubjects, User $user): array
     {
-        $counts = ['entries' => 0, 'filled' => 0, 'open_slots' => 0, 'left_open' => 0, 'not_fitting' => 0];
+        $counts = ['entries' => 0, 'filled' => 0, 'open_slots' => 0, 'left_open' => 0, 'not_fitting' => 0, 'activities' => 0];
 
         $loadings = SectionSubject::where('term_id', $target->id)
             ->whereIn('section_id', $sections->keys())
@@ -140,6 +140,24 @@ class TermCopyService
             // Bell schedules are per year, so they may have been edited since the source was made.
             if (! isset($periods[$section->id]["{$entry->day_of_week}|{$entry->start_time}|{$entry->end_time}"])) {
                 $counts['not_fitting']++;
+
+                continue;
+            }
+
+            // An activity comes along as it is: it has no teacher or room to check.
+            if ($entry->activity_id !== null) {
+                ScheduleEntry::create([
+                    'term_id' => $target->id,
+                    'section_id' => $section->id,
+                    'activity_id' => $entry->activity_id,
+                    'day_of_week' => $entry->day_of_week,
+                    'start_time' => $entry->start_time,
+                    'end_time' => $entry->end_time,
+                    'created_by' => $user->id,
+                    'copied_from_id' => $entry->id,
+                ]);
+                $counts['entries']++;
+                $counts['activities']++;
 
                 continue;
             }

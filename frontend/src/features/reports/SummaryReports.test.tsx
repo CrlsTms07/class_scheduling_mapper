@@ -15,7 +15,7 @@ function open(page: ReactElement, data: unknown) {
 
 const LOAD: TeacherLoadData = {
   term_label: "First Term, School Year 2026-2027",
-  summary: { teachers: 1, overloaded: 1 },
+  summary: { teachers: 1, overloaded: 1, over_hours: 0 },
   teachers: [
     {
       id: 1,
@@ -27,6 +27,10 @@ const LOAD: TeacherLoadData = {
       minutes: 900,
       duration: "15 hours",
       classes: ["Grade 7 – Honesty: Math 7"],
+      hours_per_week: 15,
+      max_hours: 30,
+      is_over_hours: false,
+      loads: [{ section_id: 4, section: "Grade 7 – Honesty", subject: "Math 7", hours_per_week: 15 }],
     },
   ],
 };
