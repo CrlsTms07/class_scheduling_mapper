@@ -185,8 +185,8 @@ class TeacherService
             return 'It is linked to a user account. The Admin can unlink it in Users.';
         }
 
-        if (DB::table('sections')->where('adviser_id', $teacher->id)->exists()) {
-            return 'This person is the adviser of a section. Mark them as inactive instead.';
+        if (DB::table('sections')->where('adviser_id', $teacher->id)->orWhere('co_adviser_id', $teacher->id)->exists()) {
+            return 'This person is the adviser or co-adviser of a section. Mark them as inactive instead.';
         }
 
         $hasWork = DB::table('section_subjects')->where('teacher_id', $teacher->id)->exists()
@@ -196,11 +196,37 @@ class TeacherService
     }
 
     /**
+     * A misspelled department, designation or task can go, but not one that is in use.
+     */
+    public function deleteOption(string $type, int $id, User $user): void
+    {
+        $table = self::OPTION_TABLES[$type];
+        $row = DB::table($table)->where('id', $id)->first();
+
+        abort_unless($row, 404);
+
+        $uses = match ($type) {
+            'departments' => DB::table('teachers')->where('department_id', $id)->count(),
+            'designations' => DB::table('teachers')->where('designation_id', $id)->count(),
+            'teaching-tasks' => DB::table('teacher_tasks')->where('task_id', $id)->count(),
+        };
+
+        if ($uses > 0) {
+            throw ValidationException::withMessages([
+                'option' => "{$row->name} is still in use by personnel records ({$uses}), so it stays.",
+            ]);
+        }
+
+        DB::table($table)->where('id', $id)->delete();
+        $this->audit->log($user, 'delete', $table, $id, ['name' => $row->name]);
+    }
+
+    /**
      * Only teaching personnel can have subjects or be advisers.
      */
     private function stopIfTeachingWork(Teacher $teacher): void
     {
-        $hasWork = DB::table('sections')->where('adviser_id', $teacher->id)->exists()
+        $hasWork = DB::table('sections')->where('adviser_id', $teacher->id)->orWhere('co_adviser_id', $teacher->id)->exists()
             || DB::table('section_subjects')->where('teacher_id', $teacher->id)->exists();
 
         if ($hasWork) {

@@ -36,7 +36,7 @@ class AssignSlotRequest extends FormRequest
             fn (Validator $validator) => $this->validateSlotAndDays($validator),
             function (Validator $validator) {
                 if (! $validator->errors()->has('section_subject_id') && ! $this->loading()) {
-                    $validator->errors()->add('section_subject_id', 'This subject is not loaded on this section for this term.');
+                    $validator->errors()->add('section_subject_id', 'This subject is not loaded on this section.');
                 }
             },
         ];

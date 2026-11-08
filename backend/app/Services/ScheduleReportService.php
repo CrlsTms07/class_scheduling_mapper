@@ -73,7 +73,9 @@ class ScheduleReportService
             ->map(fn (Room $room) => ['id' => $room->id, 'label' => $room->label()])
             ->values();
 
-        return ['sections' => $sections, 'teachers' => $teachers, 'rooms' => $rooms];
+        $grades = DB::table('grade_levels')->whereIn('id', $scope)->orderBy('grade')->pluck('grade');
+
+        return ['sections' => $sections, 'teachers' => $teachers, 'rooms' => $rooms, 'grades' => $grades];
     }
 
     /**

@@ -55,6 +55,16 @@ class FlagService
 
     private function minutes(Section $section, int $termId): array
     {
+        // Before anything is placed, every subject is short. That is a to-do list, not a problem.
+        $isStarted = ScheduleEntry::where('term_id', $termId)
+            ->where('section_id', $section->id)
+            ->where('status', '<>', 'rejected')
+            ->exists();
+
+        if (! $isStarted) {
+            return [];
+        }
+
         $rows = DB::table('subject_minutes_check')
             ->where('term_id', $termId)
             ->where('section_id', $section->id)

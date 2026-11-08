@@ -52,7 +52,9 @@ const ROOM: RoomSchedule = {
   ],
 };
 
-function openPage(path = "/schedule", map = MAP) {
+const SECTIONS = [section(5, "Honesty"), section(6, "Faith"), { ...section(7, "Rizal"), grade: 11, level: "SHS" as const }];
+
+function openPage(path = "/schedule", map = MAP, sections: SectionSummary[] = SECTIONS) {
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ data: map }))));
 
   const client = new QueryClient({
@@ -60,6 +62,7 @@ function openPage(path = "/schedule", map = MAP) {
   });
   client.setQueryData(["terms"], [TERM]);
   client.setQueryData(["terms", 2, "schedule-map"], map);
+  client.setQueryData(["terms", 2, "sections"], sections);
   client.setQueryData(["terms", 2, "rooms", 2, "schedule"], ROOM);
 
   render(
@@ -77,16 +80,54 @@ function openPage(path = "/schedule", map = MAP) {
 }
 
 describe("schedule page", () => {
-  it("opens on the first building that has sections", () => {
+  it("opens on all sections, so one without a room is never hidden", () => {
     openPage();
 
-    expect(screen.getByRole("tab", { name: "Main" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Room: 101")).toBeInTheDocument();
-    expect(screen.queryByText("Room: 201")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "All sections" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("link", { name: /Grade 7 – Faith/ })).toHaveAttribute("href", "/schedule/sections/6");
+    expect(screen.getByRole("link", { name: /Grade 11 – Rizal/ })).toBeInTheDocument();
+    expect(screen.queryByText("Room: 101")).not.toBeInTheDocument();
   });
 
-  it("links a section to its plotter and a room to its schedule", () => {
+  it("filters all sections by grade", async () => {
     openPage();
+
+    await userEvent.click(screen.getByRole("button", { name: "Grade 11" }));
+
+    expect(screen.getByRole("link", { name: /Grade 11 – Rizal/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Grade 7 – Faith/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "All grades" }));
+    expect(screen.getByRole("link", { name: /Grade 7 – Faith/ })).toBeInTheDocument();
+  });
+
+  it("says the word of this school year on the copy button", () => {
+    const semester = { ...TERM, school_year: { ...TERM.school_year, term_label: "Semester" } };
+    const second = { ...semester, id: 3, name: "Second Semester", is_active: false };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ data: MAP }))));
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    client.setQueryData(["terms"], [semester, second]);
+    client.setQueryData(["terms", 2, "schedule-map"], MAP);
+    client.setQueryData(["terms", 2, "sections"], SECTIONS);
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <SelectedTermProvider>
+            <Schedule />
+          </SelectedTermProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Copy from another semester" })).toBeInTheDocument();
+  });
+
+  it("links a section to its plotter and a room to its schedule", async () => {
+    openPage();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Main" }));
 
     expect(screen.getByRole("link", { name: /Grade 7 – Honesty/ })).toHaveAttribute(
       "href",
@@ -132,7 +173,7 @@ describe("schedule page", () => {
   });
 
   it("explains an empty school", () => {
-    openPage("/schedule", { buildings: [], unassigned: [] });
+    openPage("/schedule", { buildings: [], unassigned: [] }, []);
 
     expect(screen.getByText(/no rooms or sections/)).toBeInTheDocument();
   });

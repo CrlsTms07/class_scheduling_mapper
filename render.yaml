@@ -8,6 +8,9 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /up
+    # Paused for now (team decision, Nov 8, 2026): a push does not deploy.
+    # Deploy by hand from the Render dashboard ("Manual Deploy") when ready.
+    autoDeploy: false
     envVars:
       # Secrets: Render asks for these when the Blueprint is first created.
       - key: APP_KEY

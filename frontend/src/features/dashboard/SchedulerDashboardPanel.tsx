@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useSchedulerDashboard } from "@/api/dashboard";
 import { useSelectedTerm } from "@/context/selectedTerm";
+import { termWord } from "@/lib/schedule";
 import type { NextStepKey } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
 import { OverloadedTeachers, ProgressSection, StatTile } from "./DashboardParts";
@@ -69,7 +70,7 @@ const SchedulerDashboardPanel = () => {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatTile
-          label="Active term"
+          label={`Active ${termWord(activeTerm ?? term)}`}
           value={activeTerm?.name ?? "None"}
           note={activeTerm ? `School Year ${activeTerm.school_year.name}` : "Not set yet"}
           to="/schedule"

@@ -214,6 +214,97 @@ describe("open slots copied from another term", () => {
   });
 });
 
+describe("guidance", () => {
+  it("says what is next and how far the section has come", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    expect(await screen.findByText("How this works")).toBeInTheDocument();
+    expect(screen.getByText("0 of 1 subject complete")).toBeInTheDocument();
+    expect(screen.getByText(/Next: Mathematics. 400 mins left/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  it("says when every subject is placed", async () => {
+    stubApi(
+      plotterData({
+        loading: [{ ...plotterData().loading[0], scheduled_minutes: 400 }],
+      }),
+    );
+    openPlotter();
+
+    expect(await screen.findByText(/All subjects are placed/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  });
+
+  it("says which subject is being placed, until the user is done", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: /^Mathematics/ }));
+    expect(screen.getByText("Now placing: Mathematics.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByText(/Now placing/)).not.toBeInTheDocument();
+  });
+
+  it("is not shown to someone who only views", async () => {
+    stubApi(plotterData({ can_plot: false, can_edit: false }));
+    openPlotter();
+
+    await screen.findByText("Grade 7 – Sample A");
+    expect(screen.queryByText("How this works")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("writes Add subject on empty periods of the phone list", async () => {
+    stubApi(plotterData());
+    openPlotter();
+
+    expect((await screen.findAllByText("Add subject")).length).toBeGreaterThan(0);
+  });
+});
+
+describe("clearing the schedule", () => {
+  const placed = {
+    id: 1,
+    day: 1,
+    start_time: "08:00",
+    end_time: "09:20",
+    section_subject_id: 50,
+    subject: "Mathematics",
+    teacher: "Teacher One",
+    room_id: 10,
+    room: "Building – 101",
+    status: "draft",
+  };
+
+  it("asks first, then clears", async () => {
+    const plotter = plotterData({ status: "draft", entries: [placed] as Plotter["entries"] });
+    const fetchMock = stubApi(plotter, () => reply(200, { data: plotterData() }));
+    openPlotter();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Clear this schedule" }));
+    expect(screen.getByText(/removes all 1 classes of Grade 7 – Sample A/)).toBeInTheDocument();
+    expect(changeCalls(fetchMock)).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Yes, clear it" }));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(1));
+    const [url, init] = changeCalls(fetchMock)[0];
+    expect(String(url)).toContain("/sections/1/schedule");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("is not offered when there is nothing, or once submitted", async () => {
+    stubApi(plotterData({ status: "pending", can_edit: false, entries: [{ ...placed, status: "pending" }] as Plotter["entries"] }));
+    openPlotter();
+
+    await screen.findByText(/locked while it waits/);
+    expect(screen.queryByRole("button", { name: "Clear this schedule" })).not.toBeInTheDocument();
+  });
+});
+
 describe("conflicts", () => {
   it("shows who conflicts and lets the user pick a suggested room", async () => {
     const fetchMock = stubApi(plotterData(), () =>

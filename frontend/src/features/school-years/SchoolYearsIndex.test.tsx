@@ -76,7 +76,7 @@ describe("school years page", () => {
     openPage([]);
 
     expect(screen.getByText(/no school year yet/)).toBeInTheDocument();
-    expect(screen.getByText("No term is active yet.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing is active yet.")).toBeInTheDocument();
   });
 
   it("asks before switching the active term", async () => {
@@ -121,7 +121,7 @@ describe("start new school year wizard", () => {
 
     await click("Next");
     expect(await screen.findByText(/Step 4 of 4/)).toBeInTheDocument();
-    expect(screen.getByText(/First Term stays the active term/)).toBeInTheDocument();
+    expect(screen.getByText(/First Term stays active/)).toBeInTheDocument();
     expect(screen.getByText("2 parts")).toBeInTheDocument();
     expect(screen.getByText("Second Semester:")).toBeInTheDocument();
     expect(screen.queryByText("Third Term:")).not.toBeInTheDocument();

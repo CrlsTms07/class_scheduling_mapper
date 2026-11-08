@@ -52,6 +52,9 @@ export const useUpdateTeacher = (termId: number, teacherId: number) =>
 export const useDeleteTeacher = (teacherId: number) =>
   useTeacherChange(() => api(`/teachers/${teacherId}`, { method: "DELETE" }));
 
+export const useDeletePersonnelOption = (type: PersonnelOptionType) =>
+  useTeacherChange((id: number) => api(`/personnel-options/${type}/${id}`, { method: "DELETE" }));
+
 export const useAddPersonnelOption = (type: PersonnelOptionType) =>
   useTeacherChange((name: string) =>
     api<DataResponse<NamedOption>>(`/personnel-options/${type}`, {

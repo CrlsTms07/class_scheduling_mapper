@@ -20,9 +20,9 @@ import CalendarSettingsSheet from "./CalendarSettingsSheet";
 import StartYearWizard from "./StartYearWizard";
 
 const HOW_IT_WORKS = [
-  "Start a new school year: set its dates and terms, and copy last year's setup.",
+  "Start a new school year: set its dates and how the year is divided, and copy last year's setup.",
   "Finish the setup: time slots, sections, then teacher loading and schedules.",
-  "Set the active term when classes begin. Teachers and guests see that term.",
+  "Set what is active when classes begin. Teachers and guests see only that one.",
 ];
 
 type ActivateTermSheetProp = {
@@ -46,7 +46,7 @@ const ActivateTermSheet = ({ term, yearName, currentName, onClose }: ActivateTer
         <div className="space-y-4 px-4 pb-4 text-sm text-neutral-800">
           {activate.isError && <FormAlert>{apiErrorMessage(activate.error)}</FormAlert>}
           <p>
-            Teachers and guests will see the schedules of this term.
+            Teachers and guests will see the schedules of this one.
             {currentName && ` ${currentName} will stop being the active term.`} Past schedules are
             kept and can still be viewed.
           </p>
@@ -88,7 +88,7 @@ const SchoolYearsIndex = () => {
           <div>
             <p className="text-branding text-xl font-medium">School Years</p>
             <p className="text-sm text-neutral-700">
-              {activeTerm ? `Active now: ${activeTerm.name}` : "No term is active yet."}
+              {activeTerm ? `Active now: ${activeTerm.name}` : "Nothing is active yet."}
             </p>
           </div>
         </div>

@@ -129,7 +129,7 @@ const Login = () => {
                   className: "w-full h-11",
                 })}
               >
-                View Schedule
+                View as Guest
               </Link>
               <p className="text-center text-sm text-neutral-700">
                 No account yet?{" "}

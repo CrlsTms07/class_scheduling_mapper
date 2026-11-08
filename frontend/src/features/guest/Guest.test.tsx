@@ -25,6 +25,7 @@ const READY: GuestSection = {
   term: TERM,
   state: "ready",
   adviser: "Ana Reyes",
+  co_adviser: "Ben Cruz",
   week: {
     days: [
       { day: 1, name: "Monday" },
@@ -42,7 +43,7 @@ const READY: GuestSection = {
         time: "7:00 - 7:45",
         minutes: 45,
         days: [1, 2, 3, 4, 5],
-        cells: { 1: { subject: "Math 7", teacher: "Ana Reyes", room: "Main – 101" }, 2: null, 3: null, 4: null, 5: null },
+        cells: { 1: { subject: "Math 7", room: "Main – 101" }, 2: null, 3: null, 4: null, 5: null },
         breaks: [],
         wide_break: null,
       },
@@ -132,7 +133,7 @@ describe("with nothing to choose", () => {
   it("says so when no term is active", async () => {
     open("/guest", () => json({ term: null, sections: [] }));
 
-    expect(await screen.findByText("There is no active school term right now.")).toBeInTheDocument();
+    expect(await screen.findByText("No schedule is open right now.")).toBeInTheDocument();
   });
 
   it("says so when a department has no sections", async () => {
@@ -148,6 +149,7 @@ describe("a section's schedule", () => {
 
     expect(await screen.findByRole("heading", { name: "Grade 7 – Honesty" })).toBeInTheDocument();
     expect(screen.getByText("Class Adviser: Ana Reyes")).toBeInTheDocument();
+    expect(screen.getByText("Co-Adviser: Ben Cruz")).toBeInTheDocument();
 
     const table = within(screen.getByRole("table"));
     expect(table.getByText("7:00 AM – 7:45 AM")).toBeInTheDocument();

@@ -39,7 +39,15 @@ const ScheduleCell = ({ entry, slot, day, label, onSelect, isDraggable = true }:
       )}
     </>
   ) : (
-    onSelect && <Plus className="size-4 mx-auto text-neutral-400" />
+    onSelect &&
+    (isDraggable ? (
+      <Plus className="size-4 mx-auto text-neutral-400" />
+    ) : (
+      <span className="flex items-center justify-center gap-1 py-1 text-xs font-medium text-branding">
+        <Plus className="size-3.5" />
+        Add subject
+      </span>
+    ))
   );
 
   const classes = `block w-full h-full min-h-11 rounded-md border p-1.5 text-left ${

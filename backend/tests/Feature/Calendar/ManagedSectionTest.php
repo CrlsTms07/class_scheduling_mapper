@@ -96,6 +96,41 @@ it('creates an SHS section with a track and no home room', function () {
         ->assertJsonPath('data.track', 'Academic');
 });
 
+it('takes a co-adviser, who may advise another section', function () {
+    DB::table('sections')->insert([
+        'school_year_id' => $this->yearId, 'grade_level_id' => sectionGradeId(8), 'name' => 'Other', 'adviser_id' => $this->teacherId,
+    ]);
+    $adviser = DB::table('teachers')->insertGetId(['first_name' => 'Ben', 'last_name' => 'Cruz']);
+
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $adviser, 'co_adviser_id' => $this->teacherId]))
+        ->assertCreated()
+        ->assertJsonPath('data.co_adviser_id', $this->teacherId);
+});
+
+it('refuses a co-adviser who is also the adviser, or is not teaching', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $this->teacherId, 'co_adviser_id' => $this->teacherId]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['co_adviser_id' => 'other than the adviser']);
+
+    $staff = DB::table('teachers')->insertGetId(['first_name' => 'Cy', 'last_name' => 'Staff', 'personnel_type' => 'non_teaching']);
+
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['co_adviser_id' => $staff]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['co_adviser_id' => 'teaching personnel']);
+});
+
+it('keeps a teacher who is a co-adviser from being deleted', function () {
+    $coAdviser = DB::table('teachers')->insertGetId(['first_name' => 'Dee', 'last_name' => 'Santos']);
+    DB::table('sections')->insert([
+        'school_year_id' => $this->yearId, 'grade_level_id' => sectionGradeId(8), 'name' => 'Other', 'co_adviser_id' => $coAdviser,
+    ]);
+
+    $this->deleteJson("/api/teachers/{$coAdviser}")
+        ->assertUnprocessable();
+
+    expect(DB::table('teachers')->where('id', $coAdviser)->exists())->toBeTrue();
+});
+
 it('lets an SHS section have a usual room', function () {
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody([
         'grade_level_id' => sectionGradeId(11), 'track_id' => $this->trackId, 'shift' => 'AM', 'home_room_id' => $this->roomId,

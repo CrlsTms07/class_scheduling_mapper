@@ -27,6 +27,7 @@ const OPTIONS: ReportOptions = {
     { id: 3, label: "Ben Cruz" },
   ],
   rooms: [{ id: 7, label: "Main – 101" }],
+  grades: [7, 11],
 };
 
 const GRID: ReportGrid = {
@@ -200,7 +201,7 @@ describe("room usage", () => {
     const main = await screen.findByRole("region", { name: "Main" });
     expect(main).toHaveTextContent("Room 101 – Lab");
     expect(main).toHaveTextContent("Grade 7 – Honesty: 3 periods");
-    expect(main).toHaveTextContent("Not used in this term.");
+    expect(main).toHaveTextContent("Not used yet.");
 
     await userEvent.click(screen.getByRole("button", { name: "Download Room Usage as XLSX" }));
     await waitFor(() => expect(requested.some((url) => url.endsWith("/reports/room-usage.xlsx"))).toBe(true));

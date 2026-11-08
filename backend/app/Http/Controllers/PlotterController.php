@@ -52,6 +52,16 @@ class PlotterController extends Controller
         return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
     }
 
+    public function clearAll(Request $request, SchoolTerm $term, Section $section, ScheduleService $schedule, PlotterService $plotter): JsonResponse
+    {
+        $this->ensureSameSchoolYear($term, $section);
+        abort_unless($request->user()->can('plot', $section), 403);
+
+        $schedule->clearAll($term->id, $section, $request->user());
+
+        return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
+    }
+
     public function submit(SubmitScheduleRequest $request, SchoolTerm $term, Section $section, ScheduleService $schedule, PlotterService $plotter): JsonResponse
     {
         $this->ensureSameSchoolYear($term, $section);

@@ -23,8 +23,8 @@ import SubjectSheet from "./SubjectSheet";
 const HOW_IT_WORKS = [
   "Subjects belong to one school year, so changing the curriculum never alters past records. The Start New School Year wizard can copy them.",
   "Set the minutes per week. The plotter flags a section whose schedule does not match, like Homeroom Guidance going over its limit.",
-  "Junior High subjects are usually for the whole year. Senior High subjects can be set per term and per track.",
-  "Once a subject has teacher loading, its grade, track and term lock and it cannot be deleted.",
+  "Junior High subjects are usually for the whole year. Senior High subjects can be set for only part of the year, and per track.",
+  "Once a subject has teacher loading, its grade, track and time of the year lock, and it cannot be deleted.",
 ];
 
 type RowProp = {

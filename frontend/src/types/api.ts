@@ -272,6 +272,8 @@ export type ManagedSection = {
   track: string | null;
   adviser_id: number | null;
   adviser: string | null;
+  co_adviser_id: number | null;
+  co_adviser: string | null;
   home_room_id: number | null;
   home_room: string | null;
   class_size: number | null;
@@ -284,6 +286,7 @@ export type SectionInput = {
   shift: Shift;
   track_id: number | null;
   adviser_id: number | null;
+  co_adviser_id: number | null;
   home_room_id: number | null;
   class_size: number | null;
 };
@@ -558,6 +561,7 @@ export type ReportOptions = {
   sections: { id: number; label: string; level: SchoolLevel }[];
   teachers: { id: number; label: string }[];
   rooms: { id: number; label: string }[];
+  grades: number[];
 };
 
 /** A Teacher Program or Room Schedule, for the preview on screen. */
@@ -644,7 +648,7 @@ export type GuestWeek = {
     minutes: number;
     /** The days whose bell schedule has this period. */
     days: number[];
-    cells: Record<number, { subject: string | null; teacher: string | null; room: string | null } | null>;
+    cells: Record<number, { subject: string | null; room: string | null } | null>;
     /** PHP sends an empty list when a row has no breaks. */
     breaks: Record<number, string> | [];
     wide_break: string | null;
@@ -653,7 +657,7 @@ export type GuestWeek = {
 };
 
 export type GuestSection = { id: number; label: string; term: GuestTerm } & (
-  | { state: "ready"; adviser: string | null; week: GuestWeek }
+  | { state: "ready"; adviser: string | null; co_adviser: string | null; week: GuestWeek }
   | { state: "updating" | "not_ready" }
 );
 
@@ -703,4 +707,47 @@ export type ValidationReportData = {
       acknowledged: boolean;
     }[];
   }[];
+};
+
+export type TeacherLoadData = {
+  term_label: string;
+  summary: { teachers: number; overloaded: number };
+  teachers: {
+    id: number;
+    name: string;
+    department: string | null;
+    assigned: number;
+    limit: number;
+    is_overloaded: boolean;
+    minutes: number;
+    duration: string;
+    classes: string[];
+  }[];
+};
+
+export type GradeTimetableData = {
+  grade: number;
+  title: string;
+  term_label: string;
+  isDraft: boolean;
+  tables: {
+    name: string;
+    sections: { id: number; label: string }[];
+    rows: {
+      key: number;
+      time: string;
+      minutes: number;
+      break: string | null;
+      cells: Record<number, { subject: string; teacher: string | null; room: string | null; days: string | null }[]>;
+    }[];
+  }[];
+};
+
+export type AppNotification = {
+  key: string;
+  title: string;
+  body: string;
+  /** Where the user goes to deal with it. */
+  link: string;
+  at: string;
 };

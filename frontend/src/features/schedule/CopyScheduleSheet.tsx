@@ -2,6 +2,7 @@ import React from "react";
 import { useCopySchedule, useSections } from "@/api/schedule";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { apiErrorMessage } from "@/lib/forms";
+import { termWord } from "@/lib/schedule";
 import { copyScopes, copySummaryLines, scopeToInput } from "@/lib/scheduleCopy";
 import type { CopyScheduleResult, Term } from "@/types/api";
 import FormAlert from "@/components/global-component/FormAlert";
@@ -63,7 +64,7 @@ const CopyScheduleSheet = ({ term, otherTerms, onClose }: CopyScheduleSheetProp)
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side={isPhonePortrait ? "bottom" : "right"} className="max-h-[90dvh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-branding">Copy from another term</SheetTitle>
+          <SheetTitle className="text-branding">Copy from another {termWord(term)}</SheetTitle>
           <SheetDescription>
             Starts {term.name} with the same days, times and rooms. Sections that already have a schedule in{" "}
             {term.name} are left as they are.

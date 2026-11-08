@@ -12,7 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Public, with no login: approved schedules of the active term only.
- * A section shows only when all of it is approved. There is no student data here at all.
+ * A section shows only when all of it is approved. There is no student data here at all,
+ * and the only teachers named are the section's adviser and co-adviser (team decision, Nov 7, 2026).
  */
 class GuestController extends Controller
 {
@@ -69,6 +70,7 @@ class GuestController extends Controller
             ...$base,
             'state' => 'ready',
             'adviser' => $section->adviser?->printedName(),
+            'co_adviser' => $section->coAdviser?->printedName(),
             'week' => $reports->approvedWeek($term, $section),
         ]]);
     }
@@ -81,7 +83,7 @@ class GuestController extends Controller
 
         $fileName = Str::slug("class-program-{$section->label()}-{$term->name}").'.pdf';
 
-        return response($reports->classProgramPdf($term, $section), 200, [
+        return response($reports->classProgramPdf($term, $section, isPublic: true), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
         ]);
@@ -101,7 +103,7 @@ class GuestController extends Controller
 
         abort_unless($term && $term->school_year_id === $section->school_year_id, 404);
 
-        $section->loadMissing(['gradeLevel', 'adviser']);
+        $section->loadMissing(['gradeLevel', 'adviser', 'coAdviser']);
 
         return $term;
     }

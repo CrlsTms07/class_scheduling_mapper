@@ -1,6 +1,14 @@
 import type { MapRoom, ScheduleMap, SectionSummary } from "@/types/api";
 
 export const NO_ROOM_TAB = "no-room";
+export const ALL_SECTIONS_TAB = "all-sections";
+
+/** The sections of one grade, in the order they came. */
+export function sectionsByGrade(sections: SectionSummary[]): { grade: number; sections: SectionSummary[] }[] {
+  const grades = [...new Set(sections.map(({ grade }) => grade))];
+
+  return grades.map((grade) => ({ grade, sections: sections.filter((section) => section.grade === grade) }));
+}
 
 export type MapTab = { key: string; label: string };
 

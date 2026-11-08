@@ -33,16 +33,16 @@ export function copySummaryLines(result: CopyScheduleResult): string[] {
     );
   }
   if (result.loading_copied > 0) {
-    lines.push(`${plural(result.loading_copied, "teacher assignment")} copied to this term.`);
+    lines.push(`${plural(result.loading_copied, "teacher assignment")} copied.`);
   }
   if (result.left_open > 0) {
-    lines.push(`${plural(result.left_open, "period")} left open, because the teacher or room is taken in this term.`);
+    lines.push(`${plural(result.left_open, "period")} left open, because the teacher or room is already taken.`);
   }
   if (result.not_fitting > 0) {
     lines.push(`${plural(result.not_fitting, "period")} left out, because the bell schedule has changed.`);
   }
   if (result.sections_with_schedule.length > 0) {
-    lines.push(`Skipped, because they already have a schedule in this term: ${result.sections_with_schedule.join(", ")}.`);
+    lines.push(`Skipped, because they already have a schedule: ${result.sections_with_schedule.join(", ")}.`);
   }
   if (result.sections_with_nothing > 0) {
     lines.push(`${plural(result.sections_with_nothing, "section")} had nothing to copy.`);

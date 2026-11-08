@@ -27,6 +27,7 @@ class SaveSectionRequest extends FormRequest
             'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
             'track_id' => ['nullable', 'integer', 'exists:tracks,id'],
             'adviser_id' => ['nullable', 'integer', 'exists:teachers,id'],
+            'co_adviser_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'home_room_id' => ['nullable', 'integer', 'exists:rooms,id'],
             'class_size' => ['nullable', 'integer', 'between:0,200'],
         ];
@@ -38,6 +39,7 @@ class SaveSectionRequest extends FormRequest
             fn (Validator $validator) => $this->validateUniqueName($validator),
             fn (Validator $validator) => $this->validateDepartmentFields($validator),
             fn (Validator $validator) => $this->validateAdviser($validator),
+            fn (Validator $validator) => $this->validateCoAdviser($validator),
         ];
     }
 
@@ -84,6 +86,28 @@ class SaveSectionRequest extends FormRequest
 
         if ($level === 'JHS' && $this->filled('track_id')) {
             $validator->errors()->add('track_id', 'Only Senior High sections have a track.');
+        }
+    }
+
+    /**
+     * Someone may advise one section and co-advise another, but cannot be both in one section.
+     */
+    private function validateCoAdviser(Validator $validator): void
+    {
+        if (! $this->filled('co_adviser_id') || $validator->errors()->has('co_adviser_id')) {
+            return;
+        }
+
+        if ((int) $this->input('co_adviser_id') === (int) $this->input('adviser_id')) {
+            $validator->errors()->add('co_adviser_id', 'The co-adviser must be someone other than the adviser.');
+
+            return;
+        }
+
+        $teacher = DB::table('teachers')->where('id', $this->input('co_adviser_id'))->first();
+
+        if ($teacher->personnel_type !== 'teaching' || ! $teacher->is_active) {
+            $validator->errors()->add('co_adviser_id', 'A co-adviser must be active teaching personnel.');
         }
     }
 

@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { DayPattern, ScheduleEntry, TimeSlot } from "@/types/api";
-import { entryAt, formatTime, hasSubject, isLocked, planMove, readDrop, subjectColor } from "./schedule";
+import type { DayPattern, Loading, ScheduleEntry, TimeSlot } from "@/types/api";
+import {
+  entryAt,
+  formatTime,
+  hasSubject,
+  isLocked,
+  nextSubject,
+  planMove,
+  readDrop,
+  remainingHint,
+  subjectColor,
+  subjectsDone,
+  termWord,
+} from "./schedule";
 
 const slot = { start_time: "08:00" } as TimeSlot;
 
@@ -50,6 +62,62 @@ describe("subjectColor", () => {
 
   it("shows an open slot in gray", () => {
     expect(subjectColor(null)).toContain("neutral");
+  });
+});
+
+describe("termWord", () => {
+  it("uses the word of the school year, never its own", () => {
+    expect(termWord({ school_year: { term_label: "Semester" } })).toBe("semester");
+    expect(termWord({ school_year: { term_label: "Quarter" } })).toBe("quarter");
+    expect(termWord(null)).toBe("period");
+  });
+});
+
+describe("progress of a section", () => {
+  const item = (id: number, scheduled: number, required: number) =>
+    ({ id, subject: `S${id}`, scheduled_minutes: scheduled, required_minutes: required }) as Loading;
+
+  it("counts complete subjects, and finds the next one that is short", () => {
+    const loading = [item(1, 60, 60), item(2, 100, 60), item(3, 0, 60)];
+
+    expect(subjectsDone(loading)).toBe(1);
+    expect(nextSubject(loading)?.id).toBe(3);
+    expect(nextSubject([item(1, 60, 60)])).toBeUndefined();
+  });
+
+  const monThu = { id: 1, start_time: "07:00", end_time: "07:45", minutes: 45, is_break: false } as TimeSlot;
+  const recess = { id: 2, start_time: "07:45", end_time: "08:05", minutes: 20, is_break: true } as TimeSlot;
+  const friday = { id: 3, start_time: "07:00", end_time: "07:40", minutes: 40, is_break: false } as TimeSlot;
+  const patterns = [
+    { id: 1, name: "Monday – Thursday", days: [1, 2, 3, 4], slots: [monThu, recess] },
+    { id: 2, name: "Friday", days: [5], slots: [friday] },
+  ] as DayPattern[];
+
+  it("says when it is complete or over", () => {
+    expect(remainingHint(item(1, 60, 60), { patterns, entries: [], level: "JHS" })).toBe("Complete");
+    expect(remainingHint(item(1, 90, 60), { patterns, entries: [], level: "JHS" })).toBe("Over by 30 mins");
+  });
+
+  it("JHS: suggests the period that would finish it, counting all the days of its bell schedule", () => {
+    expect(remainingHint(item(1, 180, 220), { patterns, entries: [], level: "JHS" })).toBe(
+      "40 mins left. This fits: Friday, 7:00 AM – 7:40 AM",
+    );
+    expect(remainingHint(item(1, 40, 220), { patterns, entries: [], level: "JHS" })).toBe(
+      "180 mins left. This fits: Monday – Thursday, 7:00 AM – 7:45 AM",
+    );
+  });
+
+  it("does not suggest a period that is taken, and never a break", () => {
+    const taken = entry({ day: 5, start_time: "07:00", section_subject_id: 9 });
+
+    expect(remainingHint(item(1, 180, 220), { patterns, entries: [taken], level: "JHS" })).toBe("40 mins left");
+    expect(remainingHint(item(1, 0, 20), { patterns, entries: [], level: "JHS" })).toBe("20 mins left");
+  });
+
+  it("SHS: suggests one free day", () => {
+    expect(remainingHint(item(1, 0, 45), { patterns, entries: [], level: "SHS" })).toBe(
+      "45 mins left. This fits: Monday, 7:00 AM – 7:45 AM",
+    );
   });
 });
 

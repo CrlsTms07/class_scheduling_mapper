@@ -175,7 +175,7 @@ const SubjectSheet = ({ yearId, yearName, subject, readOnly, onClose }: SubjectS
           {remove.isError && <FormAlert>{apiErrorMessage(remove.error)}</FormAlert>}
           {isLocked && !readOnly && (
             <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-              {subject?.locked_reason} Its grade, track and term can no longer change.
+              {subject?.locked_reason} Its grade, track and time of the year can no longer change.
             </p>
           )}
 

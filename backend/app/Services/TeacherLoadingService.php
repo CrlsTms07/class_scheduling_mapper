@@ -321,7 +321,7 @@ class TeacherLoadingService
 
         if (! $isOffered) {
             throw ValidationException::withMessages([
-                'teacher_id' => 'This subject is not offered to this section in this term.',
+                'teacher_id' => 'This subject is not offered to this section at this time.',
             ]);
         }
     }

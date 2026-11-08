@@ -18,7 +18,7 @@ const WEEK: GuestWeek = {
       time: "1:00 - 1:45",
       minutes: 45,
       days: [1, 2],
-      cells: { 1: { subject: "Math 7", teacher: "Ana Reyes", room: null }, 2: null },
+      cells: { 1: { subject: "Math 7", room: "Main – 101" }, 2: null },
       breaks: [],
       wide_break: null,
     },
@@ -50,7 +50,7 @@ describe("weekFromGuestWeek", () => {
     const week = weekFromGuestWeek(WEEK);
 
     expect(week.rows[0].time).toBe("1:00 PM – 1:45 PM");
-    expect(week.rows[0].cells[1][0].lines).toEqual(["Math 7", "Ana Reyes"]);
+    expect(week.rows[0].cells[1][0].lines).toEqual(["Math 7", "Main – 101"]);
     expect(week.rows[0].cells[2]).toEqual([]);
     expect(week.totals[1]).toBe("1 hour");
   });
@@ -76,7 +76,7 @@ describe("blocksFromGuestWeek", () => {
         time: "1:00 - 1:40",
         minutes: 40,
         days: [2],
-        cells: { 1: null, 2: { subject: "Science 7", teacher: null, room: null } },
+        cells: { 1: null, 2: { subject: "Science 7", room: null } },
         breaks: [],
         wide_break: null,
       },

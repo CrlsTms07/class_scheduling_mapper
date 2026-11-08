@@ -9,6 +9,7 @@ use App\Http\Controllers\ClassProgramController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\MyRecordsController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlotterController;
 use App\Http\Controllers\RegistrationController;
@@ -50,6 +51,7 @@ Route::middleware('throttle:account')->group(function () {
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/access-options', [UserController::class, 'accessOptions']);
@@ -78,6 +80,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/sections/{section}', [ManagedSectionController::class, 'update']);
     Route::delete('/sections/{section}', [ManagedSectionController::class, 'destroy']);
     Route::post('/tracks', [ManagedSectionController::class, 'storeTrack']);
+    Route::delete('/tracks/{track}', [ManagedSectionController::class, 'destroyTrack'])->whereNumber('track');
 
     Route::get('/report-settings', [ReportSettingsController::class, 'index']);
     Route::put('/school-profile', [ReportSettingsController::class, 'saveProfile']);
@@ -110,6 +113,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/personnel-options', [TeacherController::class, 'options']);
     Route::post('/personnel-options/{type}', [TeacherController::class, 'storeOption'])
         ->whereIn('type', array_keys(TeacherService::OPTION_TABLES));
+    Route::delete('/personnel-options/{type}/{id}', [TeacherController::class, 'destroyOption'])
+        ->whereIn('type', array_keys(TeacherService::OPTION_TABLES))
+        ->whereNumber('id');
     Route::get('/terms/{term}/teachers', [TeacherController::class, 'index']);
     Route::post('/terms/{term}/teachers', [TeacherController::class, 'store']);
     Route::put('/terms/{term}/teachers/{teacher}', [TeacherController::class, 'update']);
@@ -132,6 +138,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/room-usage', [ReportController::class, 'roomUsage']);
         Route::get('/room-usage.pdf', [ReportController::class, 'roomUsagePdf']);
         Route::get('/room-usage.xlsx', [ReportController::class, 'roomUsageXlsx']);
+        Route::get('/teacher-load', [ReportController::class, 'teacherLoad']);
+        Route::get('/teacher-load.pdf', [ReportController::class, 'teacherLoadPdf']);
+        Route::get('/teacher-load.xlsx', [ReportController::class, 'teacherLoadXlsx']);
+        Route::get('/grades/{grade}/timetable', [ReportController::class, 'gradeTimetable'])->whereNumber('grade');
+        Route::get('/grades/{grade}/timetable.pdf', [ReportController::class, 'gradeTimetablePdf'])->whereNumber('grade');
+        Route::get('/grades/{grade}/timetable.xlsx', [ReportController::class, 'gradeTimetableXlsx'])->whereNumber('grade');
         Route::get('/validation', [ReportController::class, 'validationReport']);
         Route::get('/validation.pdf', [ReportController::class, 'validationPdf']);
         Route::get('/validation.xlsx', [ReportController::class, 'validationXlsx']);
@@ -153,6 +165,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/slots/{timeSlot}', [PlotterController::class, 'assign']);
         Route::delete('/slots/{timeSlot}', [PlotterController::class, 'clear']);
         Route::post('/slots/{timeSlot}/move', [PlotterController::class, 'move']);
+        Route::delete('/schedule', [PlotterController::class, 'clearAll']);
         Route::post('/submit', [PlotterController::class, 'submit']);
         Route::post('/revise', [PlotterController::class, 'revise']);
         Route::get('/class-program.pdf', [ClassProgramController::class, 'show']);

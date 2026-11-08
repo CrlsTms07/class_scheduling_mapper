@@ -11,8 +11,15 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { Link, useParams } from "react-router";
-import { ArrowLeft, Download, Send, TableProperties } from "lucide-react";
-import { conflictDetailsOf, useAssignSlot, useMoveEntry, usePlotter, useReviseSchedule } from "@/api/schedule";
+import { ArrowLeft, Download, Eraser, Send, TableProperties, X } from "lucide-react";
+import {
+  conflictDetailsOf,
+  useAssignSlot,
+  useClearSchedule,
+  useMoveEntry,
+  usePlotter,
+  useReviseSchedule,
+} from "@/api/schedule";
 import { downloadFile } from "@/api/client";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { apiErrorMessage } from "@/lib/forms";
@@ -30,12 +37,14 @@ import {
   type PlotterView,
 } from "@/lib/schedule";
 import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
+import ConfirmDelete from "@/components/global-component/ConfirmDelete";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import EntrySheet, { type SheetTarget } from "./EntrySheet";
 import FlagsPanel from "./FlagsPanel";
 import LoadingPanel from "./LoadingPanel";
+import PlotterGuide from "./PlotterGuide";
 import ScheduleDayCards from "./ScheduleDayCards";
 import ScheduleDayList from "./ScheduleDayList";
 import ScheduleGrid from "./ScheduleGrid";
@@ -60,7 +69,7 @@ const PlotterPage = () => {
     return (
       <div className="p-4 sm:p-6">
         <BackToSections />
-        <FormAlert>This section is not available in the selected term.</FormAlert>
+        <FormAlert>This section is not available in what is selected at the top.</FormAlert>
       </div>
     );
   }
@@ -96,6 +105,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
   const [draggedId, setDraggedId] = React.useState<number | null>(null);
   const assign = useAssignSlot(termId, section.id);
   const move = useMoveEntry(termId, section.id);
+  const clearSchedule = useClearSchedule(termId, section.id);
 
   // A short click stays a tap. On a touch screen, hold first, so that swiping still scrolls.
   const sensors = useSensors(
@@ -103,6 +113,8 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
   const dragged = loading.find(({ id }) => id === draggedId);
+  const placing = loading.find(({ id }) => id === selectedLoadingId);
+  const plotContext = { patterns, entries, level: section.level };
   const revise = useReviseSchedule(termId, section.id);
 
   const pattern = patterns.find(({ id }) => id === patternId) ?? patterns[0];
@@ -311,6 +323,10 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
       )}
       <FlagsPanel flags={flags} />
 
+      {canEdit && patterns.length > 0 && loading.length > 0 && (
+        <PlotterGuide loading={loading} {...plotContext} />
+      )}
+
       {patterns.length === 0 && (
         <FormAlert>
           No bell schedule is set for {section.level}, {section.shift} shift, in this
@@ -321,7 +337,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
       {loading.length === 0 && (
         <div className="space-y-2">
           <FormAlert>
-            No teacher loading for this section in this term yet, so there are no subjects
+            No teacher loading for this section yet, so there are no subjects
             to place.
           </FormAlert>
           {canPlot && (
@@ -350,11 +366,28 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
                   loading={loading}
                   selectedId={selectedLoadingId}
                   onSelect={canEdit ? setSelectedLoadingId : undefined}
+                {...plotContext}
                 />
               </div>
             )}
 
-            <div className={`min-w-0 ${loading.length === 0 ? "lg:col-span-2" : ""}`}>
+            <div className={`min-w-0 space-y-3 ${loading.length === 0 ? "lg:col-span-2" : ""}`}>
+            {placing && (
+              <div
+                role="status"
+                className="sticky top-20 z-20 flex items-center justify-between gap-2 rounded-md border-2 border-[#790D16] bg-background p-2 text-sm shadow"
+              >
+                <p className="min-w-0">
+                  <span className="font-medium">Now placing: {placing.subject}.</span> Tap the empty periods where it
+                  belongs.
+                </p>
+                <Button type="button" variant="outline" className="h-11 shrink-0" onClick={() => setSelectedLoadingId(null)}>
+                  <X />
+                  Done
+                </Button>
+              </div>
+            )}
+
               {/* Wide screens and landscape */}
               <div className="max-md:portrait:hidden space-y-3">
                 <div role="tablist" aria-label="View" className="grid grid-cols-2 gap-2 sm:w-80">
@@ -426,6 +459,20 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
             )}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {canPlot && (status === "draft" || status === "rejected") && entries.length > 0 && (
+        <div className="space-y-2 border-t pt-4 sm:max-w-sm">
+          {clearSchedule.isError && <FormAlert>{apiErrorMessage(clearSchedule.error)}</FormAlert>}
+          <ConfirmDelete
+            label="Clear this schedule"
+            icon={Eraser}
+            confirmLabel="Yes, clear it"
+            warning={`This removes all ${entries.length} classes of ${section.label} so you can start over. The teacher loading stays.`}
+            isPending={clearSchedule.isPending}
+            onConfirm={() => clearSchedule.mutate()}
+          />
+        </div>
       )}
 
       {isSubmitOpen && (

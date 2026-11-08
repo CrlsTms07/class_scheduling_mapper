@@ -191,7 +191,8 @@ describe('Guest view, with no sign-in', function () {
             ->assertJsonPath('data.state', 'ready')
             ->assertJsonPath('data.label', 'Grade 7 – Honesty')
             ->assertJsonPath('data.adviser', 'Ana Reyes')
-            ->assertJsonPath('data.week.rows.0.cells.1.subject', 'Math 7');
+            ->assertJsonPath('data.week.rows.0.cells.1.subject', 'Math 7')
+            ->assertJsonMissingPath('data.week.rows.0.cells.1.teacher');
     });
 
     it('keeps two bell schedules apart, even when a period starts at the same time', function () {

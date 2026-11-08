@@ -16,13 +16,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The Admin encodes sections once per school year.
  */
 class ManagedSectionController extends Controller
 {
-    private const WITH = ['gradeLevel', 'track', 'adviser', 'homeRoom.building'];
+    private const WITH = ['gradeLevel', 'track', 'adviser', 'coAdviser', 'homeRoom.building'];
 
     public function index(SchoolYear $schoolYear): AnonymousResourceCollection
     {
@@ -98,6 +99,31 @@ class ManagedSectionController extends Controller
         $service->delete($section, $request->user());
 
         return response()->json(['message' => "{$section->name} was deleted."]);
+    }
+
+    /**
+     * A misspelled track can go, but not one that sections or subjects are using.
+     */
+    public function destroyTrack(Request $request, int $track, AuditLogger $audit): JsonResponse
+    {
+        Gate::authorize('manage', Section::class);
+
+        $row = DB::table('tracks')->where('id', $track)->first();
+        abort_unless($row, 404);
+
+        $sections = DB::table('sections')->where('track_id', $track)->count();
+        $subjects = DB::table('subjects')->where('track_id', $track)->count();
+
+        if ($sections + $subjects > 0) {
+            throw ValidationException::withMessages([
+                'track' => "{$row->name} is used by {$sections} sections and {$subjects} subjects, so it stays.",
+            ]);
+        }
+
+        DB::table('tracks')->where('id', $track)->delete();
+        $audit->log($request->user(), 'delete', 'tracks', $track, ['name' => $row->name]);
+
+        return response()->json(['message' => 'The track was deleted.']);
     }
 
     public function storeTrack(StoreTrackRequest $request, AuditLogger $audit): JsonResponse

@@ -58,7 +58,7 @@ const MySchedulePage = () => {
           )}
 
           {data.rows.length === 0 ? (
-            <p className="text-sm text-neutral-700">You have no approved classes in this term yet.</p>
+            <p className="text-sm text-neutral-700">You have no approved classes yet.</p>
           ) : (
             <>
               <WeekView week={weekFromReportGrid(data)} />

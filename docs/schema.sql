@@ -220,6 +220,8 @@ CREATE TABLE sections (
     home_room_id     INT REFERENCES rooms(id) ON DELETE RESTRICT,       -- JHS fixed room
     class_size       SMALLINT CHECK (class_size >= 0),
     UNIQUE (school_year_id, grade_level_id, name),
+    co_adviser_id    BIGINT REFERENCES teachers(id) ON DELETE RESTRICT,  -- optional, named on the public schedule
+    CHECK (co_adviser_id <> adviser_id),
     UNIQUE (school_year_id, adviser_id)                                  -- 1 advisory per year
 );
 

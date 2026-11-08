@@ -41,7 +41,8 @@ const GuestViewIndex = () => {
       </Link>
 
       <div>
-        <h1 className="text-branding text-xl font-medium">View Schedule</h1>
+        <h1 className="text-branding text-xl font-medium">View as Guest</h1>
+        <p className="text-sm text-neutral-700">Class schedules for students, parents and visitors.</p>
         {data?.term && (
           <p className="text-sm text-neutral-700">
             {data.term.name}, SY {data.term.school_year}
@@ -52,7 +53,7 @@ const GuestViewIndex = () => {
       {isPending && <p className="text-sm text-neutral-600">Loading...</p>}
       {isError && <FormAlert>The sections could not be loaded. Please try again later.</FormAlert>}
       {data && !data.term && (
-        <p className="text-sm text-neutral-700">There is no active school term right now.</p>
+        <p className="text-sm text-neutral-700">No schedule is open right now.</p>
       )}
 
       {data?.term && (

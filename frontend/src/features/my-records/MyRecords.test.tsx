@@ -109,7 +109,7 @@ describe("My Schedule", () => {
   it("says so when nothing is approved, without download buttons", async () => {
     open(<MySchedulePage />, { ...SCHEDULE, rows: [], not_final_count: 1 });
 
-    expect(await screen.findByText("You have no approved classes in this term yet.")).toBeInTheDocument();
+    expect(await screen.findByText("You have no approved classes yet.")).toBeInTheDocument();
     expect(screen.getByText(/1 more class is still being prepared/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Download/ })).not.toBeInTheDocument();
   });

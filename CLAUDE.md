@@ -75,8 +75,8 @@ npm run build
   cards (team decision, Nov 7, 2026: the default on wide screens) and the weekly grid as a choice.
 - **Working, Copy schedule:** from another term of the year, by section, grade or all, with a review
   first. Periods become draft open slots; teachers and subjects that continue can be filled in.
-- **Working, Reports page:** JHS and SHS Class Program, Teacher Program, Room Schedule, room usage and
-  the Conflict and Validation Report, in PDF and XLSX. Teacher Program and Room Schedule have no official form yet, so their layout is to be
+- **Working, Reports page:** JHS and SHS Class Program, Teacher Program, Room Schedule, room usage, the
+  Conflict and Validation Report, Teacher Load Report and Grade Level Timetable, in PDF and XLSX. Teacher Program and Room Schedule have no official form yet, so their layout is to be
   confirmed with the school.
 - **Working, Teacher:** My Schedule (approved entries only, PDF and XLSX) and My Profile. Chairpersons
   and Master Teachers with a personnel record have them too.
@@ -155,7 +155,7 @@ npm run build
 ### Sections
 - Encoded by the **Admin** once per **school year** (they change yearly). Each has a
   grade level, an optional track (SHS), a shift, an **adviser** (one advisory per
-  teacher per year), a home room (JHS) or optional usual room (SHS; team decision, Nov 7,
+  teacher per year), an optional **co-adviser**, a home room (JHS) or optional usual room (SHS; team decision, Nov 7,
   2026: the plotter's default, each class can still use another room) and a class size.
 - Teacher loading (`section_subjects`) is **per term**: section + subject + teacher.
 
@@ -265,7 +265,9 @@ cleaner:
 filter by grade level.
 
 ## Guest view (no login)
-- "View Schedule" button on the login page.
+- "View as Guest" button on the login page.
+- **Only the adviser and co-adviser are named** (team decision, Nov 7, 2026). Teachers of subjects and
+  signatories are left out, on screen and in the public PDF.
 - Pick **Department → Grade Level → Section** (searchable). **No student-name search**,
   for privacy reasons (minors).
 - Shows approved schedules of the **active term only**, and only when the whole section

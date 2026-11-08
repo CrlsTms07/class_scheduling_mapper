@@ -1,9 +1,10 @@
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { Controller, useFieldArray, useForm, type Path } from "react-hook-form";
+import { Controller, useFieldArray, useForm, type Path, useWatch } from "react-hook-form";
 import {
   useAddPersonnelOption,
+  useDeletePersonnelOption,
   useCreateTeacher,
   useDeleteTeacher,
   usePersonnelOptions,
@@ -81,6 +82,33 @@ const SelectField = ({
 );
 
 /** Lets the user add a missing choice to a list without leaving the form. */
+/** Takes a misspelled choice off the list. The API refuses one that is in use, and says so. */
+const DeleteOption = ({
+  type,
+  label,
+  id,
+  onDeleted,
+}: {
+  type: PersonnelOptionType;
+  label: string;
+  id: number;
+  onDeleted?: () => void;
+}) => {
+  const remove = useDeletePersonnelOption(type);
+
+  return (
+    <div className="space-y-2">
+      {remove.isError && <FormAlert>{apiErrorMessage(remove.error)}</FormAlert>}
+      <ConfirmDelete
+        label={`Delete this ${label}`}
+        warning={`This removes the ${label} from the list. It only works if nobody uses it.`}
+        isPending={remove.isPending}
+        onConfirm={() => remove.mutate(id, { onSuccess: onDeleted })}
+      />
+    </div>
+  );
+};
+
 const AddOption = ({
   type,
   label,
@@ -155,6 +183,8 @@ const TeacherSheet = ({ term, teacher, onClose }: TeacherSheetProp) => {
     resolver: zodResolver(TeacherFormSchema),
     defaultValues: toTeacherForm(teacher),
   });
+  const departmentId = useWatch({ control: form.control, name: "department_id" });
+  const designationId = useWatch({ control: form.control, name: "designation_id" });
   const { fields, append, remove: removeQualification } = useFieldArray({
     control: form.control,
     name: "qualifications",
@@ -228,6 +258,14 @@ const TeacherSheet = ({ term, teacher, onClose }: TeacherSheetProp) => {
                   </NativeSelectOption>
                 ))}
               </SelectField>
+              {departmentId !== "" && (
+                <DeleteOption
+                  type="departments"
+                  label="department"
+                  id={Number(departmentId)}
+                  onDeleted={() => form.setValue("department_id", "")}
+                />
+              )}
               <AddOption
                 type="departments"
                 label="department"
@@ -244,6 +282,14 @@ const TeacherSheet = ({ term, teacher, onClose }: TeacherSheetProp) => {
                   </NativeSelectOption>
                 ))}
               </SelectField>
+              {designationId !== "" && (
+                <DeleteOption
+                  type="designations"
+                  label="designation"
+                  id={Number(designationId)}
+                  onDeleted={() => form.setValue("designation_id", "")}
+                />
+              )}
               <AddOption
                 type="designations"
                 label="designation"
@@ -375,6 +421,20 @@ const TeacherSheet = ({ term, teacher, onClose }: TeacherSheetProp) => {
                       {name}
                     </label>
                   ))}
+                  {(options?.tasks.length ?? 0) > 0 && (
+                    <details className="rounded-md border">
+                      <summary className="flex min-h-11 cursor-pointer items-center p-3 text-sm">
+                        Delete a task from the list
+                      </summary>
+                      <ul className="space-y-2 px-3 pb-3">
+                        {options?.tasks.map(({ id, name }) => (
+                          <li key={id}>
+                            <DeleteOption type="teaching-tasks" label={`task: ${name}`} id={id} />
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   <AddOption
                     type="teaching-tasks"
                     label="task"

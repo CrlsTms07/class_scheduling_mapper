@@ -49,7 +49,7 @@ describe("copySummaryLines", () => {
       copySummaryLines({ ...RESULT, sections_copied: 2, entries: 10, filled: 7, open_slots: 3, loading_copied: 1 }),
     ).toEqual([
       "2 sections, 10 periods: 7 with subject and teacher, 3 open slots to fill.",
-      "1 teacher assignment copied to this term.",
+      "1 teacher assignment copied.",
     ]);
   });
 
@@ -63,9 +63,9 @@ describe("copySummaryLines", () => {
     });
 
     expect(lines).toEqual([
-      "1 period left open, because the teacher or room is taken in this term.",
+      "1 period left open, because the teacher or room is already taken.",
       "2 periods left out, because the bell schedule has changed.",
-      "Skipped, because they already have a schedule in this term: Grade 7 – Hope.",
+      "Skipped, because they already have a schedule: Grade 7 – Hope.",
       "1 section had nothing to copy.",
     ]);
   });

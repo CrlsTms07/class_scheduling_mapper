@@ -17,6 +17,9 @@
         <div>{{ $term->name }}, School Year {{ $term->schoolYear->name }}</div>
         <div>{{ mb_strtoupper($section->name) }}</div>
         <div>Class Adviser: <span class="adviser">{{ $adviser ?? '' }}</span></div>
+        @if ($coAdviser ?? null)
+            <div>Co-Adviser: <span class="adviser">{{ $coAdviser }}</span></div>
+        @endif
     </div>
 
     <table class="grid">
@@ -44,7 +47,9 @@
                                 <td>
                                     @if ($row['cells'][$day['day']])
                                         <span class="class-line class-section">{{ $row['cells'][$day['day']]['subject'] }}</span>
-                                        <span class="class-line">{{ $row['cells'][$day['day']]['teacher'] }}</span>
+                                        @unless ($isPublic ?? false)
+                                            <span class="class-line">{{ $row['cells'][$day['day']]['teacher'] }}</span>
+                                        @endunless
                                         <span class="class-line">{{ $row['cells'][$day['day']]['room'] }}</span>
                                     @endif
                                 </td>
@@ -66,7 +71,9 @@
         <div class="week-total note">{{ $settings->reference_note }}</div>
     @endif
 
-    @include('reports.partials.signatures')
+    @unless ($isPublic ?? false)
+        @include('reports.partials.signatures')
+    @endunless
 
     @include('reports.partials.footer')
 </body>

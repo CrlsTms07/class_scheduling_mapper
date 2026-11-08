@@ -1,4 +1,4 @@
-import type { DayPattern, ScheduleEntry, ScheduleStatus, TimeSlot } from "@/types/api";
+import type { DayPattern, Loading, ScheduleEntry, ScheduleStatus, Term, TimeSlot } from "@/types/api";
 
 export const DAY_NAMES: Record<number, string> = {
   1: "Monday",
@@ -55,6 +55,56 @@ export function formatTime(time: string): string {
 
 export function slotTimeLabel(slot: TimeSlot): string {
   return `${formatTime(slot.start_time)} – ${formatTime(slot.end_time)}`;
+}
+
+/** What this school year calls a part of it, such as "term" or "semester". Never written in code. */
+export function termWord(term: { school_year?: Pick<Term["school_year"], "term_label"> } | null | undefined): string {
+  return term?.school_year?.term_label?.toLowerCase() ?? "period";
+}
+
+export type PlotContext = {
+  patterns: DayPattern[];
+  entries: ScheduleEntry[];
+  level: "JHS" | "SHS";
+};
+
+export function subjectsDone(loading: Loading[]): number {
+  return loading.filter((item) => item.scheduled_minutes === item.required_minutes).length;
+}
+
+/** The first subject still short of its minutes, in the order the list shows them. */
+export function nextSubject(loading: Loading[]): Loading | undefined {
+  return loading.find((item) => item.scheduled_minutes < item.required_minutes);
+}
+
+/** A free period that would finish a subject exactly. JHS counts its whole bell schedule. */
+function periodThatFits(minutesLeft: number, { patterns, entries, level }: PlotContext): string | null {
+  for (const pattern of patterns) {
+    for (const slot of pattern.slots.filter(({ is_break: isBreak }) => !isBreak)) {
+      const free = pattern.days.filter((day) => !hasSubject(entryAt(entries, day, slot)));
+      const minutes = level === "JHS" ? slot.minutes * free.length : slot.minutes;
+
+      if (free.length > 0 && minutes === minutesLeft) {
+        return level === "JHS"
+          ? `${pattern.name}, ${slotTimeLabel(slot)}`
+          : `${DAY_NAMES[free[0]]}, ${slotTimeLabel(slot)}`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/** What is left of a subject, in words, with a suggestion when one period would finish it. */
+export function remainingHint(item: Loading, context: PlotContext): string {
+  const left = item.required_minutes - item.scheduled_minutes;
+
+  if (left === 0) return "Complete";
+  if (left < 0) return `Over by ${-left} mins`;
+
+  const fit = periodThatFits(left, context);
+
+  return fit ? `${left} mins left. This fits: ${fit}` : `${left} mins left`;
 }
 
 /** An open slot, copied from another term, has a time but no subject yet. */

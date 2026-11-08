@@ -54,7 +54,7 @@ export function weekFromReportGrid(grid: Pick<ReportGrid, "days" | "rows" | "tot
   };
 }
 
-/** A section's week for the Guest view: each cell is subject, teacher, then room. */
+/** A section's week for the Guest view: each cell is subject, then room. Teachers stay private. */
 export function weekFromGuestWeek(week: GuestWeek): WeekData {
   return {
     days: week.days,
@@ -73,7 +73,7 @@ export function weekFromGuestWeek(week: GuestWeek): WeekData {
           return [
             day,
             cell
-              ? [{ lines: withoutBlanks([cell.subject, cell.teacher, cell.room]), colorKey: colorKeyOf(cell.subject) }]
+              ? [{ lines: withoutBlanks([cell.subject, cell.room]), colorKey: colorKeyOf(cell.subject) }]
               : [],
           ];
         }),

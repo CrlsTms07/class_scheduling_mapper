@@ -59,6 +59,9 @@ const GuestSectionPage = () => {
             {data.state === "ready" && data.adviser && (
               <p className="text-sm text-neutral-700">Class Adviser: {data.adviser}</p>
             )}
+            {data.state === "ready" && data.co_adviser && (
+              <p className="text-sm text-neutral-700">Co-Adviser: {data.co_adviser}</p>
+            )}
           </div>
 
           {data.state !== "ready" && (

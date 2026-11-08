@@ -19,6 +19,16 @@ export function useSections(termId: number | undefined) {
   });
 }
 
+/** Starts a section's schedule over. Its teacher loading stays. */
+export function useClearSchedule(termId: number, sectionId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api(`/terms/${termId}/sections/${sectionId}/schedule`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["terms", termId] }),
+  });
+}
+
 export type CopyScheduleInput = {
   from_term_id: number;
   section_id: number | null;

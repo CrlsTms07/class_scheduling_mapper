@@ -12,6 +12,7 @@ import {
   useSectionLoading,
 } from "@/api/teacherLoading";
 import { useSelectedTerm } from "@/context/selectedTerm";
+import { termWord } from "@/lib/schedule";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { apiErrorMessage } from "@/lib/forms";
 import {
@@ -45,7 +46,7 @@ const ADD_NEW = "new";
 
 const HOW_IT_WORKS = [
   "Pick a section, then choose a teacher for each subject. Each choice saves right away.",
-  "Teacher loading is per term. The subjects listed are those of the section's grade, term and track.",
+  "Teacher loading is set separately for each part of the year. The subjects listed are those of the section's grade, term and track.",
   "The numbers beside a name show how many subjects that teacher already has out of their limit.",
   "Choose \"+ Add new teacher\" if someone is not on the list. Complete their details later on the Teachers page.",
   "After loading, open the plotter to place the subjects in the timetable.",
@@ -205,12 +206,13 @@ const LoadingRowCard = ({ termId, loading, row }: LoadingRowProp) => {
 type CopySheetProp = {
   termId: number;
   termName: string;
+  word: string;
   otherTerms: Term[];
   section: { id: number; grade: number; name: string };
   onClose: () => void;
 };
 
-const CopySheet = ({ termId, termName, otherTerms, section, onClose }: CopySheetProp) => {
+const CopySheet = ({ termId, termName, word, otherTerms, section, onClose }: CopySheetProp) => {
   const isPhonePortrait = useMediaQuery("(orientation: portrait) and (max-width: 767px)");
   const copy = useCopyLoading(termId);
   const [fromTermId, setFromTermId] = React.useState(otherTerms[0].id);
@@ -228,9 +230,9 @@ const CopySheet = ({ termId, termName, otherTerms, section, onClose }: CopySheet
         className="max-h-[90dvh] overflow-y-auto"
       >
         <SheetHeader>
-          <SheetTitle className="text-branding">Copy from another term</SheetTitle>
+          <SheetTitle className="text-branding">Copy from another {word}</SheetTitle>
           <SheetDescription>
-            Fills {termName} with the same teachers, for subjects taught in both terms. Subjects
+            Fills {termName} with the same teachers, for subjects taught in both. Subjects
             that already have a teacher stay as they are.
           </SheetDescription>
         </SheetHeader>
@@ -392,7 +394,7 @@ const TeacherLoadingIndex = () => {
                 onClick={() => setIsCopying(true)}
               >
                 <Copy />
-                Copy from another term
+                Copy from another {termWord(term)}
               </Button>
             )}
             <Link
@@ -410,6 +412,7 @@ const TeacherLoadingIndex = () => {
         <CopySheet
           termId={term.id}
           termName={term.name}
+          word={termWord(term)}
           otherTerms={otherTerms}
           section={section}
           onClose={() => setIsCopying(false)}
@@ -421,7 +424,7 @@ const TeacherLoadingIndex = () => {
 
       {loading && loading.rows.length === 0 && (
         <p className="text-sm text-neutral-700">
-          No subjects are offered to this section in this term yet. Add them on the Subjects page.
+          No subjects are offered to this section yet. Add them on the Subjects page.
         </p>
       )}
 

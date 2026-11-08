@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { subjectColor } from "@/lib/schedule";
+import { remainingHint, subjectColor, type PlotContext } from "@/lib/schedule";
 import type { Loading } from "@/types/api";
 
-type LoadingPanelProp = {
+type LoadingPanelProp = PlotContext & {
   loading: Loading[];
   selectedId: number | null;
   /** Left out when the user can only view this schedule. */
@@ -48,7 +48,7 @@ const SubjectButton = ({ item, isSelected, className, onClick, children }: Subje
 };
 
 /** The subjects to place, with the minutes done so far. */
-const LoadingPanel = ({ loading, selectedId, onSelect }: LoadingPanelProp) => {
+const LoadingPanel = ({ loading, selectedId, onSelect, ...context }: LoadingPanelProp) => {
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-neutral-800">Subjects</p>
@@ -67,6 +67,7 @@ const LoadingPanel = ({ loading, selectedId, onSelect }: LoadingPanelProp) => {
               <span className={`block text-[11px] ${minutesColor(item)}`}>
                 {item.scheduled_minutes} / {item.required_minutes} mins
               </span>
+              {onSelect && <span className="block text-[11px] opacity-90">{remainingHint(item, context)}</span>}
             </>
           );
           const classes = `block w-full min-h-11 min-w-40 lg:min-w-0 rounded-md border p-2 text-left ${subjectColor(item.id)}`;

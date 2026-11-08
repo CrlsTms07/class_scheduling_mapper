@@ -117,7 +117,7 @@ class SaveSubjectRequest extends FormRequest
             ->exists();
 
         if ($taken) {
-            $validator->errors()->add('name', 'This grade level already has this subject for the same track and term.');
+            $validator->errors()->add('name', 'This grade level already has this subject for the same track and time of the year.');
         }
     }
 }

@@ -1,5 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import type { DataResponse, ReportGrid, ReportOptions, RoomUsage, ValidationReportData } from "@/types/api";
+import type {
+  DataResponse,
+  GradeTimetableData,
+  ReportGrid,
+  ReportOptions,
+  RoomUsage,
+  TeacherLoadData,
+  ValidationReportData,
+} from "@/types/api";
 import { api } from "./client";
 
 export function useReportOptions(termId: number | undefined) {
@@ -17,6 +25,22 @@ export function useReportGrid(termId: number | undefined, path: string | null) {
     enabled: termId !== undefined && path !== null,
     queryFn: async () =>
       (await api<DataResponse<ReportGrid>>(`/terms/${termId}/reports/${path}`)).data,
+  });
+}
+
+export function useTeacherLoadReport(termId: number) {
+  return useQuery({
+    queryKey: ["terms", termId, "teacher-load"],
+    queryFn: async () =>
+      (await api<DataResponse<TeacherLoadData>>(`/terms/${termId}/reports/teacher-load`)).data,
+  });
+}
+
+export function useGradeTimetable(termId: number, grade: number) {
+  return useQuery({
+    queryKey: ["terms", termId, "grade-timetable", grade],
+    queryFn: async () =>
+      (await api<DataResponse<GradeTimetableData>>(`/terms/${termId}/reports/grades/${grade}/timetable`)).data,
   });
 }
 

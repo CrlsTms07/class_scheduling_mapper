@@ -17,27 +17,32 @@ class ReportService
 {
     public function __construct(private ReportSettingsService $settings) {}
 
-    public function classProgramPdf(SchoolTerm $term, Section $section): string
+    /**
+     * @param  bool  $isPublic  the public copy names only the adviser and co-adviser
+     */
+    public function classProgramPdf(SchoolTerm $term, Section $section, bool $isPublic = false): string
     {
         $section->loadMissing('gradeLevel');
 
         // JHS has one block per bell schedule. SHS has one column per day, like its official form.
         $view = $section->gradeLevel->level === 'SHS' ? 'reports.class-program-shs' : 'reports.class-program-jhs';
 
-        return $this->renderPdf($view, $this->classProgramData($term, $section));
+        return $this->renderPdf($view, [...$this->classProgramData($term, $section), 'isPublic' => $isPublic]);
     }
 
     /**
-     * Every form is A4 portrait, with its page numbers in the document control block.
+     * Forms are A4, with their page numbers in the document control block.
      *
      * @param  array<string, mixed>  $data
      */
-    public function renderPdf(string $view, array $data): string
+    public function renderPdf(string $view, array $data, string $orientation = 'portrait'): string
     {
-        $pdf = Pdf::loadView($view, $data)->setPaper('a4', 'portrait');
+        $pdf = Pdf::loadView($view, $data)->setPaper('a4', $orientation);
 
         $pdf->render();
-        $pdf->getCanvas()->page_text(541, 806, '{PAGE_NUM} of {PAGE_COUNT}', null, 6.5, [0, 0, 0]);
+
+        [$x, $y] = $orientation === 'landscape' ? [788, 559] : [541, 806];
+        $pdf->getCanvas()->page_text($x, $y, '{PAGE_NUM} of {PAGE_COUNT}', null, 6.5, [0, 0, 0]);
 
         return $pdf->output();
     }
@@ -59,7 +64,7 @@ class ReportService
      */
     public function classProgramData(SchoolTerm $term, Section $section): array
     {
-        $section->loadMissing(['gradeLevel', 'adviser']);
+        $section->loadMissing(['gradeLevel', 'adviser', 'coAdviser']);
         $term->loadMissing('schoolYear');
 
         $entries = ScheduleEntry::with(['sectionSubject.subject', 'teacher', 'room.building'])
@@ -77,6 +82,7 @@ class ReportService
             'term' => $term,
             'section' => $section,
             'adviser' => $section->adviser?->printedName(),
+            'coAdviser' => $section->coAdviser?->printedName(),
             'settings' => $settings,
             'blocks' => $this->blocks($section, $entries),
             'weekly' => $section->gradeLevel->level === 'SHS' ? $this->weeklyTable($section, $entries) : null,
@@ -136,7 +142,7 @@ class ReportService
     }
 
     /**
-     * A section's approved week, for the public Guest view.
+     * A section's approved week, for the public Guest view. Teachers stay private there.
      *
      * @return array<string, mixed>
      */
@@ -148,7 +154,17 @@ class ReportService
             ->where('status', 'approved')
             ->get();
 
-        return $this->weeklyTable($section, $entries);
+        $week = $this->weeklyTable($section, $entries);
+
+        foreach ($week['rows'] as &$row) {
+            foreach ($row['cells'] as $day => $cell) {
+                if ($cell !== null) {
+                    unset($row['cells'][$day]['teacher']);
+                }
+            }
+        }
+
+        return $week;
     }
 
     /**
@@ -296,6 +312,7 @@ class ReportService
             ["{$data['term']->name}, School Year {$data['term']->schoolYear->name}"],
             ["GRADE {$data['section']->gradeLevel->grade} – ".mb_strtoupper($data['section']->name)],
             ['Class Adviser: '.($data['adviser'] ?? '')],
+            ...($data['coAdviser'] ? [['Co-Adviser: '.$data['coAdviser']]] : []),
             [],
         ];
 
@@ -392,6 +409,7 @@ class ReportService
             ["{$data['term']->name}, School Year {$data['term']->schoolYear->name}"],
             [mb_strtoupper($data['section']->name)],
             ['Class Adviser: '.($data['adviser'] ?? '')],
+            ...($data['coAdviser'] ? [['Co-Adviser: '.$data['coAdviser']]] : []),
             [],
             ['TIME', 'NO. OF MINUTES', ...array_map(fn (array $day) => mb_strtoupper($day['name']), $weekly['days'])],
         ];

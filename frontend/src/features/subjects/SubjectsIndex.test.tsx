@@ -221,7 +221,7 @@ describe("for a Chairperson or Master Teacher", () => {
 
     await openRecord("Edit Mathematics 7, Grade 7");
 
-    expect(screen.getByText(/Its grade, track and term can no longer change/)).toBeInTheDocument();
+    expect(screen.getByText(/Its grade, track and time of the year can no longer change/)).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Grade level" })).toBeDisabled();
     expect(screen.getByLabelText("When it is taken")).toBeDisabled();
     expect(screen.getByLabelText("Minutes per week")).toBeEnabled();

@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { ArrowRight, Check, CircleDashed } from "lucide-react";
 import { useAdminDashboard } from "@/api/dashboard";
 import { useSelectedTerm } from "@/context/selectedTerm";
+import { termWord } from "@/lib/schedule";
 import type { AdminDashboard, ChecklistKey } from "@/types/api";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,7 +103,7 @@ const AdminDashboardPanel = () => {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatTile
-          label="Active term"
+          label={`Active ${termWord(activeTerm ?? term)}`}
           value={activeTerm?.name ?? "None"}
           note={activeTerm ? `School Year ${activeTerm.school_year.name}` : "Set one in School Years"}
           to="/school-years"

@@ -32,6 +32,15 @@ class TeacherController extends Controller
         return response()->json(['data' => $service->addOption($type, $request->input('name'), $request->user())], 201);
     }
 
+    public function destroyOption(Request $request, string $type, int $id, TeacherService $service): JsonResponse
+    {
+        Gate::authorize('manage-school-records');
+
+        $service->deleteOption($type, $id, $request->user());
+
+        return response()->json(['message' => 'It was deleted.']);
+    }
+
     public function store(SaveTeacherRequest $request, SchoolTerm $term, TeacherService $service): JsonResponse
     {
         $teacher = $service->create($term, $request->validated(), $request->user());

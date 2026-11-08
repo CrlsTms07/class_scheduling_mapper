@@ -17,6 +17,9 @@
         <div>{{ $term->name }}, School Year {{ $term->schoolYear->name }}</div>
         <div>GRADE {{ $section->gradeLevel->grade }} – {{ mb_strtoupper($section->name) }}</div>
         <div>Class Adviser: <span class="adviser">{{ $adviser ?? '' }}</span></div>
+        @if ($coAdviser ?? null)
+            <div>Co-Adviser: <span class="adviser">{{ $coAdviser }}</span></div>
+        @endif
     </div>
 
     @php($rowCount = collect($blocks)->max(fn ($block) => count($block['rows'])) ?? 0)
@@ -31,7 +34,9 @@
                     <th>TIME</th>
                     <th>No. of Mins.</th>
                     <th>{{ mb_strtoupper($block['name']) }}</th>
-                    <th>TEACHER</th>
+                    @unless ($isPublic ?? false)
+                        <th>TEACHER</th>
+                    @endunless
                 @endforeach
             </tr>
         </thead>
@@ -44,16 +49,21 @@
                             <td class="spacer"></td>
                         @endif
                         @if ($row === null)
-                            <td></td><td></td><td></td><td></td>
+                            <td></td><td></td><td></td>
+                            @unless ($isPublic ?? false)
+                                <td></td>
+                            @endunless
                         @elseif ($row['is_break'])
                             <td class="time break">{{ $row['time'] }}</td>
                             <td class="minutes break">{{ $row['minutes'] }}</td>
-                            <td class="break" colspan="2">{{ $row['subject'] }}</td>
+                            <td class="break" @unless ($isPublic ?? false) colspan="2" @endunless>{{ $row['subject'] }}</td>
                         @else
                             <td class="time">{{ $row['time'] }}</td>
                             <td class="minutes">{{ $row['minutes'] }}</td>
                             <td>{{ $row['subject'] }}</td>
-                            <td>{{ $row['teacher'] }}</td>
+                            @unless ($isPublic ?? false)
+                                <td>{{ $row['teacher'] }}</td>
+                            @endunless
                         @endif
                     @endforeach
                 </tr>
@@ -78,7 +88,9 @@
         @endif
     </table>
 
-    @include('reports.partials.signatures')
+    @unless ($isPublic ?? false)
+        @include('reports.partials.signatures')
+    @endunless
 
     @include('reports.partials.footer')
 </body>

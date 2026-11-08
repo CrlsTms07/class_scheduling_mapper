@@ -97,7 +97,7 @@ export const OverloadedTeachers = ({ teachers }: { teachers: AdminDashboard["ove
   <section className="space-y-3">
     <p className="font-medium text-teal-700">Overloaded teachers</p>
     {teachers.length === 0 ? (
-      <p className="text-sm text-neutral-700">No teacher is over their limit in this term.</p>
+      <p className="text-sm text-neutral-700">No teacher is over their limit.</p>
     ) : (
       <ul className="divide-y rounded-md border">
         {teachers.map(({ id, name, assigned, limit }) => (

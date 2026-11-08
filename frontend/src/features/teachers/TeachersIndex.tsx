@@ -22,7 +22,7 @@ import TeacherSheet from "./TeacherSheet";
 const HOW_IT_WORKS = [
   "Add everyone here, with or without a login account. These records are reused every school year.",
   "Only active teaching personnel can be advisers or be given subjects.",
-  "The load shown is for the term in the selector at the top.",
+  "The load shown follows the selector at the top.",
   "Someone with an advisory or loading cannot be deleted. Mark them as inactive instead, so old schedules stay correct.",
 ];
 

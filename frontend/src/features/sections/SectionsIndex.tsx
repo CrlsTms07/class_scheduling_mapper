@@ -61,6 +61,12 @@ const SectionCard = ({ section, onEdit }: SectionRowProp) => (
       <dl className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-2 text-xs text-neutral-800">
         <dt className="text-neutral-600">Adviser</dt>
         <dd><EmptyValue value={section.adviser} /></dd>
+        {section.co_adviser && (
+          <>
+            <dt className="text-neutral-600">Co-adviser</dt>
+            <dd>{section.co_adviser}</dd>
+          </>
+        )}
         <dt className="text-neutral-600">{section.level === "SHS" ? "Usual room" : "Home room"}</dt>
         <dd><EmptyValue value={section.home_room} /></dd>
         <dt className="text-neutral-600">Class size</dt>
@@ -96,7 +102,10 @@ const SectionsTable = ({
             <td className="p-3 font-medium text-teal-700">{section.label}</td>
             <td className="p-3">{section.track ?? "–"}</td>
             <td className="p-3">{SHIFT_LABELS[section.shift]}</td>
-            <td className="p-3"><EmptyValue value={section.adviser} /></td>
+            <td className="p-3">
+              <EmptyValue value={section.adviser} />
+              {section.co_adviser && <span className="block text-xs text-neutral-700">Co: {section.co_adviser}</span>}
+            </td>
             <td className="p-3">
               <EmptyValue value={section.home_room} />
             </td>

@@ -43,8 +43,10 @@ Last updated: Nov 6, 2026.
 9. **Sections:** Only the Admin creates sections, or can the GLC / Master Teacher too?
 10. **Copy term (item 2):** Should the copy also keep the same teachers for subjects that
     continue?
-11. **Guest view:** Is it okay for teacher schedules to be public? Should schedules appear
-    automatically after approval, or be released by the Admin all at once?
+11. **Guest view:** ~~Is it okay for teacher schedules to be public?~~ Team decision, Nov 7, 2026:
+    only the adviser and co-adviser are named publicly, so teachers of subjects stay private. Confirm
+    with the client. Still open: should schedules appear automatically after approval, or be released
+    by the Admin all at once?
 12. **Signatories:** Is "Prepared by" always the Head Teacher (not the GLC)? Are the
     signatories the same for SHS, and for the teacher program and room schedule?
 13. **Bell schedule:** Are the Mon–Thu and Friday times the same for every JHS grade

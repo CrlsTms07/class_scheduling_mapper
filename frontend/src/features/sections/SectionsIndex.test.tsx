@@ -28,6 +28,8 @@ const HONESTY: ManagedSection = {
   track: null,
   adviser_id: 3,
   adviser: "Ana Reyes",
+  co_adviser_id: null,
+  co_adviser: null,
   home_room_id: 4,
   home_room: "Main – 101",
   class_size: 40,
@@ -44,6 +46,8 @@ const RIZAL: ManagedSection = {
   level: "SHS",
   adviser_id: null,
   adviser: null,
+  co_adviser_id: null,
+  co_adviser: null,
   home_room_id: null,
   home_room: null,
   class_size: null,
@@ -164,9 +168,30 @@ describe("section form", () => {
       shift: "WHOLE_DAY",
       track_id: null,
       adviser_id: 4,
+      co_adviser_id: null,
       home_room_id: 4,
       class_size: 38,
     });
+  });
+
+  it("takes a co-adviser, but not the adviser again", async () => {
+    const calls = openPage();
+
+    await click("Add section");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Grade level" }), "1");
+    await userEvent.type(screen.getByRole("textbox", { name: /name/i }), "Hope");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Adviser (optional)" }), "4");
+
+    const coAdviser = screen.getByRole("combobox", { name: "Co-adviser (optional)" });
+    const adviser = within(screen.getByRole("combobox", { name: "Adviser (optional)" }))
+      .getByRole<HTMLOptionElement>("option", { selected: true }).text;
+
+    expect(within(coAdviser).getByRole("option", { name: adviser })).toBeDisabled();
+
+    await userEvent.selectOptions(coAdviser, "3");
+    await click("Save");
+
+    await waitFor(() => expect(calls[0]?.body).toMatchObject({ adviser_id: 4, co_adviser_id: 3 }));
   });
 
   it("needs a grade and a name", async () => {
@@ -237,7 +262,9 @@ describe("section form", () => {
 
     await userEvent.click(screen.getAllByRole("button", { name: "Edit Grade 7 – Honesty", hidden: true })[0]);
 
-    expect(screen.getByRole("option", { name: "Ana Reyes" })).toBeEnabled();
+    expect(
+      within(screen.getByRole("combobox", { name: "Adviser (optional)" })).getByRole("option", { name: "Ana Reyes" }),
+    ).toBeEnabled();
     expect(screen.getByLabelText("Adviser (optional)")).toHaveValue("3");
   });
 

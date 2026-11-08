@@ -155,6 +155,31 @@ class ScheduleService
     }
 
     /**
+     * Starts a section's schedule over. Its teacher loading stays. A schedule waiting for the
+     * Admin or already approved is never cleared: reopening it is the Admin's decision.
+     *
+     * @return int The number of entries removed.
+     */
+    public function clearAll(int $termId, Section $section, User $user): int
+    {
+        $status = $this->statusOf($termId, $section);
+
+        if (! in_array($status, ['draft', 'rejected'])) {
+            throw ValidationException::withMessages(['section' => "This schedule is {$status} and cannot be cleared."]);
+        }
+
+        return DB::transaction(function () use ($termId, $section, $user) {
+            $count = ScheduleEntry::where('term_id', $termId)->where('section_id', $section->id)->delete();
+
+            DB::table('schedule_flag_acknowledgements')->where('term_id', $termId)->where('section_id', $section->id)->delete();
+
+            $this->audit->log($user, 'clear', 'schedule_entries', $section->id, null, ['term_id' => $termId, 'entries' => $count]);
+
+            return $count;
+        });
+    }
+
+    /**
      * Sends the section's draft entries to the Admin. Every flag must be fixed or
      * acknowledged first, and open slots must be filled.
      *

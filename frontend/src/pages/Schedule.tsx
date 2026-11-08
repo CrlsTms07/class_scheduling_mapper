@@ -1,15 +1,16 @@
 import React from "react";
 import { Link } from "react-router";
 import { ArrowUpRightIcon, Copy, DoorClosed, SearchIcon, TableProperties } from "lucide-react";
-import { useScheduleMap } from "@/api/schedule";
+import { useScheduleMap, useSections } from "@/api/schedule";
 import { useSelectedTerm } from "@/context/selectedTerm";
-import { STATUS_COLORS, STATUS_LABELS } from "@/lib/schedule";
+import { STATUS_COLORS, STATUS_LABELS, termWord } from "@/lib/schedule";
 import {
-  firstTab,
+  ALL_SECTIONS_TAB,
   mapTabs,
   NO_ROOM_TAB,
   searchRooms,
   searchSections,
+  sectionsByGrade,
 } from "@/lib/scheduleMap";
 import type { MapRoom, SectionSummary } from "@/types/api";
 import CopyScheduleSheet from "@/features/schedule/CopyScheduleSheet";
@@ -80,11 +81,17 @@ const Schedule = () => {
   const { term, isPending: isTermPending, terms } = useSelectedTerm();
   const [isCopyOpen, setIsCopyOpen] = React.useState(false);
   const { data: map, isPending, isError } = useScheduleMap(term?.id);
+  const { data: sections = [] } = useSections(term?.id);
+  const [grade, setGrade] = React.useState<number | null>(null);
   const [search, setSearch] = React.useState("");
   const [chosenTab, setChosenTab] = React.useState<string | null>(null);
 
-  const tabs = map ? mapTabs(map) : [];
-  const tab = tabs.some(({ key }) => key === chosenTab) ? chosenTab : map ? firstTab(map) : undefined;
+  // Every section can be found in one place, so none hides behind a room it does not have yet.
+  const tabs = map
+    ? [...(sections.length > 0 ? [{ key: ALL_SECTIONS_TAB, label: "All sections" }] : []), ...mapTabs(map)]
+    : [];
+  const tab = tabs.some(({ key }) => key === chosenTab) ? chosenTab : tabs[0]?.key;
+  const groups = sectionsByGrade(sections).filter((group) => grade === null || group.grade === grade);
   const isSearching = search.trim() !== "";
 
   const otherTerms = terms.filter(
@@ -93,7 +100,7 @@ const Schedule = () => {
 
   const renderContent = () => {
     if (!term && !isTermPending) {
-      return <p className="text-sm text-neutral-700">No term has been set up yet.</p>;
+      return <p className="text-sm text-neutral-700">No school year has been set up yet.</p>;
     }
     if (isError) {
       return <p className="text-sm text-destructive">Could not load the schedules.</p>;
@@ -157,16 +164,48 @@ const Schedule = () => {
           ))}
         </div>
 
-        {tab === NO_ROOM_TAB ? (
+        {tab === ALL_SECTIONS_TAB && (
+          <div className="space-y-4">
+            <div role="group" aria-label="Grade level" className="flex flex-wrap gap-2">
+              {[null, ...new Set(sections.map((section) => section.grade))].map((item) => (
+                <button
+                  key={item ?? "all"}
+                  type="button"
+                  aria-pressed={item === grade}
+                  onClick={() => setGrade(item)}
+                  className={`min-h-11 rounded-md border px-3 text-sm font-medium ${
+                    item === grade
+                      ? "bg-[#790D16] text-white border-[#790D16]"
+                      : "bg-background text-neutral-700"
+                  }`}
+                >
+                  {item === null ? "All grades" : `Grade ${item}`}
+                </button>
+              ))}
+            </div>
+            {groups.map((group) => (
+              <section key={group.grade} aria-label={`Grade ${group.grade}`} className="space-y-2">
+                <p className="font-medium text-teal-700">Grade {group.grade}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                  {group.sections.map((section) => <SectionLink key={section.id} section={section} />)}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {tab === NO_ROOM_TAB && (
           <div className="space-y-2">
             <p className="text-sm text-neutral-700">
               These sections have no home room and no classes in a room yet. Open one to start.
             </p>
             {map.unassigned.map((section) => <SectionLink key={section.id} section={section} />)}
           </div>
-        ) : (
+        )}
+
+        {building && (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-            {building?.rooms.map((room) => <RoomCard key={room.id} room={room} />)}
+            {building.rooms.map((room) => <RoomCard key={room.id} room={room} />)}
           </div>
         )}
       </div>
@@ -185,7 +224,7 @@ const Schedule = () => {
               Schedule Configuration
             </p>
             <p className="text-sm text-neutral-700">
-              Choose a building and room, then a section, to build its timetable for{" "}
+              Open a section to build its timetable for{" "}
               {term ? `${term.name}, SY ${term.school_year.name}` : "the selected term"}.
             </p>
           </div>
@@ -194,7 +233,7 @@ const Schedule = () => {
           {otherTerms.length > 0 && (
             <Button type="button" variant="outline" className="h-11" onClick={() => setIsCopyOpen(true)}>
               <Copy />
-              Copy from another term
+              Copy from another {termWord(term)}
             </Button>
           )}
           <InputGroup className="h-11 sm:w-64">

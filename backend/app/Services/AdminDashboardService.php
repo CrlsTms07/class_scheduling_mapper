@@ -110,11 +110,11 @@ class AdminDashboardService
 
         return [
             'key' => 'calendar',
-            'title' => 'School year and active term',
+            'title' => 'School year and calendar',
             'done' => $active !== null,
             'detail' => $active
                 ? "{$active->name}, SY {$active->schoolYear->name} is active."
-                : 'No term is active yet.',
+                : 'Nothing is active yet.',
         ];
     }
 

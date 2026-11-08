@@ -77,14 +77,14 @@ describe("route guards", () => {
 
   it("keeps the guest page open to visitors", async () => {
     openApp("/guest", null);
-    expect(await screen.findByText("View Schedule")).toBeInTheDocument();
+    expect(await screen.findByText("View as Guest")).toBeInTheDocument();
   });
 });
 
 describe("login page", () => {
-  it("has a View Schedule button for guests and a sign-up link", async () => {
+  it("has a View as Guest button and a sign-up link", async () => {
     openApp("/", null);
-    expect(await screen.findByRole("link", { name: "View Schedule" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "View as Guest" })).toHaveAttribute(
       "href",
       "/guest",
     );

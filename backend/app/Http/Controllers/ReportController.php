@@ -8,9 +8,11 @@ use App\Models\Section;
 use App\Models\Teacher;
 use App\Services\ReportService;
 use App\Services\ScheduleReportService;
+use App\Services\SummaryReportService;
 use App\Services\ValidationReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Excel as ExcelWriter;
@@ -102,6 +104,60 @@ class ReportController extends Controller
         Gate::authorize('view-school-records');
 
         return $this->xlsx($reports->usageSheet($reports->roomUsage($term)), "room-usage-{$term->name}");
+    }
+
+    public function teacherLoad(Request $request, SchoolTerm $term, SummaryReportService $reports): JsonResponse
+    {
+        Gate::authorize('view-school-records');
+
+        return response()->json(['data' => $reports->teacherLoad($term, $request->user())]);
+    }
+
+    public function teacherLoadPdf(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
+    {
+        Gate::authorize('view-school-records');
+
+        return $this->pdf($reports->teacherLoadPdf($reports->teacherLoad($term, $request->user())), "teacher-load-{$term->name}");
+    }
+
+    public function teacherLoadXlsx(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
+    {
+        Gate::authorize('view-school-records');
+
+        return $this->xlsx($reports->teacherLoadSheet($reports->teacherLoad($term, $request->user())), "teacher-load-{$term->name}");
+    }
+
+    public function gradeTimetable(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): JsonResponse
+    {
+        $this->authorizeGrade($request, $grade);
+
+        return response()->json(['data' => $reports->gradeTimetable($term, $grade)]);
+    }
+
+    public function gradeTimetablePdf(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): Response
+    {
+        $this->authorizeGrade($request, $grade);
+
+        return $this->pdf($reports->gradeTimetablePdf($reports->gradeTimetable($term, $grade)), "grade-{$grade}-timetable-{$term->name}");
+    }
+
+    public function gradeTimetableXlsx(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): Response
+    {
+        $this->authorizeGrade($request, $grade);
+
+        return $this->xlsx($reports->gradeTimetableSheet($reports->gradeTimetable($term, $grade)), "grade-{$grade}-timetable-{$term->name}");
+    }
+
+    private function authorizeGrade(Request $request, int $grade): void
+    {
+        Gate::authorize('view-school-records');
+
+        $inScope = DB::table('grade_levels')
+            ->where('grade', $grade)
+            ->whereIn('id', $request->user()->gradeLevelIdsInScope())
+            ->exists();
+
+        abort_unless($inScope, 403);
     }
 
     public function validationReport(Request $request, SchoolTerm $term, ValidationReportService $reports): JsonResponse
