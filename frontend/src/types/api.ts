@@ -18,6 +18,10 @@ export type User = {
   last_name: string;
   suffix: string | null;
   status: AccountStatus;
+  /** Null until the Terms and Conditions are accepted. */
+  terms_accepted_at?: string | null;
+  /** Set after the Admin gave a temporary password. */
+  must_change_password?: boolean;
   role: RoleName | null;
   personnel: { id: number; name: string } | null;
   /** Screen choices kept on the account, so they follow the user to any device. */
@@ -339,6 +343,17 @@ export type SchoolProfile = {
   phone: string | null;
   email: string | null;
   website: string | null;
+  /** The heading of the printed forms, under "Department of Education". */
+  region?: string | null;
+  division?: string | null;
+  /** Shown on the landing page. */
+  facebook_url: string | null;
+  tagline: string | null;
+  vision: string | null;
+  mission: string | null;
+  core_values: string | null;
+  /** Sent by the server only: whether a campus photo was uploaded. */
+  has_photo?: boolean;
 };
 
 export type DocumentSetting = {
@@ -355,6 +370,8 @@ export type ReportSettings = {
   school: SchoolProfile | null;
   /** Embedded images, in printing order. */
   logos: string[];
+  /** Each logo and where it is printed: at the top of the form or in its footer. */
+  logo_items?: { src: string; placement: "header" | "footer" }[];
   max_logos: number;
   documents: DocumentSetting[];
 };
@@ -404,6 +421,8 @@ export type ManagedRoom = {
   id: number;
   room_number: string;
   room_name: string | null;
+  /** Who looks after the room. */
+  in_charge?: string | null;
   capacity: number | null;
   is_active: boolean;
   cannot_delete_reason: string | null;
@@ -446,6 +465,8 @@ export type ManagedTeacher = {
   task_ids: number[];
   qualifications: Qualification[];
   cannot_delete_reason: string | null;
+  /** False for a teacher of the other department only: the Admin keeps that record. */
+  can_edit?: boolean;
 };
 
 export type TeacherInput = Pick<
@@ -459,7 +480,6 @@ export type TeacherInput = Pick<
   | "department_id"
   | "designation_id"
   | "shift"
-  | "max_subjects"
   | "max_hours_per_week"
   | "is_active"
   | "qualifications"
@@ -544,6 +564,7 @@ export type MapRoom = {
   id: number;
   room_number: string;
   room_name: string | null;
+  in_charge?: string | null;
   is_active: boolean;
   sections: SectionSummary[];
 };
@@ -558,6 +579,7 @@ export type RoomSchedule = {
     id: number;
     label: string;
     room_name: string | null;
+    in_charge?: string | null;
     capacity: number | null;
     building: string;
   };
@@ -660,6 +682,8 @@ export type GuestSectionList = {
     grade: number;
     level: "JHS" | "SHS";
     track: string | null;
+    adviser: string | null;
+    co_adviser: string | null;
     is_ready: boolean;
   }[];
 };
@@ -777,6 +801,24 @@ export type TeacherLoadData = {
   }[];
 };
 
+/** Adviser Summary: each grade's sections with room, adviser and co-adviser. */
+export type AdviserSummaryData = {
+  term_label: string;
+  summary: { sections: number; without_adviser: number };
+  grades: {
+    grade: number;
+    title: string;
+    sections: {
+      number: number;
+      id: number;
+      name: string;
+      room: string | null;
+      adviser: string | null;
+      co_adviser: string | null;
+    }[];
+  }[];
+};
+
 export type GradeTimetableData = {
   grade: number;
   title: string;
@@ -833,4 +875,60 @@ export type AutoFillPlan = {
   unplaced: { section: string; subject: string; teacher: string; minutes_left: number; reason: string }[];
   skipped: { section: string; reason: string }[];
   run_id?: number;
+};
+
+export type PublicSchool = {
+  school_name: string;
+  short_name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  facebook_url: string | null;
+  tagline: string | null;
+  vision: string | null;
+  mission: string | null;
+  core_values: string | null;
+  has_photo: boolean;
+};
+
+export type ImportMissingKind = "sections" | "bell_schedules" | "subjects" | "teachers" | "rooms";
+
+export type ScheduleImportResult = {
+  /** The import template, or the school's own class program workbook ("..._CP" sheets). */
+  source?: "template" | "class_program";
+  sections_found?: string[];
+  total: number;
+  ok: number;
+  errors: number;
+  /** Subjects that get teacher loading from the file. */
+  new_loadings: number;
+  /** Whether what the file names but the system lacks was set up for this result. */
+  set_up?: boolean;
+  /** What the file names but the system does not have yet, with a few names each. */
+  missing?: Record<ImportMissingKind, { count: number; names: string[] }>;
+  rows: {
+    row: number;
+    section: string;
+    day: string;
+    time: string;
+    subject: string;
+    teacher: string;
+    room: string;
+    status: "ok" | "error";
+    message: string | null;
+  }[];
+};
+
+/** One teacher's classes in a term, for the teacher detail page. */
+export type TeacherSchedule = {
+  classes: {
+    /** Null for a section of the other department, which is named only as "Junior/Senior High section". */
+    section_id: number | null;
+    section: string;
+    subject: string | null;
+    minutes_per_week: number;
+    meetings: { day: number; start_time: string; end_time: string; minutes: number; room: string | null; status: ScheduleEntry["status"] }[];
+  }[];
+  minutes_per_week: number;
 };

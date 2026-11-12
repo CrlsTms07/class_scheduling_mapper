@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ActivityPlacement, ActivityScope, AutoFillPlan, ConflictDetails, CopyScheduleResult, DataResponse, Plotter, RoomSchedule, ScheduleMap, SectionSummary } from "@/types/api";
+import type { ActivityPlacement, ActivityScope, AutoFillPlan, ScheduleImportResult, ConflictDetails, CopyScheduleResult, DataResponse, Plotter, RoomSchedule, ScheduleMap, SectionSummary } from "@/types/api";
 import { api, ApiError } from "./client";
 
 export function useSections(termId: number | undefined) {
@@ -199,6 +199,25 @@ export function useAutoFill(termId: number | undefined, sectionId: number) {
   });
 
   return { preview, confirm, undo };
+}
+
+/** Import a schedule from the template file. With preview, the rows are only checked. */
+export function useImportSchedule(termId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ file, preview, setUp = false }: { file: File; preview: boolean; setUp?: boolean }) => {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("preview", preview ? "1" : "0");
+      body.append("set_up", setUp ? "1" : "0");
+      return api<DataResponse<ScheduleImportResult>>(`/terms/${termId}/schedule-import`, { method: "POST", body });
+    },
+    onSuccess: (_data, { preview, setUp }) => {
+      // A set-up also adds sections, subjects, teachers, rooms and a bell schedule.
+      if (!preview) queryClient.invalidateQueries(setUp ? undefined : { queryKey: ["terms", termId] });
+    },
+  });
 }
 
 export function useSubmitSchedule(termId: number | undefined, sectionId: number) {

@@ -207,12 +207,11 @@ describe("Chairperson and Master Teacher dashboard", () => {
     expect(screen.getByRole("link", { name: "Grade 7 – Honesty" })).toHaveAttribute("href", "/schedule/sections/14");
   });
 
-  it("does not link a step that only the Admin can do", () => {
+  it("leads to Time Slots when a bell schedule is missing, since the scheduler sets it up", () => {
     openScheduler();
 
-    expect(screen.getByText("Waiting for a bell schedule (1)")).toBeInTheDocument();
-    expect(screen.getByText("Grade 7 – Love")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Grade 7 – Love" })).not.toBeInTheDocument();
+    expect(screen.getByText("Set up the bell schedule (1)")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Grade 7 – Love/ })).toHaveAttribute("href", "/time-slots");
   });
 
   it("says when there is nothing to do", () => {

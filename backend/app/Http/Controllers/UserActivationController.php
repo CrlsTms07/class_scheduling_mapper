@@ -27,6 +27,18 @@ class UserActivationController extends Controller
         return new UserResource($user->fresh()->load('gradeLevels'));
     }
 
+    /** A temporary password for someone who cannot get the reset email. Shown here once. */
+    public function resetPassword(Request $request, User $user, AccountService $accounts): JsonResponse
+    {
+        Gate::authorize('activate', $user);
+        abort_unless($user->status === 'active', 422, 'Only an active account can get a temporary password.');
+
+        return response()->json([
+            'temporary_password' => $accounts->adminResetPassword($user, $request->user()),
+            'message' => "Give this temporary password to {$user->first_name}. They choose a new one when they sign in.",
+        ]);
+    }
+
     public function destroy(Request $request, User $user, AccountService $accounts): JsonResponse
     {
         Gate::authorize('activate', $user);

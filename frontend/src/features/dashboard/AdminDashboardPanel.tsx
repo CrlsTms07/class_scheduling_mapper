@@ -1,12 +1,13 @@
 import { Link } from "react-router";
 import { ArrowRight, Check, CircleDashed } from "lucide-react";
-import { useAdminDashboard } from "@/api/dashboard";
+import { useAdminDashboard, useSchedulerDashboard } from "@/api/dashboard";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { termWord } from "@/lib/schedule";
 import type { AdminDashboard, ChecklistKey } from "@/types/api";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { OverloadedTeachers, ProgressSection, StatTile } from "./DashboardParts";
+import SchedulerSteps from "./SchedulerSteps";
 
 const CHECKLIST_LINKS: Record<ChecklistKey, string> = {
   calendar: "/school-years",
@@ -63,6 +64,8 @@ const SetupChecklist = ({ items }: { items: AdminDashboard["checklist"] }) => {
 const AdminDashboardPanel = () => {
   const { terms, term, isPending: isTermPending } = useSelectedTerm();
   const { data, isPending, isError } = useAdminDashboard(term?.id);
+  // The same four steps of making a schedule as a Chairperson or Master Teacher, for every grade level.
+  const { data: making } = useSchedulerDashboard(term?.id);
   const activeTerm = terms.find(({ is_active }) => is_active);
 
   if (!term) {
@@ -133,6 +136,8 @@ const AdminDashboardPanel = () => {
       </div>
 
       <SetupChecklist items={data.checklist} />
+
+      {making && <SchedulerSteps steps={making.steps} term={term} terms={terms} />}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5 items-start">
         <ProgressSection rows={data.progress} />

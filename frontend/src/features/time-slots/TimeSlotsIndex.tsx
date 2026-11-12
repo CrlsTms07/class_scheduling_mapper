@@ -1,5 +1,6 @@
 import React from "react";
 import { Clock, Copy, Pencil, Plus } from "lucide-react";
+import { useMe } from "@/api/auth";
 import { useDayPatterns } from "@/api/timeSlots";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { DAY_NAMES, slotTimeLabel } from "@/lib/schedule";
@@ -12,6 +13,7 @@ import {
   slotName,
 } from "@/lib/timeSlots";
 import type { ManagedPattern, SchoolLevel, Shift } from "@/types/api";
+import PageHeader from "@/components/global-component/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -148,7 +150,13 @@ const TimeSlotsIndex = () => {
   const year = term?.school_year;
   const { data: patterns, isPending, isError } = useDayPatterns(year?.id);
 
-  const [level, setLevel] = React.useState<SchoolLevel>("JHS");
+  const { data: user } = useMe();
+  // A Chairperson sets up the Junior High bell schedules, a Master Teacher the Senior High ones.
+  const levels = user?.role !== "glc" && user?.role !== "master_teacher"
+    ? LEVELS
+    : LEVELS.filter((item) => user.grade_levels.some((grade) => grade.level === item));
+  const [chosenLevel, setLevel] = React.useState<SchoolLevel>("JHS");
+  const level = levels.includes(chosenLevel) ? chosenLevel : (levels[0] ?? "JHS");
   const [shift, setShift] = React.useState<Shift>("WHOLE_DAY");
   const [patternAction, setPatternAction] = React.useState<PatternAction | null>(null);
   const [slotAction, setSlotAction] = React.useState<SlotAction | null>(null);
@@ -168,25 +176,17 @@ const TimeSlotsIndex = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-[#790D16]/20 rounded-sm">
-            <Clock className="text-branding size-5" />
-          </div>
-          <div>
-            <p className="text-branding text-xl font-medium">Time Slots</p>
-            <p className="text-sm text-neutral-700">Bell schedules of SY {year.name}</p>
-          </div>
-        </div>
-        <Button
-          type="button"
-          className="h-11 shrink-0"
-          onClick={() => setPatternAction({ mode: "create", level, shift })}
-        >
-          <Plus />
-          Add bell schedule
-        </Button>
-      </div>
+      <PageHeader
+        icon={Clock}
+        title="Time Slots"
+        description={`Bell schedules of SY ${year.name}${levels.length === 1 ? `, ${levels[0] === "SHS" ? "Senior High" : "Junior High"}` : ""}`}
+        actions={
+          <Button type="button" className="h-11" onClick={() => setPatternAction({ mode: "create", level, shift })}>
+            <Plus />
+            Add bell schedule
+          </Button>
+        }
+      />
 
       <details className="rounded-md border bg-background">
         <summary className="flex min-h-11 cursor-pointer items-center p-3 text-sm font-medium">
@@ -200,8 +200,8 @@ const TimeSlotsIndex = () => {
       </details>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-        <div role="tablist" aria-label="Department" className="grid grid-cols-2 gap-2 sm:w-56">
-          {LEVELS.map((item) => (
+        <div role="tablist" aria-label="Department" className={`grid grid-cols-2 gap-2 sm:w-56 ${levels.length < 2 ? "hidden" : ""}`}>
+          {levels.map((item) => (
             <button
               key={item}
               type="button"
@@ -245,6 +245,20 @@ const TimeSlotsIndex = () => {
           {level}, {SHIFT_LABELS[shift]}: {missingDays.join(", ")}{" "}
           {missingDays.length === 1 ? "has" : "have"} no bell schedule yet.
         </p>
+      )}
+
+      {patterns && shown.length === 0 && (
+        <div className="space-y-2 rounded-xl border border-dashed p-6 text-sm text-neutral-700">
+          <p className="font-medium text-neutral-900">
+            No {level} bell schedule for the {SHIFT_LABELS[shift].toLowerCase()} shift yet
+          </p>
+          <p>
+            {level === "SHS"
+              ? "Senior High often has an AM and a PM shift. Choose the shift above, then add a bell schedule for its days, such as Monday – Friday."
+              : "Add a bell schedule for each group of days, such as Monday – Thursday and Friday."}{" "}
+            Then use a preset of 8, 10, 14 or 16 rows, or add the periods one by one.
+          </p>
+        </div>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">

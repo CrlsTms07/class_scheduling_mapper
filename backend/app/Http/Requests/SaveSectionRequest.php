@@ -11,9 +11,19 @@ use Illuminate\Validation\Validator;
 
 class SaveSectionRequest extends FormRequest
 {
+    /**
+     * Both the section as it is and the grade it is saved under must be in the user's scope.
+     */
     public function authorize(): bool
     {
-        return $this->user()->can('manage', Section::class);
+        $user = $this->user();
+        $section = $this->route('section');
+
+        if ($section && ! $user->can('manage', [Section::class, $section->grade_level_id])) {
+            return false;
+        }
+
+        return $user->can('manage', [Section::class, $this->filled('grade_level_id') ? $this->integer('grade_level_id') : null]);
     }
 
     /**

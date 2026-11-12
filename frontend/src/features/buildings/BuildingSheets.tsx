@@ -130,6 +130,7 @@ export const RoomSheet = ({ building, room, onClose }: RoomSheetProp) => {
             <FormTextField control={form.control} name="capacity" label="Capacity (optional)" placeholder="45" />
           </div>
           <FormTextField control={form.control} name="room_name" label="Room name (optional)" placeholder="Science Lab" />
+          <FormTextField control={form.control} name="in_charge" label="In charge (optional)" placeholder="Juan Dela Cruz" />
           <Controller
             name="is_active"
             control={form.control}

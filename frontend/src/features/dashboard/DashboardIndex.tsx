@@ -2,6 +2,7 @@ import { useMe } from "@/api/auth";
 import { ROLE_LABELS } from "@/lib/navigation";
 import AdminDashboardPanel from "./AdminDashboardPanel";
 import SchedulerDashboardPanel from "./SchedulerDashboardPanel";
+import TeacherDashboardPanel from "./TeacherDashboardPanel";
 
 const DashboardIndex = () => {
   const { data: user } = useMe();
@@ -18,7 +19,9 @@ const DashboardIndex = () => {
           {grades && ` · Grade ${grades}`}
         </p>
       </div>
-      {user?.role === "super_admin" ? <AdminDashboardPanel /> : <SchedulerDashboardPanel />}
+      {user?.role === "super_admin" && <AdminDashboardPanel />}
+      {(user?.role === "glc" || user?.role === "master_teacher") && <SchedulerDashboardPanel />}
+      {user?.role === "teacher" && <TeacherDashboardPanel />}
     </div>
   );
 };

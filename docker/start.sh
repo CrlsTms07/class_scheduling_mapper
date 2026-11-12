@@ -7,6 +7,12 @@ if [ -z "$APP_KEY" ] || [ -z "$DB_URL" ]; then
     exit 1
 fi
 
+# Error pages with code and settings must never reach the public.
+if [ "${APP_ENV:-production}" = "production" ] && [ "$APP_DEBUG" = "true" ]; then
+    echo "APP_DEBUG must be false on the live server." >&2
+    exit 1
+fi
+
 # The host provides its own address, so nothing has to be typed in or kept up to date.
 export APP_URL="${APP_URL:-$RENDER_EXTERNAL_URL}"
 export FRONTEND_URL="${FRONTEND_URL:-$APP_URL}"

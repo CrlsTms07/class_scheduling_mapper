@@ -10,19 +10,16 @@ use App\Services\ReportService;
 use App\Services\ScheduleReportService;
 use App\Services\SummaryReportService;
 use App\Services\ValidationReportService;
+use App\Support\SheetResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Excel as ExcelWriter;
-use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
 {
-    private const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
     public function options(Request $request, SchoolTerm $term, ScheduleReportService $reports): JsonResponse
     {
         Gate::authorize('view-school-records');
@@ -83,27 +80,27 @@ class ReportController extends Controller
         return $this->xlsx($reports->gridSheet($reports->roomSchedule($term, $room), 'Room Schedule'), $this->roomFile($term, $room));
     }
 
-    public function roomUsage(SchoolTerm $term, ScheduleReportService $reports): JsonResponse
+    public function roomUsage(Request $request, SchoolTerm $term, ScheduleReportService $reports): JsonResponse
     {
         Gate::authorize('view-school-records');
 
-        $usage = $reports->roomUsage($term);
+        $usage = $reports->roomUsage($term, $request->integer('building') ?: null);
 
         return response()->json(['data' => ['buildings' => $usage['buildings']]]);
     }
 
-    public function roomUsagePdf(SchoolTerm $term, ScheduleReportService $reports): Response
+    public function roomUsagePdf(Request $request, SchoolTerm $term, ScheduleReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
-        return $this->pdf($reports->usagePdf($reports->roomUsage($term)), "room-usage-{$term->name}");
+        return $this->pdf($reports->usagePdf($reports->roomUsage($term, $request->integer('building') ?: null)), "room-usage-{$term->name}");
     }
 
-    public function roomUsageXlsx(SchoolTerm $term, ScheduleReportService $reports): Response
+    public function roomUsageXlsx(Request $request, SchoolTerm $term, ScheduleReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
-        return $this->xlsx($reports->usageSheet($reports->roomUsage($term)), "room-usage-{$term->name}");
+        return $this->xlsx($reports->usageSheet($reports->roomUsage($term, $request->integer('building') ?: null)), "room-usage-{$term->name}");
     }
 
     public function teacherLoad(Request $request, SchoolTerm $term, SummaryReportService $reports): JsonResponse
@@ -125,6 +122,27 @@ class ReportController extends Controller
         Gate::authorize('view-school-records');
 
         return $this->xlsx($reports->teacherLoadSheet($reports->teacherLoad($term, $request->user())), "teacher-load-{$term->name}");
+    }
+
+    public function adviserSummary(Request $request, SchoolTerm $term, SummaryReportService $reports): JsonResponse
+    {
+        Gate::authorize('view-school-records');
+
+        return response()->json(['data' => $reports->adviserSummary($term, $request->user())]);
+    }
+
+    public function adviserSummaryPdf(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
+    {
+        Gate::authorize('view-school-records');
+
+        return $this->pdf($reports->adviserSummaryPdf($reports->adviserSummary($term, $request->user())), 'adviser-summary');
+    }
+
+    public function adviserSummaryXlsx(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
+    {
+        Gate::authorize('view-school-records');
+
+        return $this->xlsx($reports->adviserSummarySheet($reports->adviserSummary($term, $request->user())), 'adviser-summary');
     }
 
     public function gradeTimetable(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): JsonResponse
@@ -210,11 +228,9 @@ class ReportController extends Controller
         ]);
     }
 
+    /** XLSX, or CSV when the address ends in .csv. Both come from the same sheet. */
     private function xlsx(object $sheet, string $name): Response
     {
-        return response(Excel::raw($sheet, ExcelWriter::XLSX), 200, [
-            'Content-Type' => self::XLSX,
-            'Content-Disposition' => 'attachment; filename="'.Str::slug($name).'.xlsx"',
-        ]);
+        return SheetResponse::make($sheet, Str::slug($name), SheetResponse::formatOf(request()));
     }
 }

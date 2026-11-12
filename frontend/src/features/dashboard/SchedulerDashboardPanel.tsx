@@ -15,8 +15,9 @@ const STEPS: Record<NextStepKey, { title: string; detail: string; pathOf?: (sect
     pathOf: (id) => `/schedule/sections/${id}`,
   },
   no_bell_schedule: {
-    title: "Waiting for a bell schedule",
-    detail: "The Admin sets these up in Time Slots. Nothing can be plotted until then.",
+    title: "Set up the bell schedule",
+    detail: "Add the periods and breaks of your department in Time Slots. Nothing can be plotted until then.",
+    pathOf: () => "/time-slots",
   },
   add_loading: {
     title: "Add teacher loading",
@@ -66,7 +67,8 @@ const SchedulerDashboardPanel = () => {
   return (
     <div className="space-y-5">
       <p className="text-sm text-neutral-700">
-        Showing <span className="font-medium">{term.name}, SY {term.school_year.name}</span>.
+        Showing <span className="font-medium">{term.name}, SY {term.school_year.name}</span>. The counts are for your
+        sections only; the Admin approves them.
       </p>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -107,7 +109,7 @@ const SchedulerDashboardPanel = () => {
 
         {data.sections === 0 && (
           <p className="text-sm text-neutral-700">
-            Your grade levels have no sections in this school year yet. The Admin encodes them.
+            Your grade levels have no sections in this school year yet. Add them on the Sections page.
           </p>
         )}
         {data.sections > 0 && data.next_steps.length === 0 && (

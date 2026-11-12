@@ -66,6 +66,7 @@ class ScheduleMapService
                         'id' => $room->id,
                         'room_number' => $room->room_number,
                         'room_name' => $room->room_name,
+                        'in_charge' => $room->in_charge,
                         'is_active' => $room->is_active,
                         'sections' => $sections
                             ->filter(fn (Section $section) => in_array($room->id, $roomsOf($section)))
@@ -108,19 +109,24 @@ class ScheduleMapService
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get()
-            ->map(fn (ScheduleEntry $entry) => [
-                'id' => $entry->id,
-                'day' => $entry->day_of_week,
-                'start_time' => ScheduleFormat::shortTime($entry->start_time),
-                'end_time' => ScheduleFormat::shortTime($entry->end_time),
-                'minutes' => ScheduleFormat::minutesBetween($entry->start_time, $entry->end_time),
-                'status' => $entry->status,
-                'subject' => $entry->subjectName(),
-                'teacher' => $entry->teacher?->printedName(),
-                'section_id' => $entry->section_id,
-                'section' => $entry->section->label(),
-                'can_open' => in_array($entry->section->grade_level_id, $inScope),
-            ])
+            ->map(function (ScheduleEntry $entry) use ($inScope, $user) {
+                // Another department's class shows only that the room is taken.
+                $isOwn = $entry->section->isVisibleTo($user);
+
+                return [
+                    'id' => $entry->id,
+                    'day' => $entry->day_of_week,
+                    'start_time' => ScheduleFormat::shortTime($entry->start_time),
+                    'end_time' => ScheduleFormat::shortTime($entry->end_time),
+                    'minutes' => ScheduleFormat::minutesBetween($entry->start_time, $entry->end_time),
+                    'status' => $entry->status,
+                    'subject' => $isOwn ? $entry->subjectName() : 'Taken',
+                    'teacher' => $isOwn ? $entry->teacher?->printedName() : null,
+                    'section_id' => $isOwn ? $entry->section_id : null,
+                    'section' => $entry->section->labelFor($user),
+                    'can_open' => in_array($entry->section->grade_level_id, $inScope),
+                ];
+            })
             ->values();
 
         return [
@@ -128,6 +134,7 @@ class ScheduleMapService
                 'id' => $room->id,
                 'label' => $room->label(),
                 'room_name' => $room->room_name,
+                'in_charge' => $room->in_charge,
                 'capacity' => $room->capacity,
                 'building' => $room->building->name,
             ],

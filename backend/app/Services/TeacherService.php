@@ -29,8 +29,11 @@ class TeacherService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function listFor(SchoolTerm $term): array
+    public function listFor(SchoolTerm $term, ?User $viewer = null): array
     {
+        $viewer ??= auth()->user();
+        $readOnly = $viewer ? $this->otherDepartmentOnly($term, $viewer)->flip() : collect();
+
         $loads = DB::table('section_subjects')
             ->where('term_id', $term->id)
             ->selectRaw('teacher_id, COUNT(*) AS assigned')
@@ -69,7 +72,9 @@ class TeacherService
                 'max_hours_per_week' => $teacher->max_hours_per_week,
                 'is_active' => $teacher->is_active,
                 'account_email' => $accounts[$teacher->user_id] ?? null,
-                'advisory' => $advisories->get($teacher->id)?->label(),
+                'advisory' => $advisories->get($teacher->id)?->labelFor($viewer),
+                // Only the Admin edits a teacher who teaches only in the other department.
+                'can_edit' => ! $readOnly->has($teacher->id),
                 'assigned' => (int) ($loads[$teacher->id] ?? 0),
                 'task_ids' => ($tasks[$teacher->id] ?? collect())->pluck('task_id')->map(fn ($id) => (int) $id)->values(),
                 'qualifications' => ($qualifications[$teacher->id] ?? collect())->map(fn ($row) => [
@@ -274,6 +279,40 @@ class TeacherService
      */
     private function recordValues(array $data): array
     {
-        return collect($data)->except(['qualifications', 'task_ids'])->all();
+        // The load limit is one for the whole school, not chosen per teacher.
+        return [...collect($data)->except(['qualifications', 'task_ids', 'max_subjects'])->all(), 'max_subjects' => (int) config('school.max_subjects')];
+    }
+
+    /**
+     * Teachers whose loading and advisory this school year are all in the other department.
+     * For a Chairperson or Master Teacher they are view-only; the Admin edits everyone.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public function otherDepartmentOnly(SchoolTerm $term, User $viewer): \Illuminate\Support\Collection
+    {
+        $departments = $viewer->departmentsInScope();
+
+        if ($departments === null) {
+            return collect();
+        }
+
+        $sections = DB::table('sections')
+            ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
+            ->where('sections.school_year_id', $term->school_year_id)
+            ->get(['sections.id', 'grade_levels.level', 'sections.adviser_id', 'sections.co_adviser_id']);
+        $isOwn = $sections->mapWithKeys(fn ($section) => [$section->id => in_array($section->level, $departments, true)]);
+
+        $links = DB::table('section_subjects')
+            ->whereIn('term_id', DB::table('school_terms')->where('school_year_id', $term->school_year_id)->select('id'))
+            ->get(['teacher_id', 'section_id'])
+            ->map(fn ($row) => [$row->teacher_id, $isOwn[$row->section_id] ?? false])
+            ->concat($sections->flatMap(fn ($section) => [[$section->adviser_id, $isOwn[$section->id]], [$section->co_adviser_id, $isOwn[$section->id]]]))
+            ->filter(fn ($link) => $link[0] !== null)
+            ->groupBy(0);
+
+        return $links
+            ->filter(fn ($rows) => $rows->every(fn ($link) => ! $link[1]))
+            ->keys();
     }
 }

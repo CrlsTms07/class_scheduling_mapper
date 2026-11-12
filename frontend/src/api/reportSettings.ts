@@ -37,8 +37,33 @@ export const useAddLogo = () =>
     return api("/school-profile/logos", { method: "POST", body });
   });
 
+/** The campus photo on the landing page. The landing page reads it fresh after a change. */
+export const useSavePhoto = () => {
+  const queryClient = useQueryClient();
+  return useSettingsChange(async (file: File) => {
+    const body = new FormData();
+    body.append("photo", file);
+    await api("/school-profile/photo", { method: "POST", body });
+    await queryClient.invalidateQueries({ queryKey: ["public", "school"] });
+  });
+};
+
+export const useRemovePhoto = () => {
+  const queryClient = useQueryClient();
+  return useSettingsChange(async () => {
+    await api("/school-profile/photo", { method: "DELETE" });
+    await queryClient.invalidateQueries({ queryKey: ["public", "school"] });
+  });
+};
+
 export const useRemoveLogo = () =>
   useSettingsChange((index: number) => api(`/school-profile/logos/${index}`, { method: "DELETE" }));
+
+/** Prints a logo at the top of the form (like the DepEd seal) or in its footer. */
+export const useSetLogoPlacement = () =>
+  useSettingsChange(({ index, placement }: { index: number; placement: "header" | "footer" }) =>
+    api(`/school-profile/logos/${index}/placement`, { method: "PUT", body: { placement } }),
+  );
 
 export const useSaveDocument = () =>
   useSettingsChange((body: DocumentSetting) =>

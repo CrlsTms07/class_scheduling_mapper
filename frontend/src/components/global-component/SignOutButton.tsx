@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-/** Asks once before signing out, so a stray tap never ends someone's work. */
+/** Asks once before signing out, so a stray tap never ends someone's work. The guards then go home. */
 const SignOutButton = () => {
   const [isAsking, setIsAsking] = React.useState(false);
   const logout = useLogout();

@@ -41,7 +41,7 @@ export function searchRooms(
 
   return map.buildings.flatMap(({ name: building, rooms }) =>
     rooms.flatMap((room) => {
-      const roomMatches = `${building} ${room.room_number} ${room.room_name ?? ""}`
+      const roomMatches = `${building} ${room.room_number} ${room.room_name ?? ""} ${room.in_charge ?? ""}`
         .toLowerCase()
         .includes(words);
       const sections = room.sections.filter((section) => sectionText(section).includes(words));

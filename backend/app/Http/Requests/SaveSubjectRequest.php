@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\GradeLevel;
 use App\Models\SchoolYear;
 use App\Models\Subject;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -22,7 +23,7 @@ class SaveSubjectRequest extends FormRequest
             return false;
         }
 
-        return $user->hasAnyRole(['glc', 'master_teacher']);
+        return $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']);
     }
 
     /**

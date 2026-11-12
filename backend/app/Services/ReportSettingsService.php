@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ReportSettingsService
 {
-    public const MAX_LOGOS = 4;
+    public const MAX_LOGOS = 6;
 
     public function __construct(private AuditLogger $audit) {}
 
@@ -38,13 +38,63 @@ class ReportSettingsService
      *
      * @return array<int, string>
      */
-    public function logoDataUris(): array
+    public function logoDataUris(string $placement = 'header'): array
     {
         return DB::table('school_logos')
+            ->where('placement', $placement)
             ->orderBy('id')
             ->get()
             ->map(fn ($logo) => "data:{$logo->mime_type};base64,{$logo->image_base64}")
             ->all();
+    }
+
+    /** The campus photo on the landing page. Kept in the database, like the logos. */
+    public function savePhoto(UploadedFile $file, User $admin): void
+    {
+        if (! DB::table('school_profile')->exists()) {
+            throw ValidationException::withMessages(['photo' => 'Save the school name first.']);
+        }
+
+        DB::table('school_profile')->where('id', 1)->update([
+            'photo_mime' => $file->getMimeType(),
+            'photo_base64' => base64_encode($file->getContent()),
+        ]);
+
+        $this->audit->log($admin, 'update', 'school_profile', 1, null, ['photo' => 'replaced']);
+    }
+
+    public function removePhoto(User $admin): void
+    {
+        DB::table('school_profile')->where('id', 1)->update(['photo_mime' => null, 'photo_base64' => null]);
+
+        $this->audit->log($admin, 'update', 'school_profile', 1, null, ['photo' => 'removed']);
+    }
+
+    /**
+     * Every logo with where it is printed, in order, for Report Settings.
+     *
+     * @return array<int, array{src: string, placement: string}>
+     */
+    public function logoItems(): array
+    {
+        return DB::table('school_logos')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($logo) => ['src' => "data:{$logo->mime_type};base64,{$logo->image_base64}", 'placement' => $logo->placement])
+            ->all();
+    }
+
+    /** Prints a logo at the top of the form (like the DepEd seal) or in its footer. */
+    public function setLogoPlacement(int $index, string $placement, User $admin): void
+    {
+        $id = DB::table('school_logos')->orderBy('id')->offset($index)->value('id');
+
+        if (! $id) {
+            throw ValidationException::withMessages(['logo' => 'This logo no longer exists.']);
+        }
+
+        DB::table('school_logos')->where('id', $id)->update(['placement' => $placement]);
+        $this->audit->log($admin, 'update', 'school_logos', $id, null, ['placement' => $placement]);
     }
 
     public function addLogo(UploadedFile $file, User $admin): void

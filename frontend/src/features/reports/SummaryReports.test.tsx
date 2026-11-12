@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { GradeTimetableData, TeacherLoadData } from "@/types/api";
-import { GradeTimetableReport, TeacherLoadReport } from "./SummaryReports";
+import type { AdviserSummaryData, GradeTimetableData, TeacherLoadData } from "@/types/api";
+import { AdviserSummaryReport, GradeTimetableReport, TeacherLoadReport } from "./SummaryReports";
 
 function open(page: ReactElement, data: unknown) {
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ data }))));
@@ -99,5 +99,41 @@ describe("Grade Level Timetable", () => {
     open(<GradeTimetableReport termId={2} grade={7} />, { ...TIMETABLE, tables: [] });
 
     expect(await screen.findByText(/no sections with a bell schedule/)).toBeInTheDocument();
+  });
+});
+
+const ADVISERS: AdviserSummaryData = {
+  term_label: "School Year 2026-2027",
+  summary: { sections: 2, without_adviser: 1 },
+  grades: [
+    {
+      grade: 7,
+      title: "GRADE 7",
+      sections: [
+        { number: 1, id: 1, name: "Honesty", room: "101", adviser: "Ana Reyes", co_adviser: "Ben Cruz" },
+        { number: 2, id: 2, name: "Hope", room: null, adviser: null, co_adviser: null },
+      ],
+    },
+  ],
+};
+
+describe("Adviser Summary", () => {
+  it("lists each grade's sections with room, adviser and co-adviser", async () => {
+    open(<AdviserSummaryReport termId={2} />, ADVISERS);
+
+    const grade = within(await screen.findByRole("region", { name: "Grade 7 advisers" }));
+    expect(grade.getByText("GRADE 7")).toBeInTheDocument();
+    expect(grade.getByText("101")).toBeInTheDocument();
+    expect(grade.getByText("Ana Reyes")).toBeInTheDocument();
+    expect(grade.getByText("Ben Cruz")).toBeInTheDocument();
+    expect(grade.getByText("No adviser yet")).toBeInTheDocument();
+    expect(screen.getByText("2 sections, 1 without an adviser.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download Adviser Summary as PDF" })).toBeInTheDocument();
+  });
+
+  it("says when there are no sections", async () => {
+    open(<AdviserSummaryReport termId={2} />, { ...ADVISERS, grades: [], summary: { sections: 0, without_adviser: 0 } });
+
+    expect(await screen.findByText("No section has been encoded for this school year yet.")).toBeInTheDocument();
   });
 });

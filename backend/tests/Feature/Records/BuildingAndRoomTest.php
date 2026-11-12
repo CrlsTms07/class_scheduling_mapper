@@ -81,6 +81,16 @@ it('lists rooms in their buildings', function () {
         ->assertJsonPath('data.0.rooms.1.is_active', true);
 });
 
+it('keeps who is in charge of a room', function () {
+    $this->postJson("/api/buildings/{$this->buildingId}/rooms", roomBody(['in_charge' => 'Ana Reyes']))->assertCreated();
+
+    $this->getJson('/api/buildings')->assertJsonPath('data.0.rooms.1.in_charge', 'Ana Reyes');
+
+    $this->postJson("/api/buildings/{$this->buildingId}/rooms", roomBody(['room_number' => '103', 'in_charge' => str_repeat('a', 101)]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('in_charge');
+});
+
 it('rejects bad rooms', function (array $overrides, string $field) {
     $this->postJson("/api/buildings/{$this->buildingId}/rooms", roomBody($overrides))
         ->assertUnprocessable()

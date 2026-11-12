@@ -68,12 +68,24 @@ const AutoFillSheet = ({ plotter, termId, onClose }: AutoFillSheetProp) => {
       <SheetContent className="max-h-dvh overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="text-branding">Auto-fill</SheetTitle>
-          <SheetDescription>
-            Places the subjects still to place into free periods. Classes already placed stay where they are.
-          </SheetDescription>
+          <SheetDescription>Let the system place the subjects for you, instead of one by one.</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 px-4 pb-4">
+          {!done && (
+            <div className="rounded-xl border bg-neutral-50 p-3 text-sm text-neutral-800">
+              <p className="font-medium text-neutral-900">What it does</p>
+              <ol className="mt-1 list-decimal space-y-1 pl-5">
+                <li>Takes the subjects in the teacher loading that are not placed yet.</li>
+                <li>
+                  Puts each one in free periods until its minutes a week are met, priority subjects such as PE and
+                  Homeroom first. It never uses a period when the teacher, the room or the section is busy.
+                </li>
+                <li>Shows a preview first. Nothing is saved until you confirm, and Undo takes it all back.</li>
+              </ol>
+              <p className="mt-2 text-xs text-neutral-600">Classes already placed stay where they are. You can still move or change any class afterwards.</p>
+            </div>
+          )}
           {error && <FormAlert>{error}</FormAlert>}
 
           {!done && (

@@ -156,9 +156,53 @@ describe('Grade Level Timetable', function () {
     });
 });
 
+describe('Adviser Summary', function () {
+    beforeEach(function () {
+        DB::table('sections')->where('id', $this->honesty)->update([
+            'adviser_id' => $this->ana, 'co_adviser_id' => $this->ben, 'home_room_id' => $this->roomId,
+        ]);
+        // Another grade, outside the GLC's scope.
+        DB::table('sections')->insert(['school_year_id' => $this->yearId, 'grade_level_id' => summaryGrade(8), 'name' => 'Faith']);
+    });
+
+    it('lists each section of the grades in scope with its room, adviser and co-adviser', function () {
+        $this->getJson("{$this->base}/adviser-summary")
+            ->assertOk()
+            ->assertJsonPath('data.summary.sections', 2)
+            ->assertJsonPath('data.summary.without_adviser', 1)
+            ->assertJsonCount(1, 'data.grades')
+            ->assertJsonPath('data.grades.0.title', 'GRADE 7')
+            ->assertJsonPath('data.grades.0.sections.0.number', 1)
+            ->assertJsonPath('data.grades.0.sections.0.name', 'Honesty')
+            ->assertJsonPath('data.grades.0.sections.0.room', '101')
+            ->assertJsonPath('data.grades.0.sections.0.adviser', 'Ana Reyes')
+            ->assertJsonPath('data.grades.0.sections.0.co_adviser', 'Ben Cruz')
+            ->assertJsonPath('data.grades.0.sections.1.name', 'Hope')
+            ->assertJsonPath('data.grades.0.sections.1.adviser', null);
+    });
+
+    it('shows every grade to the Admin, two side by side', function () {
+        $this->actingAs(User::factory()->create()->assignRole('super_admin'));
+
+        $data = $this->getJson("{$this->base}/adviser-summary")->assertOk()->json('data');
+        expect(collect($data['grades'])->pluck('grade')->all())->toBe([7, 8]);
+
+        $sheet = app(\App\Services\SummaryReportService::class)->adviserSummarySheet($data)->array();
+        expect($sheet[4][0])->toBe('GRADE 7')->and($sheet[4][6])->toBe('GRADE 8')
+            ->and($sheet[6][3])->toBe('Ana Reyes')->and($sheet[6][7])->toBe('Faith');
+    });
+
+    it('downloads as PDF, XLSX and CSV', function () {
+        expect(substr($this->get("{$this->base}/adviser-summary.pdf")->assertOk()->getContent(), 0, 4))->toBe('%PDF')
+            ->and(substr($this->get("{$this->base}/adviser-summary.xlsx")->assertOk()->getContent(), 0, 2))->toBe('PK')
+            ->and($this->get("{$this->base}/adviser-summary.csv")->assertOk()->getContent())->toContain('Ana Reyes');
+    });
+});
+
 it('is not for teachers', function () {
     $this->actingAs(User::factory()->create()->assignRole('teacher'));
 
+    $this->getJson("{$this->base}/adviser-summary")->assertForbidden();
     $this->getJson("{$this->base}/teacher-load")->assertForbidden();
     $this->getJson("{$this->base}/grades/7/timetable")->assertForbidden();
 });

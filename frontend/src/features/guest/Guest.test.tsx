@@ -12,10 +12,10 @@ const TERM = { name: "First Term", school_year: "2026-2027" };
 const LIST: GuestSectionList = {
   term: TERM,
   sections: [
-    { id: 1, name: "Honesty", grade: 7, level: "JHS", track: null, is_ready: true },
-    { id: 2, name: "Hope", grade: 7, level: "JHS", track: null, is_ready: false },
-    { id: 3, name: "Faith", grade: 8, level: "JHS", track: null, is_ready: true },
-    { id: 4, name: "Rizal", grade: 11, level: "SHS", track: "Academic", is_ready: true },
+    { id: 1, name: "Honesty", grade: 7, level: "JHS", track: null, adviser: "Ana Reyes", co_adviser: null, is_ready: true },
+    { id: 2, name: "Hope", grade: 7, level: "JHS", track: null, adviser: null, co_adviser: null, is_ready: false },
+    { id: 3, name: "Faith", grade: 8, level: "JHS", track: null, adviser: "Ben Cruz", co_adviser: "Carla Lim", is_ready: true },
+    { id: 4, name: "Rizal", grade: 11, level: "SHS", track: "Academic", adviser: null, co_adviser: null, is_ready: true },
   ],
 };
 
@@ -92,8 +92,20 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
 });
 
+describe("before choosing", () => {
+  it("lists no section until the guest searches or asks to browse", async () => {
+    open("/guest", () => json(LIST));
+
+    expect(await screen.findByRole("button", { name: "Browse all sections" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Honesty/ })).not.toBeInTheDocument();
+  });
+});
+
 describe("choosing a section", () => {
-  beforeEach(() => open("/guest", () => json(LIST)));
+  beforeEach(async () => {
+    open("/guest", () => json(LIST));
+    await userEvent.click(await screen.findByRole("button", { name: "Browse all sections" }));
+  });
 
   it("goes from department to grade to section", async () => {
     expect(await screen.findByRole("link", { name: /Honesty/ })).toHaveAttribute("href", "/guest/sections/1");
@@ -110,15 +122,28 @@ describe("choosing a section", () => {
     expect(screen.queryByRole("button", { name: "Grade 7" })).not.toBeInTheDocument();
   });
 
-  it("searches sections and says when nothing matches", async () => {
+  it("searches sections of every grade, and says when nothing matches", async () => {
     await screen.findByRole("link", { name: /Honesty/ });
 
-    await userEvent.type(screen.getByLabelText("Section"), "HOP");
-    expect(screen.getByRole("link", { name: /Hope/ })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Search"), "HOP");
+    expect(screen.getByRole("link", { name: /Grade 7 – Hope/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Honesty/ })).not.toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText("Section"), "xyz");
-    expect(screen.getByText("No section matches your search.")).toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText("Search"));
+    await userEvent.type(screen.getByLabelText("Search"), "rizal");
+    expect(screen.getByRole("link", { name: /Grade 11 – Rizal/ })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Search"), "xyz");
+    expect(screen.getByText("No section or adviser matches your search.")).toBeInTheDocument();
+  });
+
+  it("finds a section by its adviser or co-adviser, and names them", async () => {
+    await screen.findByRole("link", { name: /Honesty/ });
+
+    await userEvent.type(screen.getByLabelText("Search"), "carla");
+    const faith = screen.getByRole("link", { name: /Grade 8 – Faith/ });
+    expect(faith).toHaveTextContent("Adviser: Ben Cruz");
+    expect(screen.getByText("1 section found")).toBeInTheDocument();
   });
 
   it("marks a section that is not ready", async () => {
@@ -138,6 +163,7 @@ describe("with nothing to choose", () => {
 
   it("says so when a department has no sections", async () => {
     open("/guest", () => json({ term: TERM, sections: [] }));
+    await userEvent.click(await screen.findByRole("button", { name: "Browse all sections" }));
 
     expect(await screen.findByText("There are no sections here yet.")).toBeInTheDocument();
   });

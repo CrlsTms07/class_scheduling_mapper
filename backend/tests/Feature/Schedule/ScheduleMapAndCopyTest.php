@@ -270,9 +270,9 @@ describe('copy loading from another term', function () {
             ->assertJsonValidationErrors('section_id');
     });
 
-    it('is not for the Admin or teachers', function (string $role) {
-        $this->actingAs(User::factory()->create()->assignRole($role));
+    it('is not for teachers', function () {
+        $this->actingAs(User::factory()->create()->assignRole('teacher'));
 
         $this->postJson($this->url, ['from_term_id' => $this->firstTerm])->assertForbidden();
-    })->with(['super_admin', 'teacher']);
+    });
 });

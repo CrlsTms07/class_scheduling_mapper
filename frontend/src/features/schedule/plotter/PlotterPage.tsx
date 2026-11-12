@@ -38,13 +38,14 @@ import {
   subjectColor,
   type PlotterView,
 } from "@/lib/schedule";
-import type { DayPattern, Plotter, TimeSlot } from "@/types/api";
+import type { DayPattern, Plotter, Shift, TimeSlot } from "@/types/api";
 import ConfirmDelete from "@/components/global-component/ConfirmDelete";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import EntrySheet, { type SheetTarget } from "./EntrySheet";
 import FlagsPanel from "./FlagsPanel";
+import SetupChecklist from "./SetupChecklist";
 import LoadingPanel from "./LoadingPanel";
 import AutoFillSheet from "./AutoFillSheet";
 import ColorCodingSwitch from "./ColorCodingSwitch";
@@ -53,6 +54,25 @@ import ScheduleDayCards from "./ScheduleDayCards";
 import ScheduleDayList from "./ScheduleDayList";
 import ScheduleGrid from "./ScheduleGrid";
 import SubmitSheet from "./SubmitSheet";
+import SectionDailyView from "@/features/schedule/builder/SectionDailyView";
+import { Chip, ChipRow, Crumbs, SegmentedTabs, TermTabs } from "@/components/global-component/ScheduleUi";
+
+type SectionMode = "daily" | "timetable";
+const SECTION_MODE_KEY = "section-view";
+const readSectionMode = (): SectionMode => {
+  try {
+    return localStorage.getItem(SECTION_MODE_KEY) === "timetable" ? "timetable" : "daily";
+  } catch {
+    return "daily";
+  }
+};
+const saveSectionMode = (mode: SectionMode) => {
+  try {
+    localStorage.setItem(SECTION_MODE_KEY, mode);
+  } catch {
+    // The choice is only a convenience.
+  }
+};
 
 const BackToSections = () => (
   <Link
@@ -87,6 +107,13 @@ const PlotterPage = () => {
 };
 
 const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }) => {
+  const { term: selectedTerm } = useSelectedTerm();
+  // Daily schedule (cards, typed times) or Timetable (grid, drag and drop). The choice is remembered.
+  const [mode, setMode] = React.useState<SectionMode>(readSectionMode);
+  const changeMode = (next: SectionMode) => {
+    setMode(next);
+    saveSectionMode(next);
+  };
   const {
     section,
     patterns,
@@ -104,7 +131,10 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
   const [target, setTarget] = React.useState<SheetTarget | null>(null);
   const [downloadError, setDownloadError] = React.useState<string | null>(null);
   const [isSubmitOpen, setIsSubmitOpen] = React.useState(false);
-  const [isAutoFillOpen, setIsAutoFillOpen] = React.useState(false);
+  // Chosen from New schedule (?autofill=1), Auto-fill opens right away.
+  const [isAutoFillOpen, setIsAutoFillOpen] = React.useState(
+    () => canEdit && new URLSearchParams(window.location.search).get("autofill") === "1",
+  );
   const [removedByRevise, setRemovedByRevise] = React.useState<string[]>([]);
   const [view, setView] = React.useState<PlotterView>(readPlotterView);
   const [draggedId, setDraggedId] = React.useState<number | null>(null);
@@ -203,7 +233,7 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
     savePlotterView(next);
   };
 
-  const handleDownload = (extension: "pdf" | "xlsx") => {
+  const handleDownload = (extension: "pdf" | "xlsx" | "csv") => {
     setDownloadError(null);
     downloadFile(
       `/terms/${termId}/sections/${section.id}/class-program.${extension}`,
@@ -224,31 +254,56 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <BackToSections />
+      <Crumbs items={[{ label: "Home", to: "/dashboard" }, { label: "Schedule", to: "/schedule" }, { label: section.label }]} />
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-[#790D16]/10 p-2 rounded-sm shrink-0">
-            <TableProperties className="text-branding" />
+      <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
+        <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#790D16] text-white shadow-sm shadow-[#790D16]/30">
+              <TableProperties className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold text-branding">{section.label}</h1>
+                <Badge className={`shrink-0 ${STATUS_COLORS[status]}`}>{STATUS_LABELS[status]}</Badge>
+              </div>
+              <p className="text-sm text-neutral-700">
+                Adviser: {section.adviser ?? "None yet"}
+                <span className="text-neutral-400"> · </span>
+                {section.level === "SHS" ? "Senior High" : "Junior High"}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-xl font-bold text-teal-700">{section.label}</p>
-            <p className="text-neutral-700 text-xs">
-              Adviser: {section.adviser ?? "None yet"}
-            </p>
-          </div>
-          <Badge className={`shrink-0 ${STATUS_COLORS[status]}`}>
-            {STATUS_LABELS[status]}
-          </Badge>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-          <div className="grid grid-cols-2 gap-2 sm:flex">
-            {(["pdf", "xlsx"] as const).map((extension) => (
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
+            {canEdit && (
               <Button
-                key={extension}
                 type="button"
                 variant="outline"
                 className="h-11"
+                title="Let the system place the subjects not placed yet. You see a preview first, and can undo it."
+                onClick={() => setIsAutoFillOpen(true)}
+              >
+                <Sparkles />
+                Auto-fill
+              </Button>
+            )}
+            {canEdit && status === "draft" && (
+              <Button type="button" className="h-11" onClick={() => setIsSubmitOpen(true)}>
+                <Send />
+                Submit for approval
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-t bg-neutral-50 px-4 py-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Class Program</span>
+          <div className="flex flex-wrap gap-1">
+            {(["pdf", "xlsx", "csv"] as const).map((extension) => (
+              <Button
+                key={extension}
+                type="button"
+                variant="ghost"
+                className="h-11 px-3"
                 aria-label={`Class Program ${extension.toUpperCase()}`}
                 onClick={() => handleDownload(extension)}
               >
@@ -257,24 +312,25 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
               </Button>
             ))}
           </div>
-          {canEdit && (
-            <Button type="button" variant="outline" className="h-11" onClick={() => setIsAutoFillOpen(true)}>
-              <Sparkles />
-              Auto-fill
-            </Button>
-          )}
-          {canEdit && status === "draft" && (
-            <Button
-              type="button"
-              className="h-11"
-              onClick={() => setIsSubmitOpen(true)}
-            >
-              <Send />
-              Submit for approval
-            </Button>
-          )}
         </div>
       </div>
+
+      <ChipRow
+        label="Subjects"
+        chips={loading.map(({ id, subject }) => <Chip key={id}>{subject}</Chip>)}
+        empty="No teacher loading yet"
+      />
+      <TermTabs />
+      <SegmentedTabs
+        label="Show"
+        className="sm:max-w-md"
+        items={[
+          { value: "daily" as const, label: "Daily schedule" },
+          { value: "timetable" as const, label: "Timetable" },
+        ]}
+        value={mode}
+        onChange={changeMode}
+      />
 
       {status === "pending" && (
         <FormAlert variant="success">
@@ -334,37 +390,29 @@ const PlotterScreen = ({ plotter, termId }: { plotter: Plotter; termId: number }
             : apiErrorMessage(move.error)}
         </FormAlert>
       )}
-      <FlagsPanel flags={flags} />
+      {patterns.length > 0 && loading.length > 0 && <FlagsPanel flags={flags} />}
 
-      {canEdit && patterns.length > 0 && loading.length > 0 && (
+      {mode === "timetable" && canEdit && patterns.length > 0 && loading.length > 0 && (
         <PlotterGuide loading={loading} {...plotContext} />
       )}
 
-      {patterns.length === 0 && (
-        <FormAlert>
-          No bell schedule is set for {section.level}, {section.shift} shift, in this
-          school year. The Admin sets these up in Time Slots.
-        </FormAlert>
+      {/* The daily schedule starts the bell schedule from typed times, so only the timetable needs one first. */}
+      {(loading.length === 0 || (mode === "timetable" && patterns.length === 0)) && (
+        <SetupChecklist
+          sectionId={section.id}
+          level={section.level}
+          shift={section.shift as Shift}
+          hasBellSchedule={patterns.length > 0}
+          hasLoading={loading.length > 0}
+          canFix={canPlot}
+        />
       )}
 
-      {loading.length === 0 && (
-        <div className="space-y-2">
-          <FormAlert>
-            No teacher loading for this section yet, so there are no subjects
-            to place.
-          </FormAlert>
-          {canPlot && (
-            <Link
-              to={`/teacher-loading?section=${section.id}`}
-              className={buttonVariants({ variant: "outline", className: "h-11" })}
-            >
-              Go to Teacher Loading
-            </Link>
-          )}
-        </div>
+      {mode === "daily" && loading.length > 0 && selectedTerm && (
+        <SectionDailyView plotter={plotter} term={selectedTerm} canEdit={canEdit} canManageBreaks={canEdit} />
       )}
 
-      {patterns.length > 0 && (
+      {mode === "timetable" && patterns.length > 0 && (
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}

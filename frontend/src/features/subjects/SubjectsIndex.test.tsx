@@ -203,6 +203,19 @@ describe("for a Chairperson or Master Teacher", () => {
     expect(within(screen.getByLabelText("When it is taken")).getByRole("option", { name: "Second Semester" })).toBeInTheDocument();
   });
 
+  it("asks the type (core, elective, other) only for Senior High", async () => {
+    openPage();
+
+    await click("Add subject");
+    const grade = screen.getByRole("combobox", { name: "Grade level" });
+
+    await userEvent.selectOptions(grade, "1");
+    expect(screen.queryByRole("combobox", { name: "Type" })).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(grade, "5");
+    expect(screen.getByRole("combobox", { name: "Type" })).toBeInTheDocument();
+  });
+
   it("adds a new track and selects it", async () => {
     const calls = openPage();
 
@@ -254,17 +267,14 @@ describe("for a Chairperson or Master Teacher", () => {
 });
 
 describe("for the Admin", () => {
-  it("is view only", async () => {
-    const calls = openPage("super_admin");
+  it("can manage the subjects too (team decision, Nov 10, 2026)", async () => {
+    openPage("super_admin");
 
-    expect(screen.getByText(/View only/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add subject" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/View only/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add subject" })).toBeInTheDocument();
 
-    await openRecord("View Mathematics 7, Grade 7");
+    await openRecord("Edit Mathematics 7, Grade 7");
 
-    expect(screen.getByLabelText("Subject name")).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Cannot be deleted/)).not.toBeInTheDocument();
-    expect(calls).toHaveLength(0);
+    expect(screen.getByLabelText("Subject name")).toBeEnabled();
   });
 });

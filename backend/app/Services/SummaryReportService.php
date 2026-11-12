@@ -14,7 +14,7 @@ use App\Support\ScheduleFormat;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Teacher Load Report and Grade Level Timetable: the whole picture at one glance.
+ * Teacher Load Report, Grade Level Timetable and Adviser Summary: the whole picture at one glance.
  */
 class SummaryReportService
 {
@@ -62,7 +62,7 @@ class SummaryReportService
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->map(function (Teacher $teacher) use ($loadings, $minutes, $departments) {
+            ->map(function (Teacher $teacher) use ($loadings, $minutes, $departments, $user) {
                 $load = $loadings->get($teacher->id, collect());
                 $scheduled = (int) $minutes->get($teacher->id, 0);
                 $loadedMinutes = (int) $load->sum(fn (SectionSubject $row) => $row->subject->minutes_per_week);
@@ -77,20 +77,25 @@ class SummaryReportService
                     'minutes' => $scheduled,
                     'duration' => $scheduled > 0 ? ScheduleFormat::duration($scheduled) : '–',
                     'classes' => $load
-                        ->map(fn (SectionSubject $row) => "{$row->section->label()}: {$row->subject->name}")
+                        ->map(fn (SectionSubject $row) => $row->section->isVisibleTo($user)
+                            ? "{$row->section->label()}: {$row->subject->name}"
+                            : $row->section->labelFor($user))
+                        ->unique()
                         ->sort()
                         ->values()
                         ->all(),
                     'hours_per_week' => round($loadedMinutes / 60, 1),
                     'max_hours' => $teacher->max_hours_per_week,
                     'is_over_hours' => $loadedMinutes > $teacher->max_hours_per_week * 60,
+                    // Hours in another department still count, but show only its name.
                     'loads' => $load
                         ->sortBy(fn (SectionSubject $row) => [$row->section->gradeLevel->grade, $row->section->name, $row->subject->name])
-                        ->map(fn (SectionSubject $row) => [
-                            'section_id' => $row->section_id,
-                            'section' => $row->section->label(),
-                            'subject' => $row->subject->name,
-                            'hours_per_week' => round($row->subject->minutes_per_week / 60, 1),
+                        ->groupBy(fn (SectionSubject $row) => $row->section->isVisibleTo($user) ? "own:{$row->id}" : 'other:'.$row->section->labelFor($user))
+                        ->map(fn ($rows) => [
+                            'section_id' => $rows->first()->section->isVisibleTo($user) ? $rows->first()->section_id : null,
+                            'section' => $rows->first()->section->labelFor($user),
+                            'subject' => $rows->first()->section->isVisibleTo($user) ? $rows->first()->subject->name : 'Other department',
+                            'hours_per_week' => round($rows->sum(fn (SectionSubject $row) => $row->subject->minutes_per_week) / 60, 1),
                         ])
                         ->values()
                         ->all(),
@@ -106,6 +111,45 @@ class SummaryReportService
                 'over_hours' => $teachers->where('is_over_hours', true)->count(),
             ],
             'teachers' => $teachers->all(),
+        ];
+    }
+
+    /**
+     * Adviser Summary: every section of each grade in the user's scope, its room, adviser and co-adviser.
+     *
+     * @return array<string, mixed>
+     */
+    public function adviserSummary(SchoolTerm $term, User $user): array
+    {
+        $term->loadMissing('schoolYear');
+
+        $grades = Section::with(['gradeLevel', 'homeRoom', 'adviser', 'coAdviser'])
+            ->where('school_year_id', $term->school_year_id)
+            ->whereIn('grade_level_id', $user->gradeLevelIdsInScope())
+            ->get()
+            ->sortBy(fn (Section $section) => [$section->gradeLevel->grade, mb_strtolower($section->name)])
+            ->groupBy(fn (Section $section) => $section->gradeLevel->grade)
+            ->map(fn ($sections, $grade) => [
+                'grade' => (int) $grade,
+                'title' => "GRADE {$grade}",
+                'sections' => $sections->values()->map(fn (Section $section, int $index) => [
+                    'number' => $index + 1,
+                    'id' => $section->id,
+                    'name' => $section->name,
+                    'room' => $section->homeRoom?->room_number,
+                    'adviser' => $section->adviser?->printedName(),
+                    'co_adviser' => $section->coAdviser?->printedName(),
+                ])->all(),
+            ])
+            ->values();
+
+        return [
+            'term_label' => "School Year {$term->schoolYear->name}",
+            'summary' => [
+                'sections' => $grades->sum(fn ($grade) => count($grade['sections'])),
+                'without_adviser' => $grades->sum(fn ($grade) => collect($grade['sections'])->whereNull('adviser')->count()),
+            ],
+            'grades' => $grades->all(),
         ];
     }
 
@@ -222,6 +266,77 @@ class SummaryReportService
     public function teacherLoadPdf(array $data): string
     {
         return $this->reports->renderPdf('reports.teacher-load', [...$data, ...$this->letterhead('TEACHER LOAD REPORT')]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function adviserSummaryPdf(array $data): string
+    {
+        return $this->reports->renderPdf('reports.adviser-summary', [...$data, ...$this->letterhead('ADVISER SUMMARY')], 'landscape');
+    }
+
+    /**
+     * Two grades side by side, as on the school's list: Grade 7 beside Grade 8, and so on.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function adviserSummarySheet(array $data): ReportSheet
+    {
+        $rows = [
+            [DB::table('school_profile')->value('school_name')],
+            ['ADVISER SUMMARY'],
+            [$data['term_label']],
+        ];
+        $merged = ['A1:K1', 'A2:K2', 'A3:K3'];
+        $centered = ['A1:K3'];
+        $bordered = [];
+        $headers = [];
+
+        foreach (array_chunk($data['grades'], 2) as $pair) {
+            $rows[] = [];
+            $top = count($rows) + 1;
+            $titleRow = [];
+            $headerRow = [];
+            foreach ($pair as $side => $grade) {
+                [$start, $end] = $side === 0 ? ['A', 'E'] : ['G', 'K'];
+                $merged[] = "{$start}{$top}:{$end}{$top}";
+                $centered[] = "{$start}{$top}:{$end}{$top}";
+                $headers[] = "{$start}{$top}:{$end}".($top + 1);
+                $titleRow = [...$titleRow, $grade['title'], '', '', '', '', ''];
+                $headerRow = [...$headerRow, '#', 'Section', 'Room Assignment', 'Adviser', 'Co-Adviser', ''];
+            }
+            $rows[] = $titleRow;
+            $rows[] = $headerRow;
+
+            $height = max(array_map(fn ($grade) => count($grade['sections']), $pair));
+            for ($i = 0; $i < $height; $i++) {
+                $line = [];
+                foreach ($pair as $grade) {
+                    $section = $grade['sections'][$i] ?? null;
+                    $cells = $section
+                        ? [$section['number'], $section['name'], $section['room'] ?? '', $section['adviser'] ?? '', $section['co_adviser'] ?? '']
+                        : ['', '', '', '', ''];
+                    $line = [...$line, ...$cells, ''];
+                }
+                $rows[] = $line;
+            }
+
+            foreach ($pair as $side => $grade) {
+                [$start, $end] = $side === 0 ? ['A', 'E'] : ['G', 'K'];
+                $bordered[] = "{$start}{$top}:{$end}".($top + 1 + count($grade['sections']));
+            }
+        }
+
+        return new ReportSheet(
+            title: 'Adviser Summary',
+            rows: $rows,
+            merged: $merged,
+            centered: $centered,
+            bordered: $bordered,
+            headers: $headers,
+            columnWidths: [5, 18, 14, 26, 26, 3, 5, 18, 14, 26, 26],
+        );
     }
 
     /**

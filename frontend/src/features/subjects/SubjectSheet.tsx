@@ -197,15 +197,18 @@ const SubjectSheet = ({ yearId, yearName, subject, readOnly, onClose }: SubjectS
               placeholder="Mathematics 7"
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Core, Elective or Other is a Senior High idea (Strengthened SHS); Junior High subjects are all core. */}
+            <div className={level === "SHS" ? "grid grid-cols-2 gap-3" : ""}>
               <FormTextField control={form.control} name="code" label="Code (optional)" placeholder="MATH7" />
-              <SelectField form={form} name="subject_type" label="Type" disabled={readOnly}>
-                {Object.entries(SUBJECT_TYPE_LABELS).map(([value, label]) => (
-                  <NativeSelectOption key={value} value={value}>
-                    {label}
-                  </NativeSelectOption>
-                ))}
-              </SelectField>
+              {level === "SHS" && (
+                <SelectField form={form} name="subject_type" label="Type" disabled={readOnly}>
+                  {Object.entries(SUBJECT_TYPE_LABELS).map(([value, label]) => (
+                    <NativeSelectOption key={value} value={value}>
+                      {label}
+                    </NativeSelectOption>
+                  ))}
+                </SelectField>
+              )}
             </div>
 
             <div className="space-y-1">

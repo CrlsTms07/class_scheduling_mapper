@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\SchoolTerm;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -10,7 +11,7 @@ class ImportPreviousRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasAnyRole(['glc', 'master_teacher']);
+        return $this->user()->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']);
     }
 
     /**

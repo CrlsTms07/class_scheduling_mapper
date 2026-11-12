@@ -41,6 +41,7 @@ CREATE TABLE users (
     phone_number    VARCHAR(20),
     status          account_status NOT NULL DEFAULT 'pending',
     preferences     JSONB NOT NULL DEFAULT '{}',          -- e.g. {"color_coding": false}
+    terms_accepted_at TIMESTAMPTZ,                        -- Terms and Conditions accepted at sign-up
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

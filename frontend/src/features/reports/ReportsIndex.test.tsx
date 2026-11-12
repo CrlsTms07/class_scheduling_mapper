@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SelectedTermProvider from "@/context/SelectedTermProvider";
-import type { ReportGrid, ReportOptions, RoomUsage, Term } from "@/types/api";
+import type { ReportGrid, ReportOptions, RoomUsage, SectionSummary, Term } from "@/types/api";
 import ReportsIndex from "./ReportsIndex";
 
 const TERM: Term = {
@@ -67,21 +67,35 @@ const USAGE: RoomUsage = {
   ],
 };
 
+const SECTIONS: SectionSummary[] = [
+  { id: 5, name: "Honesty", grade: 7, level: "JHS", adviser: "Ana Reyes", status: "approved" },
+  { id: 9, name: "Hope", grade: 7, level: "JHS", adviser: "Ben Cruz", status: "draft" },
+  { id: 6, name: "Rizal", grade: 11, level: "SHS", adviser: null, status: "pending" },
+];
+
 const blobUrls: string[] = [];
 
-function openPage(options = OPTIONS, downloadStatus = 200) {
+function openPage(options = OPTIONS, downloadStatus = 200, sections = SECTIONS) {
   const requested: string[] = [];
 
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
       requested.push(url);
-      if (/\.(pdf|xlsx)$/.test(url)) {
+      if (/\.(pdf|xlsx|csv)$/.test(url)) {
         return downloadStatus === 200
           ? new Response("file", { status: 200, headers: { "Content-Disposition": 'attachment; filename="form.pdf"' } })
           : new Response(JSON.stringify({ message: "The form could not be made." }), { status: downloadStatus });
       }
-      const data = url.includes("room-usage") ? USAGE : url.includes("options") ? options : url.includes("/reports/") ? GRID : [TERM];
+      const data = url.includes("room-usage")
+        ? USAGE
+        : url.includes("options")
+          ? options
+          : url.includes("/reports/")
+            ? GRID
+            : url.endsWith("/sections")
+              ? sections
+              : [TERM];
       return new Response(JSON.stringify({ data }), { status: 200 });
     }),
   );
@@ -113,38 +127,52 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
 });
 
-describe("class program", () => {
-  it("downloads the chosen section as PDF and XLSX", async () => {
+describe("schedules", () => {
+  it("lists every section with its status, and downloads its class program in each format", async () => {
     const requested = openPage();
+
+    expect(await screen.findByText("Grade 7 – Honesty")).toBeInTheDocument();
+    expect(screen.getByText("3 of 3 sections")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Download Class Program of Grade 7 – Honesty as PDF" }));
     await waitFor(() => expect(requested.some((url) => url.endsWith("/terms/2/sections/5/class-program.pdf"))).toBe(true));
 
-    await userEvent.click(await screen.findByRole("button", { name: "Download Class Program of Grade 7 – Honesty as XLSX" }));
-    await waitFor(() => expect(requested.some((url) => url.endsWith("/terms/2/sections/5/class-program.xlsx"))).toBe(true));
+    await userEvent.click(await screen.findByRole("button", { name: "Download Class Program of Grade 7 – Honesty as CSV" }));
+    await waitFor(() => expect(requested.some((url) => url.endsWith("/terms/2/sections/5/class-program.csv"))).toBe(true));
   });
 
-  it("offers the Senior High form too", async () => {
-    const requested = openPage();
+  it("filters by department, grade, status and name", async () => {
+    openPage();
+    await screen.findByText("Grade 7 – Honesty");
 
-    await userEvent.selectOptions(screen.getByLabelText("Section"), "6");
-    await userEvent.click(screen.getByRole("button", { name: "Download Class Program of Grade 11 – Rizal as PDF" }));
+    await userEvent.selectOptions(screen.getByLabelText("Department"), "SHS");
+    expect(screen.getByText("Grade 11 – Rizal")).toBeInTheDocument();
+    expect(screen.queryByText("Grade 7 – Honesty")).not.toBeInTheDocument();
 
-    await waitFor(() => expect(requested.some((url) => url.endsWith("/terms/2/sections/6/class-program.pdf"))).toBe(true));
+    await userEvent.selectOptions(screen.getByLabelText("Department"), "");
+    await userEvent.selectOptions(screen.getByLabelText("Status"), "draft");
+    expect(screen.getByText("Grade 7 – Hope")).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 sections")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Status"), "");
+    await userEvent.type(screen.getByLabelText("Search"), "ana reyes");
+    expect(screen.getByText("Grade 7 – Honesty")).toBeInTheDocument();
+    expect(screen.queryByText("Grade 7 – Hope")).not.toBeInTheDocument();
   });
 
   it("shows why a download failed", async () => {
     openPage(OPTIONS, 500);
 
-    await userEvent.click(screen.getByRole("button", { name: /as PDF/ }));
+    await userEvent.click((await screen.findAllByRole("button", { name: /as PDF/ }))[0]);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be made");
   });
 
-  it("explains when there are no sections", () => {
-    openPage({ ...OPTIONS, sections: [] });
+  it("explains when there are no sections", async () => {
+    openPage(OPTIONS, 200, []);
 
-    expect(screen.getByText(/no sections in your grade levels/)).toBeInTheDocument();
+    expect(await screen.findByText("No sections in your grade levels yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add a section" })).toHaveAttribute("href", "/sections?add=1");
   });
 });
 
@@ -181,29 +209,36 @@ describe("teacher program", () => {
   });
 });
 
-describe("room schedule", () => {
-  it("downloads the chosen room", async () => {
+describe("rooms and buildings", () => {
+  it("shows each building's rooms and the sections in them, and downloads a room's schedule", async () => {
     const requested = openPage();
 
-    await openTab("Room Schedule");
-    await userEvent.click(await screen.findByRole("button", { name: "Download Room Schedule of Main – 101 as PDF" }));
-
-    await waitFor(() => expect(requested.some((url) => url.endsWith("/reports/rooms/7/schedule.pdf"))).toBe(true));
-  });
-});
-
-describe("room usage", () => {
-  it("shows which sections use each room, and rooms not used", async () => {
-    const requested = openPage();
-
-    await openTab("Room Usage");
+    await openTab("Rooms & Buildings");
 
     const main = await screen.findByRole("region", { name: "Main" });
     expect(main).toHaveTextContent("Room 101 – Lab");
-    expect(main).toHaveTextContent("Grade 7 – Honesty: 3 periods");
+    expect(main).toHaveTextContent("Grade 7 – Honesty: 3");
     expect(main).toHaveTextContent("Not used yet.");
 
-    await userEvent.click(screen.getByRole("button", { name: "Download Room Usage as XLSX" }));
-    await waitFor(() => expect(requested.some((url) => url.endsWith("/reports/room-usage.xlsx"))).toBe(true));
+    await userEvent.click(screen.getByRole("button", { name: "Download Room Schedule of Room 101 as PDF" }));
+    await waitFor(() => expect(requested.some((url) => url.endsWith("/reports/rooms/7/schedule.pdf"))).toBe(true));
+
+    await userEvent.click(screen.getByRole("button", { name: "Download Room Usage as CSV" }));
+    await waitFor(() => expect(requested.some((url) => url.endsWith("/reports/room-usage.csv"))).toBe(true));
+  });
+
+  it("filters rooms by use, and by a room or section name", async () => {
+    openPage();
+    await openTab("Rooms & Buildings");
+    await screen.findByRole("region", { name: "Main" });
+
+    await userEvent.selectOptions(screen.getByLabelText("Rooms"), "unused");
+    expect(screen.getByRole("region", { name: "Main" })).not.toHaveTextContent("Room 101");
+    expect(screen.getByText("1 room in 1 building")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Rooms"), "");
+    await userEvent.type(screen.getByLabelText("Search"), "honesty");
+    expect(screen.getByRole("region", { name: "Main" })).toHaveTextContent("Room 101");
+    expect(screen.getByRole("region", { name: "Main" })).not.toHaveTextContent("Room 102");
   });
 });

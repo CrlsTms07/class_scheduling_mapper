@@ -21,6 +21,8 @@ class SaveRoomRequest extends FormRequest
         return [
             'room_number' => ['required', 'string', 'max:20'],
             'room_name' => ['nullable', 'string', 'max:80'],
+            // The teacher or staff who looks after the room, as written on the school's room list.
+            'in_charge' => ['nullable', 'string', 'max:100'],
             'capacity' => ['nullable', 'integer', 'between:0,500'],
             'is_active' => ['required', 'boolean'],
         ];

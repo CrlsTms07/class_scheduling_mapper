@@ -2,9 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\SchoolYear;
+use App\Models\DayPattern;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -15,7 +14,9 @@ class PresetSlotsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('manage', SchoolYear::class);
+        $pattern = $this->route('dayPattern') ?? $this->route('timeSlot')?->dayPattern;
+
+        return $this->user()->can('manage', [DayPattern::class, $pattern?->level]);
     }
 
     /**

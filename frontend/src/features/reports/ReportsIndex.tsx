@@ -1,35 +1,40 @@
 import React from "react";
-import { FolderUser } from "lucide-react";
-import { Link } from "react-router";
-import { useReportGrid, useReportOptions, useRoomUsage } from "@/api/reports";
+import { CalendarDays, DoorClosed, FolderUser, LayoutGrid, Scale, ShieldCheck, UserRound, UsersRound, type LucideIcon } from "lucide-react";
+import { useSearchParams } from "react-router";
+import { useReportGrid, useReportOptions } from "@/api/reports";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { weekFromReportGrid } from "@/lib/weekGrid";
 import type { ReportGrid } from "@/types/api";
 import DownloadButtons from "@/components/global-component/DownloadButtons";
+import PageHeader from "@/components/global-component/PageHeader";
 import { WeekTable } from "@/components/global-component/WeekView";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { GradeTimetableReport, TeacherLoadReport } from "./SummaryReports";
+import { Input } from "@/components/ui/input";
+
+import { RoomsReport, SchedulesReport } from "./ReportPanels";
+import { AdviserSummaryReport, GradeTimetableReport, TeacherLoadReport } from "./SummaryReports";
 import ValidationReport from "./ValidationReport";
 import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
 
-const TABS = [
-  { key: "class", label: "Class Program" },
-  { key: "teacher", label: "Teacher Program" },
-  { key: "room", label: "Room Schedule" },
-  { key: "usage", label: "Room Usage" },
-  { key: "validation", label: "Validation" },
-  { key: "load", label: "Teacher Load" },
-  { key: "timetable", label: "Grade Timetable" },
-] as const;
+const TABS: { key: string; label: string; icon: LucideIcon; about: string }[] = [
+  { key: "schedules", label: "Schedules", icon: CalendarDays, about: "Every section with its status. Each prints as the official Class Program." },
+  { key: "rooms", label: "Rooms & Buildings", icon: DoorClosed, about: "Which sections use each room, and the Room Schedule of each room." },
+  { key: "timetable", label: "Grade Timetable", icon: LayoutGrid, about: "Every section of a grade level side by side." },
+  { key: "teacher", label: "Teacher Program", icon: UserRound, about: "One teacher's week, with the total teaching minutes." },
+  { key: "load", label: "Teacher Load", icon: Scale, about: "Who carries what: subjects and hours a week against each limit." },
+  { key: "advisers", label: "Advisers", icon: UsersRound, about: "Every section with its room, adviser and co-adviser, grade by grade." },
+  { key: "validation", label: "Validation", icon: ShieldCheck, about: "Everything that needs checking, section by section." },
+];
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = "schedules" | "rooms" | "timetable" | "teacher" | "load" | "advisers" | "validation";
+
 
 const HOW_IT_WORKS = [
-  "Choose a form, then what it is for, and download it as PDF or XLSX.",
+  "Choose a report, narrow it down with the filters, then print it as PDF or download it as XLSX or CSV.",
+  "Schedules lists every section with its status. Rooms & Buildings shows which sections use each room.",
   "Forms follow the selector at the top. A form with entries not yet approved prints with a DRAFT mark.",
   "The school details, titles and signatories come from Report Settings.",
   "Validation lists everything that needs checking, section by section.",
@@ -114,58 +119,18 @@ const GridReport = ({ termId, path, fileName, label }: GridReportProp) => {
   );
 };
 
-const UsageReport = ({ termId }: { termId: number }) => {
-  const { data, isPending, isError } = useRoomUsage(termId, true);
-
-  return (
-    <div className="space-y-4">
-      <DownloadButtons basePath={`/terms/${termId}/reports/room-usage`} label="Room Usage" />
-      {isPending && <p className="text-sm text-neutral-600">Loading...</p>}
-      {isError && <p className="text-sm text-destructive">Could not load the room usage.</p>}
-      {data?.buildings.length === 0 && (
-        <p className="text-sm text-neutral-700">There are no rooms yet.</p>
-      )}
-      {data?.buildings.map((building) => (
-        <section key={building.name} aria-label={building.name} className="space-y-2">
-          <p className="font-medium text-teal-700">{building.name}</p>
-          <ul className="divide-y rounded-md border">
-            {building.rooms.map((room) => (
-              <li key={room.id} className="flex items-start justify-between gap-3 p-3 text-sm">
-                <div className="min-w-0">
-                  <p className="font-medium text-neutral-900">
-                    Room {room.room_number}
-                    {room.room_name && ` – ${room.room_name}`}
-                  </p>
-                  {room.sections.length === 0 ? (
-                    <p className="text-xs text-neutral-600">Not used yet.</p>
-                  ) : (
-                    room.sections.map((section) => (
-                      <p key={section.label} className="text-xs text-neutral-700">
-                        {section.label}: {section.periods_per_week} periods
-                      </p>
-                    ))
-                  )}
-                </div>
-                <span className="shrink-0 text-xs text-neutral-700">
-                  {room.periods_per_week} a week
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
-};
-
 const ReportsIndex = () => {
   const { term, isPending: isTermPending } = useSelectedTerm();
   const { data: options, isPending, isError } = useReportOptions(term?.id);
 
-  const [tab, setTab] = React.useState<TabKey>("class");
-  const [sectionId, setSectionId] = React.useState<number>();
+  // Opened from elsewhere with ?tab=advisers, that report is already showing.
+  const [params] = useSearchParams();
+  const [tab, setTab] = React.useState<TabKey>(() =>
+    TABS.some(({ key }) => key === params.get("tab")) ? (params.get("tab") as TabKey) : "schedules",
+  );
   const [teacherId, setTeacherId] = React.useState<number>();
-  const [roomId, setRoomId] = React.useState<number>();
+  const [teacherSearch, setTeacherSearch] = React.useState("");
+  const [timetableLevel, setTimetableLevel] = React.useState<"" | "JHS" | "SHS">("");
   const [gradeChoice, setGradeChoice] = React.useState<number>();
 
   if (!term) {
@@ -176,27 +141,22 @@ const ReportsIndex = () => {
     );
   }
 
-  const section = options?.sections.find(({ id }) => id === sectionId) ?? options?.sections[0];
-  const teacher = options?.teachers.find(({ id }) => id === teacherId) ?? options?.teachers[0];
-  const room = options?.rooms.find(({ id }) => id === roomId) ?? options?.rooms[0];
-  const grade = options?.grades.find((item) => item === gradeChoice) ?? options?.grades[0];
+  const teacherQuery = teacherSearch.trim().toLowerCase();
+  const teachers = options?.teachers.filter(({ label }) => label.toLowerCase().includes(teacherQuery));
+  const teacher = teachers?.find(({ id }) => id === teacherId) ?? teachers?.[0];
+  const timetableGrades = options?.grades.filter((item) => !timetableLevel || (item <= 10 ? "JHS" : "SHS") === timetableLevel);
+  const grade = timetableGrades?.find((item) => item === gradeChoice) ?? timetableGrades?.[0];
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-start gap-3">
-        <div className="p-2 bg-[#790D16]/20 rounded-sm">
-          <FolderUser className="text-branding size-5" />
-        </div>
-        <div>
-          <p className="text-branding text-xl font-medium">Reports</p>
-          <p className="text-sm text-neutral-700">
-            Official forms for {term.name}, SY {term.school_year.name}.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        icon={FolderUser}
+        title="Reports"
+        description={`Official forms for ${term.name}, SY ${term.school_year.name}. PDF, XLSX or CSV.`}
+      />
 
-      <details className="rounded-md border bg-background">
-        <summary className="flex min-h-11 cursor-pointer items-center p-3 text-sm font-medium">
+      <details className="rounded-xl border bg-background shadow-sm">
+        <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-neutral-800">
           How this works
         </summary>
         <ul className="list-disc space-y-1 px-3 pb-3 pl-8 text-sm text-neutral-700">
@@ -206,62 +166,53 @@ const ReportsIndex = () => {
         </ul>
       </details>
 
-      <div role="tablist" aria-label="Form" className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-        {TABS.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={key === tab}
-            onClick={() => setTab(key)}
-            className={`min-h-11 rounded-md border px-2 text-xs sm:text-sm font-medium ${
-              key === tab
-                ? "bg-[#790D16] text-white border-[#790D16]"
-                : "bg-background text-neutral-700"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="space-y-2">
+        <div role="tablist" aria-label="Report" className="grid grid-cols-2 gap-1 rounded-xl border bg-neutral-50 p-1 sm:grid-cols-4 xl:grid-cols-7">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={key === tab}
+              onClick={() => setTab(key as TabKey)}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs font-medium transition-colors sm:text-sm ${
+                key === tab ? "bg-[#790D16] text-white shadow-sm" : "text-neutral-700 hover:bg-background"
+              }`}
+            >
+              <Icon className="size-4 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="px-1 text-sm text-neutral-700">{TABS.find(({ key }) => key === tab)?.about}</p>
       </div>
 
       {isPending && <p className="text-sm text-neutral-600">Loading...</p>}
       {isError && <p className="text-sm text-destructive">Could not load the choices.</p>}
 
-      {options && tab === "class" && (
-        <div className="space-y-4">
-          <Picker
-            id="report-section"
-            label="Section"
-            emptyText="There are no sections in your grade levels yet."
-            options={options.sections}
-            value={section?.id}
-            onChange={setSectionId}
-          />
-          {section && (
-            <>
-              <DownloadButtons
-                basePath={`/terms/${term.id}/sections/${section.id}/class-program`}
-                label={`Class Program of ${section.label}`}
-              />
-              <Link
-                to={`/schedule/sections/${section.id}`}
-                className={buttonVariants({ variant: "link", className: "h-11 px-0" })}
-              >
-                See this schedule on screen
-              </Link>
-            </>
-          )}
-        </div>
-      )}
+      {tab === "schedules" && <SchedulesReport termId={term.id} />}
+      {tab === "rooms" && <RoomsReport termId={term.id} />}
 
       {options && tab === "teacher" && (
         <div className="space-y-4">
+          <div className="space-y-1 sm:w-80">
+            <label htmlFor="report-teacher-search" className="text-sm text-neutral-800">
+              Find a teacher
+            </label>
+            <Input
+              id="report-teacher-search"
+              type="search"
+              className="h-11"
+              placeholder="Type a name"
+              value={teacherSearch}
+              onChange={(event) => setTeacherSearch(event.target.value)}
+            />
+          </div>
           <Picker
             id="report-teacher"
             label="Teacher"
             emptyText="No teacher has loading in your grade levels yet."
-            options={options.teachers}
+            options={teachers}
             value={teacher?.id}
             onChange={setTeacherId}
           />
@@ -277,39 +228,32 @@ const ReportsIndex = () => {
         </div>
       )}
 
-      {options && tab === "room" && (
-        <div className="space-y-4">
-          <Picker
-            id="report-room"
-            label="Room"
-            emptyText="There are no rooms yet."
-            options={options.rooms}
-            value={room?.id}
-            onChange={setRoomId}
-          />
-          {room && (
-            <GridReport
-              key={room.id}
-              termId={term.id}
-              path={`rooms/${room.id}`}
-              fileName="schedule"
-              label={`Room Schedule of ${room.label}`}
-            />
-          )}
-        </div>
-      )}
-
-      {tab === "usage" && <UsageReport termId={term.id} />}
       {tab === "validation" && <ValidationReport termId={term.id} />}
       {tab === "load" && <TeacherLoadReport termId={term.id} />}
+      {tab === "advisers" && <AdviserSummaryReport termId={term.id} />}
 
       {options && tab === "timetable" && (
         <div className="space-y-4">
+          <div className="space-y-1 sm:w-80">
+            <label htmlFor="report-timetable-level" className="text-sm text-neutral-800">
+              Department
+            </label>
+            <NativeSelect
+              id="report-timetable-level"
+              className="w-full [&_select]:h-11"
+              value={timetableLevel}
+              onChange={(event) => setTimetableLevel(event.target.value as "" | "JHS" | "SHS")}
+            >
+              <NativeSelectOption value="">All departments</NativeSelectOption>
+              <NativeSelectOption value="JHS">Junior High School</NativeSelectOption>
+              <NativeSelectOption value="SHS">Senior High School</NativeSelectOption>
+            </NativeSelect>
+          </div>
           <Picker
             id="report-grade"
             label="Grade level"
-            emptyText="No grade level is assigned to you yet."
-            options={options.grades.map((item) => ({ id: item, label: `Grade ${item}` }))}
+            emptyText="No grade level here is assigned to you."
+            options={timetableGrades?.map((item) => ({ id: item, label: `Grade ${item}` }))}
             value={grade}
             onChange={setGradeChoice}
           />

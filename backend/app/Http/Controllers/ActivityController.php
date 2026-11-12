@@ -10,6 +10,7 @@ use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Subject;
 use App\Models\TimeSlot;
+use App\Models\User;
 use App\Services\ActivityService;
 use App\Services\PlotterService;
 use Illuminate\Http\JsonResponse;
@@ -42,7 +43,7 @@ class ActivityController extends Controller
 
     public function destroy(Request $request, Activity $activity, ActivityService $activities): JsonResponse
     {
-        abort_unless($request->user()->hasAnyRole(['glc', 'master_teacher']), 403);
+        abort_unless($request->user()->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']), 403);
 
         $activities->delete($activity, $request->user());
 

@@ -207,3 +207,16 @@ export function subjectColor(sectionSubjectId: number | null, isColored = true):
     ? "bg-neutral-100 text-neutral-700 border-neutral-300"
     : SUBJECT_COLORS[sectionSubjectId % SUBJECT_COLORS.length];
 }
+
+const MONTH = new Intl.DateTimeFormat("en-US", { month: "long" });
+
+/** "June – August": the months a term runs. */
+export function termMonths(term: { start_date: string; end_date: string }): string {
+  const start = new Date(`${term.start_date}T00:00:00`);
+  const end = new Date(`${term.end_date}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "";
+  const from = MONTH.format(start);
+  const to = MONTH.format(end);
+
+  return from === to ? from : `${from} – ${to}`;
+}

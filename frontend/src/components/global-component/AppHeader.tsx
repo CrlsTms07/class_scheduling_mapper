@@ -52,7 +52,7 @@ const AppHeader = () => {
           />
           <div className="ml-2 sm:ml-5 min-w-0">
             <p className="font-medium text-[#790D16] text-sm sm:text-base truncate">
-              ERCIHS - Scheduling Mapper
+              ERCIHS Scheduling System
             </p>
           </div>
           <TermSelect className="hidden sm:block ml-4 w-64 max-lg:w-52 shrink-0" />

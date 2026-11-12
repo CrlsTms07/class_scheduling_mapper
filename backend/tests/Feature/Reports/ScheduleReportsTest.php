@@ -240,6 +240,21 @@ describe('Room usage', function () {
             ->and($text)->toContain('Grade 7 – Honesty (1)')
             ->and($text)->toContain('Not used');
     });
+
+    it('can be limited to one building, for the building view printout', function () {
+        reportEntry($this);
+        $other = DB::table('buildings')->insertGetId(['name' => 'Annex']);
+        DB::table('rooms')->insert(['building_id' => $other, 'room_number' => '301']);
+        $main = DB::table('buildings')->where('name', 'Main')->value('id');
+
+        $this->getJson("{$this->base}/room-usage?building={$main}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.buildings')
+            ->assertJsonPath('data.buildings.0.id', $main);
+
+        $text = workbookText($this->get("{$this->base}/room-usage.xlsx?building={$main}")->assertOk());
+        expect($text)->toContain('MAIN – ROOM USAGE')->not->toContain('301');
+    });
 });
 
 describe('Class Program XLSX', function () {

@@ -6,6 +6,7 @@ import type {
   ReportOptions,
   RoomUsage,
   TeacherLoadData,
+  AdviserSummaryData,
   ValidationReportData,
 } from "@/types/api";
 import { api } from "./client";
@@ -33,6 +34,14 @@ export function useTeacherLoadReport(termId: number) {
     queryKey: ["terms", termId, "teacher-load"],
     queryFn: async () =>
       (await api<DataResponse<TeacherLoadData>>(`/terms/${termId}/reports/teacher-load`)).data,
+  });
+}
+
+export function useAdviserSummary(termId: number) {
+  return useQuery({
+    queryKey: ["terms", termId, "adviser-summary"],
+    queryFn: async () =>
+      (await api<DataResponse<AdviserSummaryData>>(`/terms/${termId}/reports/adviser-summary`)).data,
   });
 }
 

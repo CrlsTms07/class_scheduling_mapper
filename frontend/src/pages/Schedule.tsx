@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
-import { ArrowUpRightIcon, Copy, DoorClosed, SearchIcon, TableProperties } from "lucide-react";
+import { ArrowUpRightIcon, Building2, CalendarPlus, Copy, DoorClosed, FileUp, Plus, SearchIcon, TableProperties } from "lucide-react";
 import { useScheduleMap, useSections } from "@/api/schedule";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { STATUS_COLORS, STATUS_LABELS, termWord } from "@/lib/schedule";
@@ -14,9 +14,13 @@ import {
 } from "@/lib/scheduleMap";
 import type { MapRoom, SectionSummary } from "@/types/api";
 import CopyScheduleSheet from "@/features/schedule/CopyScheduleSheet";
+import ImportScheduleSheet from "@/features/schedule/ImportScheduleSheet";
+import NewScheduleSheet from "@/features/schedule/NewScheduleSheet";
+import PageHeader from "@/components/global-component/PageHeader";
+import { Crumbs } from "@/components/global-component/ScheduleUi";
+import { AddSectionToRoomSheet } from "@/features/schedule/builder/RoomSheets";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   InputGroup,
   InputGroupAddon,
@@ -43,48 +47,64 @@ const SectionLink = ({ section }: { section: SectionSummary }) => (
   </Link>
 );
 
-const RoomCard = ({ room, building }: { room: MapRoom; building?: string }) => (
-  <Card className="shadow shadow-[#790D16]/40">
-    <CardContent className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-teal-700 font-bold text-base">
-            Room: {room.room_number}
-            {room.room_name && ` – ${room.room_name}`}
-          </p>
-          {building && <p className="text-xs text-neutral-700">{building}</p>}
-          {!room.is_active && <Badge variant="secondary">Not in use</Badge>}
-        </div>
+/** A room: its name, "+ Add Section", and the sections that use it, each a link to its schedule. */
+const RoomCard = ({ room, building, onAddSection }: { room: MapRoom; building?: string; onAddSection?: (room: MapRoom) => void }) => (
+  <article className="flex flex-col gap-4 rounded-xl border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
         <Link
           to={`/schedule/rooms/${room.id}`}
           aria-label={`Room schedule of ${room.room_number}`}
-          className={buttonVariants({ variant: "outline", className: "h-11 shrink-0" })}
+          className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-teal-700 underline-offset-2 hover:underline"
         >
-          <DoorClosed />
-          Schedule
+          Room {room.room_number}
+          {room.room_name && <span className="font-normal text-neutral-600"> – {room.room_name}</span>}
         </Link>
+        {building && <p className="text-xs text-neutral-600">{building}</p>}
+        {room.in_charge && <p className="text-xs text-neutral-600">In charge: {room.in_charge}</p>}
+        {!room.is_active && <Badge variant="secondary">Not in use</Badge>}
       </div>
-
-      <div className="space-y-2">
-        <p className="text-xs text-neutral-700">Sections in this room:</p>
-        {room.sections.length === 0 ? (
-          <p className="text-xs text-neutral-500">None yet.</p>
-        ) : (
-          room.sections.map((section) => <SectionLink key={section.id} section={section} />)
-        )}
-      </div>
-    </CardContent>
-  </Card>
+      {onAddSection && (
+        <Button type="button" variant="outline" className="h-11 shrink-0" aria-label={`Add a section to room ${room.room_number}`} onClick={() => onAddSection(room)}>
+          <Plus />
+          Add Section
+        </Button>
+      )}
+    </div>
+    <div className="space-y-2">
+      <p className="text-sm text-neutral-700">Sections in this room:</p>
+      {room.sections.length === 0 ? (
+        <p className="text-sm text-neutral-500">None yet.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {room.sections.map((section) => (
+            <Link
+              key={section.id}
+              to={`/schedule/sections/${section.id}`}
+              title={`Adviser: ${section.adviser ?? "None yet"} · ${STATUS_LABELS[section.status]}`}
+              className="inline-flex min-h-11 items-center gap-1 rounded-md bg-neutral-100 px-3 text-xs font-medium text-neutral-800 hover:bg-[#790D16]/10 hover:text-branding"
+            >
+              Grade {section.grade} – {section.name}
+              <ArrowUpRightIcon className="size-3.5" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  </article>
 );
 
 const Schedule = () => {
   const { term, isPending: isTermPending, terms } = useSelectedTerm();
   const [isCopyOpen, setIsCopyOpen] = React.useState(false);
+  const [isImportOpen, setIsImportOpen] = React.useState(false);
+  const [isNewOpen, setIsNewOpen] = React.useState(false);
   const { data: map, isPending, isError } = useScheduleMap(term?.id);
   const { data: sections = [] } = useSections(term?.id);
   const [grade, setGrade] = React.useState<number | null>(null);
   const [search, setSearch] = React.useState("");
   const [chosenTab, setChosenTab] = React.useState<string | null>(null);
+  const [roomForSection, setRoomForSection] = React.useState<MapRoom | null>(null);
 
   // Every section can be found in one place, so none hides behind a room it does not have yet.
   const tabs = map
@@ -110,9 +130,17 @@ const Schedule = () => {
     }
     if (tabs.length === 0) {
       return (
-        <p className="text-sm text-neutral-700">
-          There are no rooms or sections in your grade levels for this school year yet.
-        </p>
+        <div className="space-y-3 rounded-xl border border-dashed p-6 text-sm text-neutral-700">
+          <p className="font-medium text-neutral-900">No sections yet</p>
+          <p>A schedule is made for each section. Add the sections of your grade levels first, then come back here.</p>
+          <Link
+            to="/sections?add=1"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#790D16] px-4 font-medium text-white hover:bg-[#790D16]/90"
+          >
+            <Plus className="size-4" />
+            Add a section
+          </Link>
+        </div>
       );
     }
 
@@ -126,9 +154,9 @@ const Schedule = () => {
 
       return (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {rooms.map((room) => (
-              <RoomCard key={room.id} room={room} building={room.building} />
+              <RoomCard key={room.id} room={room} building={room.building} onAddSection={term ? setRoomForSection : undefined} />
             ))}
           </div>
           {noRoom.length > 0 && (
@@ -145,7 +173,7 @@ const Schedule = () => {
 
     return (
       <div className="space-y-4">
-        <div role="tablist" aria-label="Building" className="flex flex-wrap gap-2">
+        <div role="tablist" aria-label="Building" className="flex gap-1 overflow-x-auto rounded-xl bg-neutral-100 p-1 sm:w-fit">
           {tabs.map(({ key, label }) => (
             <button
               key={key}
@@ -153,10 +181,8 @@ const Schedule = () => {
               role="tab"
               aria-selected={key === tab}
               onClick={() => setChosenTab(key)}
-              className={`min-h-11 rounded-md border px-4 text-sm font-medium ${
-                key === tab
-                  ? "bg-[#790D16] text-white border-[#790D16]"
-                  : "bg-background text-neutral-700"
+              className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg px-5 text-sm font-medium transition-colors ${
+                key === tab ? "bg-background text-neutral-900 shadow-sm" : "text-neutral-600 hover:text-neutral-900"
               }`}
             >
               {label}
@@ -204,8 +230,34 @@ const Schedule = () => {
         )}
 
         {building && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-            {building.rooms.map((room) => <RoomCard key={room.id} room={room} />)}
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex size-9 items-center justify-center rounded-md bg-[#790D16]/10 text-branding">
+                  <DoorClosed className="size-4" />
+                </span>
+                <p className="text-sm text-neutral-800">
+                  Map the sections to their classrooms.{" "}
+                  <span className="text-neutral-600">
+                    {building.rooms.length} {building.rooms.length === 1 ? "room" : "rooms"},{" "}
+                    {building.rooms.filter(({ sections: used }) => used.length > 0).length} in use
+                  </span>
+                </p>
+              </div>
+              <Link to={`/schedule/buildings/${building.id}`} className={buttonVariants({ variant: "outline", className: "h-11" })}>
+                <Building2 />
+                View building
+              </Link>
+            </div>
+            {building.rooms.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-neutral-700">
+                This building has no rooms yet. Add them on the Buildings and Rooms page.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {building.rooms.map((room) => <RoomCard key={room.id} room={room} onAddSection={term ? setRoomForSection : undefined} />)}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -213,44 +265,73 @@ const Schedule = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-end">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-[#790D16]/20 rounded-sm">
-            <TableProperties className="text-branding size-5" />
-          </div>
-          <div>
-            <p className="text-branding text-xl font-medium">
-              Schedule Configuration
-            </p>
-            <p className="text-sm text-neutral-700">
-              Open a section to build its timetable for{" "}
-              {term ? `${term.name}, SY ${term.school_year.name}` : "the selected term"}.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row shrink-0">
+    <div className="p-4 sm:p-6 space-y-5">
+      <Crumbs items={[{ label: "Home", to: "/dashboard" }, { label: "Schedule" }]} />
+      <PageHeader
+        icon={TableProperties}
+        title="Schedule Configuration"
+        description={`Build the weekly timetable of each section: subjects, teachers, rooms and times, in one place. ${term ? `${term.name}, SY ${term.school_year.name}.` : ""}`}
+        actions={
+          term && (
+            <Button type="button" className="h-11" onClick={() => setIsNewOpen(true)}>
+              <CalendarPlus />
+              New schedule
+            </Button>
+          )
+        }
+      />
+
+      <div className="flex flex-col gap-2 rounded-xl border bg-background p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <InputGroup className="h-11 lg:w-80">
+          <InputGroupInput
+            aria-label="Search rooms and sections"
+            className="h-11"
+            placeholder="Search rooms, sections or advisers..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <InputGroupAddon align="inline-start">
+            <SearchIcon className="text-muted-foreground" />
+          </InputGroupAddon>
+        </InputGroup>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+          <Link to="/sections?add=1" className={buttonVariants({ variant: "outline", className: "h-11" })}>
+            <Plus />
+            Add section
+          </Link>
+          {term && (
+            <Button type="button" variant="outline" className="h-11" onClick={() => setIsImportOpen(true)}>
+              <FileUp />
+              Import from a file
+            </Button>
+          )}
           {otherTerms.length > 0 && (
             <Button type="button" variant="outline" className="h-11" onClick={() => setIsCopyOpen(true)}>
               <Copy />
               Copy from another {termWord(term)}
             </Button>
           )}
-          <InputGroup className="h-11 sm:w-64">
-            <InputGroupInput
-              aria-label="Search rooms and sections"
-              className="h-11"
-              placeholder="Search..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <InputGroupAddon align="inline-start">
-              <SearchIcon className="text-muted-foreground" />
-            </InputGroupAddon>
-          </InputGroup>
         </div>
       </div>
+
       {renderContent()}
+      {isNewOpen && (
+        <NewScheduleSheet
+          sections={sections}
+          onCopy={otherTerms.length > 0 ? () => { setIsNewOpen(false); setIsCopyOpen(true); } : undefined}
+          onImport={() => { setIsNewOpen(false); setIsImportOpen(true); }}
+          onClose={() => setIsNewOpen(false)}
+        />
+      )}
+      {isImportOpen && term && <ImportScheduleSheet term={term} onClose={() => setIsImportOpen(false)} />}
+      {roomForSection && term && (
+        <AddSectionToRoomSheet
+          term={term}
+          roomId={roomForSection.id}
+          roomLabel={`Room ${roomForSection.room_number}`}
+          onClose={() => setRoomForSection(null)}
+        />
+      )}
       {isCopyOpen && term && (
         <CopyScheduleSheet term={term} otherTerms={otherTerms} onClose={() => setIsCopyOpen(false)} />
       )}

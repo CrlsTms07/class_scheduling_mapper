@@ -81,9 +81,6 @@ describe('clearing a whole schedule', function () {
     it('is only for those who plot this grade', function () {
         clearEntry($this, 'draft');
 
-        $this->actingAs(User::factory()->create()->assignRole('super_admin'));
-        $this->deleteJson($this->url)->assertForbidden();
-
         $other = User::factory()->create()->assignRole('glc');
         $other->gradeLevels()->attach(clearGrade(8));
         $this->actingAs($other);

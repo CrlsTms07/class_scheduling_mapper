@@ -339,4 +339,43 @@ class ScheduleService
             ->where('start_time', '<', $slot->end_time)
             ->where('end_time', '>', $slot->start_time);
     }
+
+    /**
+     * Gives the section's classes that have no room (imported before it had a home room) the room,
+     * in every term still being made, except where another section uses the room at that time.
+     *
+     * @return array{filled: int, busy: int}
+     */
+    public function fillMissingRooms(Section $section, int $roomId): array
+    {
+        return DB::transaction(function () use ($section, $roomId) {
+            $result = ['filled' => 0, 'busy' => 0];
+            $entries = ScheduleEntry::where('section_id', $section->id)
+                ->whereNotNull('section_subject_id')
+                ->whereNull('room_id')
+                ->whereIn('status', ['draft'])
+                ->get();
+
+            foreach ($entries as $entry) {
+                $isBusy = ScheduleEntry::where('term_id', $entry->term_id)
+                    ->where('room_id', $roomId)
+                    ->where('day_of_week', $entry->day_of_week)
+                    ->where('status', '<>', 'rejected')
+                    ->where('start_time', '<', $entry->end_time)
+                    ->where('end_time', '>', $entry->start_time)
+                    ->exists();
+
+                if ($isBusy) {
+                    $result['busy']++;
+
+                    continue;
+                }
+
+                $entry->update(['room_id' => $roomId]);
+                $result['filled']++;
+            }
+
+            return $result;
+        });
+    }
 }

@@ -26,11 +26,11 @@ import {
 } from "@/lib/teacherLoading";
 import type { LoadingRow, SectionLoading, Term } from "@/types/api";
 import LoadDistribution from "./LoadDistribution";
+import PageHeader from "@/components/global-component/PageHeader";
 import FormAlert from "@/components/global-component/FormAlert";
 import FormTextField from "@/components/global-component/FormTextField";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -132,12 +132,17 @@ const LoadingRowCard = ({ termId, loading, row }: LoadingRowProp) => {
 
   return (
     <li>
-      <Card className="shadow shadow-[#790D16]/40">
-        <CardContent className="space-y-2">
+      <div className={`space-y-2 p-4 ${row.teacher_id ? "" : "bg-amber-50/40"}`}>
           <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 md:items-center">
             <div className="min-w-0">
-              <p className="font-medium text-teal-700">{row.subject}</p>
-              <div className="flex flex-wrap items-center gap-1 text-xs text-neutral-700">
+              <p className="flex items-center gap-2 font-medium text-neutral-900">
+                <span
+                  aria-hidden
+                  className={`size-2.5 shrink-0 rounded-full ${row.teacher_id ? "bg-emerald-500" : "bg-amber-400"}`}
+                />
+                {row.subject}
+              </p>
+              <div className="flex flex-wrap items-center gap-1 pl-4.5 text-xs text-neutral-700">
                 {row.minutes_per_week} mins a week
                 {row.is_priority && <Badge className="bg-sky-100 text-sky-900">Priority</Badge>}
                 {!row.is_active && (
@@ -187,8 +192,7 @@ const LoadingRowCard = ({ termId, loading, row }: LoadingRowProp) => {
             </p>
           )}
           {warning && <p className="text-xs text-amber-900">{warning}</p>}
-        </CardContent>
-      </Card>
+      </div>
 
       {isAdding && (
         <QuickAddSheet
@@ -336,20 +340,14 @@ const TeacherLoadingIndex = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-start gap-3">
-        <div className="p-2 bg-[#790D16]/20 rounded-sm">
-          <ClipboardList className="text-branding size-5" />
-        </div>
-        <div>
-          <p className="text-branding text-xl font-medium">Teacher Loading</p>
-          <p className="text-sm text-neutral-700">
-            Who teaches what in {term.name}, SY {term.school_year.name}.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        icon={ClipboardList}
+        title="Teacher Loading"
+        description={`Who teaches what in ${term.name}, SY ${term.school_year.name}.`}
+      />
 
-      <details className="rounded-md border bg-background">
-        <summary className="flex min-h-11 cursor-pointer items-center p-3 text-sm font-medium">
+      <details className="rounded-xl border bg-background shadow-sm">
+        <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-neutral-800">
           How this works
         </summary>
         <ul className="list-disc space-y-1 px-3 pb-3 pl-8 text-sm text-neutral-700">
@@ -359,7 +357,7 @@ const TeacherLoadingIndex = () => {
         </ul>
       </details>
 
-      <div role="tablist" aria-label="Show" className="grid grid-cols-2 gap-2 sm:max-w-md">
+      <div role="tablist" aria-label="Show" className="grid grid-cols-2 gap-1 rounded-xl border bg-neutral-50 p-1 sm:max-w-md">
         {[
           { key: false, label: "By section" },
           { key: true, label: "By teacher (Load Distribution)" },
@@ -370,8 +368,8 @@ const TeacherLoadingIndex = () => {
             role="tab"
             aria-selected={key === isByTeacher}
             onClick={() => setParams(key ? { view: "teachers" } : section ? { section: String(section.id) } : {})}
-            className={`min-h-11 rounded-md border px-1 text-xs sm:text-sm font-medium ${
-              key === isByTeacher ? "bg-[#790D16] text-white border-[#790D16]" : "bg-background text-neutral-700"
+            className={`min-h-11 rounded-lg px-1 text-xs font-medium transition-colors sm:text-sm ${
+              key === isByTeacher ? "bg-[#790D16] text-white shadow-sm" : "text-neutral-700 hover:bg-background"
             }`}
           >
             {label}
@@ -387,13 +385,13 @@ const TeacherLoadingIndex = () => {
 
           {sections?.length === 0 && (
             <p className="text-sm text-neutral-700">
-              There are no sections in your grade levels for this school year yet. The Admin encodes
-              them in Sections.
+              There are no sections in your grade levels for this school year yet. Add them on the
+              Sections page.
             </p>
           )}
 
           {section && (
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-xl border bg-background p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
               <div className="space-y-1 sm:w-80">
                 <label htmlFor="loading-section" className="text-sm text-neutral-800">
                   Section
@@ -456,10 +454,21 @@ const TeacherLoadingIndex = () => {
 
           {loading && loading.rows.length > 0 && (
             <>
-              <p className="text-sm text-neutral-700" aria-live="polite">
-                {done} of {loading.rows.length} subjects have a teacher.
-              </p>
-              <ol className="space-y-3">
+              <div className="space-y-1.5" aria-live="polite">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <p className="text-neutral-700">
+                    {done} of {loading.rows.length} subjects have a teacher.
+                  </p>
+                  {done === loading.rows.length && <Badge className="bg-emerald-100 text-emerald-900">Ready to plot</Badge>}
+                </div>
+                <div className="h-2 rounded-full bg-neutral-200" aria-hidden>
+                  <div
+                    className={`h-full rounded-full ${done === loading.rows.length ? "bg-emerald-600" : "bg-[#790D16]"}`}
+                    style={{ width: `${(done / loading.rows.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <ol className="divide-y overflow-hidden rounded-xl border bg-background shadow-sm">
                 {loading.rows.map((row) => (
                   <LoadingRowCard key={row.subject_id} termId={term.id} loading={loading} row={row} />
                 ))}

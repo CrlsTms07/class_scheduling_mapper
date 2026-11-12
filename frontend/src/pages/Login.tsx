@@ -9,6 +9,7 @@ import AuthenticationLayout from "@/components/global-component/AuthenticationLa
 import Container from "@/components/global-component/Container";
 import FormAlert from "@/components/global-component/FormAlert";
 import PasswordInput from "@/components/global-component/PasswordInput";
+import TermsDialog from "@/components/global-component/TermsDialog";
 import { useLogin } from "@/api/auth";
 import { applyApiErrors } from "@/lib/forms";
 import { homePathFor } from "@/lib/navigation";
@@ -17,6 +18,7 @@ import * as z from "zod";
 
 const Login = () => {
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [isTermsOpen, setIsTermsOpen] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const login = useLogin();
@@ -143,7 +145,15 @@ const Login = () => {
                   Sign up
                 </Link>
               </p>
+              <p className="text-center text-xs text-neutral-600">
+                On your first sign-in you will be asked to accept the{" "}
+                <button type="button" className="inline-flex min-h-11 items-center font-medium text-branding underline underline-offset-2" onClick={() => setIsTermsOpen(true)}>
+                  Terms and Conditions
+                </button>
+                .
+              </p>
             </div>
+            <TermsDialog open={isTermsOpen} onOpenChange={setIsTermsOpen} />
           </form>
         </AuthenticationLayout>
       </Container>

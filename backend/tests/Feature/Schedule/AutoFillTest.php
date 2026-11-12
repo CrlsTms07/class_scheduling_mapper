@@ -227,9 +227,13 @@ it('undoes only its own entries', function () {
     $this->deleteJson("/api/terms/{$this->term->id}/sections/{$this->sectionA->id}/auto-fill/{$runId}")->assertNotFound();
 });
 
-it('is for schedulers of the section only', function () {
+it('is for those who plot the section: the Admin too, but not a teacher', function () {
     $this->actingAs(User::where('email', 'admin@deped.gov.ph')->first());
+    autoFillPreview($this)->assertOk();
+});
 
+it('is not for teachers', function () {
+    $this->actingAs(User::where('email', 'teacher@deped.gov.ph')->first());
     autoFillPreview($this)->assertForbidden();
 });
 

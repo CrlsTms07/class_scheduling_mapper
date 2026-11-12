@@ -78,8 +78,12 @@ describe('school profile', function () {
         $this->putJson('/api/school-profile', profileBody(['school_name' => 'New Name']))->assertOk();
 
         $this->getJson('/api/report-settings')->assertJsonPath('data.school.school_name', 'New Name');
+        $this->putJson('/api/school-profile', profileBody(['region' => 'Region IV-A CALABARZON', 'division' => 'Schools Division of Cavite Province']))->assertOk();
+        $this->getJson('/api/report-settings')
+            ->assertJsonPath('data.school.region', 'Region IV-A CALABARZON')
+            ->assertJsonPath('data.school.division', 'Schools Division of Cavite Province');
         expect(DB::table('school_profile')->count())->toBe(1)
-            ->and(DB::table('audit_logs')->where('table_name', 'school_profile')->count())->toBe(2);
+            ->and(DB::table('audit_logs')->where('table_name', 'school_profile')->count())->toBe(3);
     });
 
     it('needs a school name and a valid email', function () {
@@ -133,13 +137,13 @@ describe('logos', function () {
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['logo' => '2 MB']);
 
-        foreach (range(1, 4) as $number) {
+        foreach (range(1, 6) as $number) {
             $this->post('/api/school-profile/logos', ['logo' => pngFile("{$number}.png")], ['Accept' => 'application/json'])->assertCreated();
         }
 
         $this->post('/api/school-profile/logos', ['logo' => pngFile('5.png')], ['Accept' => 'application/json'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['logo' => 'up to 4']);
+            ->assertJsonValidationErrors(['logo' => 'up to 6']);
     });
 
     it('moves the next logo up when the first is removed', function () {
@@ -166,6 +170,21 @@ describe('logos', function () {
         $this->deleteJson('/api/school-profile/logos/3')
             ->assertUnprocessable()
             ->assertJsonValidationErrors('logo');
+    });
+
+    it('prints a logo at the top or in the footer of the form', function () {
+        $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
+        $this->post('/api/school-profile/logos', ['logo' => pngFile('deped.png')], ['Accept' => 'application/json'])->assertCreated();
+
+        $this->putJson('/api/school-profile/logos/1/placement', ['placement' => 'footer'])->assertOk();
+        $this->putJson('/api/school-profile/logos/0/placement', ['placement' => 'side'])->assertUnprocessable();
+        $this->putJson('/api/school-profile/logos/5/placement', ['placement' => 'footer'])->assertUnprocessable();
+
+        $this->getJson('/api/report-settings')
+            ->assertJsonPath('data.logo_items.0.placement', 'header')
+            ->assertJsonPath('data.logo_items.1.placement', 'footer');
+        expect(app(\App\Services\ReportSettingsService::class)->logoDataUris('footer'))->toHaveCount(1)
+            ->and(app(\App\Services\ReportSettingsService::class)->logoDataUris())->toHaveCount(1);
     });
 });
 

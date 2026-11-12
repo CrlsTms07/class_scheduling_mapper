@@ -16,19 +16,27 @@ class SectionPolicy
     }
 
     /**
-     * Only a GLC or Master Teacher plots. The Admin approves but does not plot.
+     * The Admin plots any section (team decision, Nov 10, 2026). A Chairperson or Master
+     * Teacher plots the sections of their own grade levels.
      */
     public function plot(User $user, Section $section): bool
     {
-        return $user->hasAnyRole(['glc', 'master_teacher']) && $this->view($user, $section);
+        return $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']) && $this->view($user, $section);
     }
 
     /**
-     * Only the Admin encodes sections, once per school year.
+     * Sections are encoded once per school year: by the Admin for every grade, and by a
+     * Chairperson or Master Teacher for their own grade levels (team decision, Nov 10, 2026).
+     * Without a grade level, this asks whether the user may manage sections at all.
      */
-    public function manage(User $user): bool
+    public function manage(User $user, ?int $gradeLevelId = null): bool
     {
-        return $user->hasRole(User::ROLE_ADMIN);
+        if ($user->hasRole(User::ROLE_ADMIN)) {
+            return true;
+        }
+
+        return $user->hasAnyRole(['glc', 'master_teacher'])
+            && ($gradeLevelId === null || in_array($gradeLevelId, $user->gradeLevelIdsInScope()));
     }
 
     /**

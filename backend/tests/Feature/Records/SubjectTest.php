@@ -133,15 +133,15 @@ describe('grade-level scope', function () {
 });
 
 describe('other roles', function () {
-    it('shows the Admin everything but lets them change nothing', function () {
+    it('lets the Admin see and manage the subjects of every grade', function () {
         $subject = insertSubject($this);
         insertSubject($this, ['name' => 'Grade 9', 'grade_level_id' => subjectGrade(9)]);
         $this->actingAs(User::factory()->create()->assignRole('super_admin'));
 
         $this->getJson("/api/school-years/{$this->yearId}/subjects")->assertOk()->assertJsonCount(2, 'data');
-        $this->postJson("/api/school-years/{$this->yearId}/subjects", subjectBody())->assertForbidden();
-        $this->putJson("/api/subjects/{$subject}", subjectBody())->assertForbidden();
-        $this->deleteJson("/api/subjects/{$subject}")->assertForbidden();
+        $this->postJson("/api/school-years/{$this->yearId}/subjects", subjectBody(['name' => 'Science 11', 'grade_level_id' => subjectGrade(11)]))->assertCreated();
+        $this->putJson("/api/subjects/{$subject}", subjectBody(['name' => 'Renamed']))->assertOk();
+        $this->deleteJson("/api/subjects/{$subject}")->assertOk();
     });
 
     it('keeps people who only teach out', function () {

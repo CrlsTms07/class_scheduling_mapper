@@ -50,6 +50,98 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
 - **Auto-fill** (greedy, no backtracking for now): preview first, saved as drafts in one transaction,
   can be undone per run. No queue is needed: a whole school fills in about a second.
 
+## Team decisions on roles, menus and exports (Nov 10, 2026)
+
+- **Menu:** Main (Dashboard, Schedule, Teacher Loading), Manage (Teachers, Sections, Subjects, Rooms &
+  Buildings, and Users & Roles for the Admin), Approvals (Admin), Reports, My Records (GLC/MT with a
+  personnel record) and Settings (Admin: School Years, Time Slots, Report Settings).
+- **The Admin can plot** any section, and manages subjects too.
+- **GLC and Master Teacher manage sections** of their own grade levels (answers open question 9).
+- **Teachers get a dashboard:** next class, today's classes, teaching time a week and advisory.
+- **Exports:** CSV is added beside PDF and XLSX.
+- **Import from a file:** a schedule template (CSV or XLSX) that is filled in, uploaded, previewed and
+  imported as drafts.
+- **Guest search:** by section or adviser name only. No student names (minors).
+- **Landing page:** ERCIHS logo, school details from Report Settings → School profile (Admin edits them).
+- **Junior High and Senior High stay apart:** a Chairperson does not see Senior High details, and the
+  Master Teacher does not see Junior High details. A room or teacher shared with the other department
+  shows only "Junior High section" or "Senior High section". The Admin sees everything.
+- **Name:** "ERCIHS Scheduling System" in the browser tab, header, login and landing page. Signing out
+  returns to the landing page.
+- **Shared teacher directory:** every teacher is listed for the Chairperson and the Master Teacher, since some
+  teach in both departments. A teacher who teaches only in the other department is view only; the Admin
+  edits that record.
+- **New schedule:** the Schedule page has "New schedule" (choose the section, then build on the timetable,
+  auto-fill, copy another term or import a file) and "Add section".
+- **Import from the school's own class program workbook** (the "G11/G12 _CP" sheets, sections side by side,
+  four lines per class): uploaded as it is in Import from a file, read into one row per class, and checked
+  in the same review. Teachers match by first initial and last name ("J. DELA CRUZ"), subjects ignore case
+  and dots, rooms match "C 401" or "401". Times without AM or PM from 1:00 to 5:59 are read as PM.
+- **Set up from the file, then use it or not:** when a file names sections, subjects, teachers or rooms the
+  system does not have, the review lists them. "Set these up from the file" creates them (sections of the
+  user's grade levels only; a Monday – Friday bell schedule from the file's periods only when the department
+  has none; subjects with the minutes a week in the file; teachers with their name only, to be completed in
+  Teachers; "C 401" goes to "Building C"). Nothing is saved until "Use this schedule"; "Don't use it" leaves
+  everything as it was. Used classes are drafts, edited in the plotter, then submitted.
+- **The Chairperson and Master Teacher make the schedules, so every step is theirs:** they also set up the
+  bell schedules (Time Slots) of their own department, Junior High or Senior High. The Admin follows the same
+  four steps on the dashboard and can still plot, approve, reject and reopen.
+- **Plotter:** until a section has a bell schedule and teacher loading, a "Before you can plot" checklist shows
+  what is missing, with a button to each place. Auto-fill says what it does: it places the subjects not placed
+  yet into free periods (priority subjects first, never where the teacher, room or section is busy), shows a
+  preview, and can be undone.
+- **Rooms & Buildings:** each room and building has Edit and Delete.
+- **Lists:** Sections and Teachers have View, Edit and Delete on each row. A Master Teacher's filters offer
+  Senior High grades only, and a Chairperson's Junior High grades only.
+
+## Team decisions on the layout and building schedules by hand (Nov 11, 2026)
+
+- **Layout:** the Schedule, classroom, section, Section Directory, Teachers Directory and teacher pages follow the
+  team's layout: breadcrumbs, gray tabs for buildings and terms (the terms come from the school year), day by day
+  cards with "+" to add, and Edit and Delete in side sheets. The plotter's timetable, drag and drop, Auto-fill,
+  flags and Submit stay, one tab away ("Daily schedule" or "Timetable" on the section page).
+- **Typed times:** when building a schedule by hand, a class or a break is given its Start and End time. A time
+  that matches a period uses it. A new time becomes a period (or break) of the department's bell schedule, so the
+  conflict rules, the Class Program and Auto-fill work the same way. With no bell schedule yet, the first typed
+  time starts one (Monday – Friday). A time that overlaps another period or a break is refused and says which.
+  Breaks belong to the bell schedule, so the other sections on it get them too.
+- **Rooms:** "+ Add Section" on a room card makes that room the section's home or usual room. Each building has a
+  view of all its rooms and the sections that use them, which prints as that building's room usage.
+- **Teachers shared by both departments:** a Junior High teacher can be given a Senior High class (and the other
+  way around); from then on both the Chairperson and the Master Teacher can edit that teacher and schedule them.
+- **Sign-up:** the Terms and Conditions (including the Data Privacy Act) must be accepted; the time is kept.
+- **Fresh start for the import:** `php artisan app:clear-school-data` empties sections, teachers, subjects, rooms,
+  bell schedules, loading, schedules and the audit log, and keeps accounts, school years, settings and the short
+  form lists. Laravel's unused queue tables (jobs, job_batches, failed_jobs) were removed.
+
+## Team decisions on importing (Nov 12, 2026)
+
+- **Any Excel file name:** Import reads every sheet of an .xlsx or .xls workbook and finds the schedules by their
+  TIME column and day headings: the SHS class program, the JHS class program per section ("Monday – Thursday" and
+  "Friday" blocks), and the Teachers Program (the section in each cell, under "NAME OF TEACHER" and "SUBJECT").
+  The grade comes from the sheet, a "GRADE 9" heading or the file name. Short subject names (AP, VE, ESP, HGP,
+  TLE) match the full names. The CSV and XLSX template buttons were removed from the import sheet.
+- **PDF:** not read yet (a PDF keeps no table columns, so times, subjects and teachers mix up). The import says to
+  save the schedule as an Excel workbook. To be looked at after the evaluation.
+
+## Team decisions on accounts, forms and rooms (Nov 12, 2026)
+
+- **One teaching load for everyone:** every teacher's maximum is 5 subjects (`SCHOOL_MAX_SUBJECTS`, default 5).
+  The teacher form shows it instead of asking for it.
+- **Subject Type:** only the Master Teacher (SHS) sees it. GLCs (JHS) do not.
+- **Emails through the school's Gmail:** Gmail SMTP on a computer or paid hosting, the Gmail API on Render's free
+  plan (it blocks SMTP). The reset email shows the school's name and logo, one button and how long the link lasts.
+- **Admin reset password:** when the email does not arrive, the Admin gives a temporary password from the Users
+  page. The person must choose a new one at the next sign-in.
+- **Backup:** `php artisan app:backup` saves the whole database as one file.
+- **Class Program PDF:** follows the official JHS form: "Republic of the Philippines" and "Department of
+  Education" in Old English style, region and division, one Teacher column, totals with "Inclusive of HGP",
+  reference notes, 2×2 signatures, and footer logos (each logo is set to the top or the footer in Report Settings).
+- **Adviser Summary:** a new report (Reports → Advisers, and "Adviser summary" on the Sections page). One table per
+  grade, two grades side by side: #, Section, Room Assignment, Adviser, Co-Adviser. PDF, XLSX and CSV.
+- **Room in charge:** each room can name who looks after it. The building view shows the rooms floor by floor
+  (the floor comes from the room number: 101 is the 1st floor), with a list view as well.
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade
@@ -66,7 +158,8 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
 7. **Tracks (items 10–11):** Complete list of tracks (and strands, if any) offered at
    ERCIHS? Which electives belong to each track per term?
 8. **Teacher shift:** Can a teacher teach in both AM and PM shifts (whole day)?
-9. **Sections:** Only the Admin creates sections, or can the GLC / Master Teacher too?
+9. ~~**Sections:** Only the Admin creates sections, or can the GLC / Master Teacher too?~~ Team decision,
+   Nov 10, 2026: the GLC and Master Teacher manage the sections of their own grade levels.
 10. **Copy term (item 2):** Should the copy also keep the same teachers for subjects that
     continue?
 11. **Guest view:** ~~Is it okay for teacher schedules to be public?~~ Team decision, Nov 7, 2026:

@@ -70,7 +70,8 @@ function stubApi(plotter: Plotter, onChange?: (url: string, init: RequestInit) =
   return fetchMock;
 }
 
-function openPlotter() {
+function openPlotter(mode: "daily" | "timetable" = "timetable") {
+  localStorage.setItem("section-view", mode);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   render(
@@ -254,7 +255,7 @@ describe("guidance", () => {
     stubApi(plotterData({ can_plot: false, can_edit: false }));
     openPlotter();
 
-    await screen.findByText("Grade 7 – Sample A");
+    await screen.findByRole("heading", { name: "Grade 7 – Sample A" });
     expect(screen.queryByText("How this works")).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
@@ -592,11 +593,11 @@ describe("read-only view", () => {
     stubApi(plotterData({ can_plot: false, can_edit: false }));
     openPlotter();
 
-    await screen.findByText("Grade 7 – Sample A");
+    await screen.findByRole("heading", { name: "Grade 7 – Sample A" });
 
     expect(screen.queryByRole("button", { name: MONDAY_SLOT })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Mathematics/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Mathematics")).toBeInTheDocument();
+    expect(screen.getAllByText("Mathematics").length).toBeGreaterThan(0);
   });
 });
 
@@ -644,7 +645,7 @@ describe("submitting", () => {
     stubApi(plotterData({ status: "not_started" }));
     openPlotter();
 
-    await screen.findByText("Grade 7 – Sample A");
+    await screen.findByRole("heading", { name: "Grade 7 – Sample A" });
 
     expect(screen.queryByRole("button", { name: "Submit for approval" })).not.toBeInTheDocument();
   });
@@ -709,14 +710,18 @@ describe("screen states", () => {
     stubApi(plotterData({ patterns: [] }));
     openPlotter();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No bell schedule");
+    const checklist = await screen.findByRole("region", { name: "Before you can plot" });
+    expect(checklist).toHaveTextContent("Bell schedule");
+    expect(screen.getByRole("link", { name: /Set up in Time Slots/ })).toHaveAttribute("href", "/time-slots");
+    expect(screen.queryByText(/No flags/)).not.toBeInTheDocument();
   });
 
   it("explains when there is no teacher loading", async () => {
     stubApi(plotterData({ loading: [] }));
     openPlotter();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No teacher loading");
+    expect(await screen.findByRole("region", { name: "Before you can plot" })).toHaveTextContent("Teacher loading");
+    expect(screen.getByRole("link", { name: /Go to Teacher Loading/ })).toHaveAttribute("href", expect.stringContaining("/teacher-loading?section="));
   });
 
   it("shows flags", async () => {
@@ -754,5 +759,55 @@ describe("screen states", () => {
     await userEvent.click(await screen.findByRole("tab", { name: "Weekly grid" }));
     expect(screen.queryByRole("region", { name: "Monday" })).not.toBeInTheDocument();
     expect(localStorage.getItem("plotter-view")).toBe("grid");
+  });
+});
+
+describe("daily schedule", () => {
+  const placed = plotterData({
+    entries: [
+      { id: 7, day: 1, start_time: "08:00", end_time: "09:20", status: "draft", section_subject_id: 50, activity_id: null, subject: "Mathematics", teacher: "Teacher Three", room_id: 10, room: "Building – 101" },
+    ],
+  });
+
+  it("shows each day's classes and breaks as cards, with the subjects of the section", async () => {
+    stubApi(placed);
+    openPlotter("daily");
+
+    const monday = await screen.findByRole("region", { name: "Monday" });
+    expect(within(monday).getByText("Mathematics")).toBeInTheDocument();
+    expect(within(monday).getByText("Building – 101")).toBeInTheDocument();
+    expect(within(monday).getByText("Break")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Friday" })).getByText("No classes yet.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Daily schedule" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("adds a class with a typed time: the time becomes a period, then the class is placed", async () => {
+    const fetchMock = stubApi(plotterData(), (url) =>
+      url.endsWith("/periods") ? reply(200, { data: { slots: { "2": 300 }, plotter: plotterData() } }) : reply(200, { data: plotterData() }),
+    );
+    openPlotter("daily");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Add a class on Tuesday" }));
+    await userEvent.type(screen.getByLabelText("Start time"), "13:00");
+    await userEvent.type(screen.getByLabelText("End time"), "14:00");
+    await userEvent.selectOptions(screen.getByLabelText("Subject"), "50");
+    await userEvent.click(screen.getByRole("button", { name: "Add class" }));
+
+    await waitFor(() => expect(changeCalls(fetchMock)).toHaveLength(2));
+    const [[periodUrl, periodInit], [placeUrl, placeInit]] = changeCalls(fetchMock);
+    expect(periodUrl).toContain("/sections/1/periods");
+    expect(JSON.parse(String(periodInit?.body))).toMatchObject({ days: [2], start_time: "13:00", end_time: "14:00" });
+    expect(placeUrl).toContain("/sections/1/slots/300");
+    expect(JSON.parse(String(placeInit?.body))).toMatchObject({ section_subject_id: 50, room_id: 10, days: [2] });
+  });
+
+  it("keeps the timetable one tap away", async () => {
+    stubApi(placed);
+    openPlotter("daily");
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Timetable" }));
+
+    expect(localStorage.getItem("section-view")).toBe("timetable");
+    expect((await screen.findAllByRole("button", { name: MONDAY_SLOT })).length).toBeGreaterThan(0);
   });
 });

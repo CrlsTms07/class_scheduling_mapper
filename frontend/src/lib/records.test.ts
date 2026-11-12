@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ManagedBuilding, ManagedTeacher } from "@/types/api";
-import { filterBuildings, RoomSchema, toRoomForm, toRoomInput } from "./buildings";
+import { filterBuildings, floorLabel, floorOf, RoomSchema, roomsByFloor, toRoomForm, toRoomInput } from "./buildings";
 import {
   filterTeachers,
   isOverLimit,
@@ -42,17 +42,21 @@ describe("filterBuildings", () => {
 
 describe("room form", () => {
   it("starts a new room as in use", () => {
-    expect(toRoomForm(null)).toEqual({ room_number: "", room_name: "", capacity: "", is_active: true });
+    expect(toRoomForm(null)).toEqual({ room_number: "", room_name: "", in_charge: "", capacity: "", is_active: true });
   });
 
   it("sends blank fields as nothing, and keeps a capacity of zero", () => {
-    expect(toRoomInput({ room_number: "101", room_name: "", capacity: "", is_active: true })).toEqual({
+    expect(toRoomInput({ room_number: "101", room_name: "", in_charge: "", capacity: "", is_active: true })).toEqual({
       room_number: "101",
       room_name: null,
+      in_charge: null,
       capacity: null,
       is_active: true,
     });
-    expect(toRoomInput({ room_number: "101", room_name: "", capacity: "0", is_active: true }).capacity).toBe(0);
+    expect(toRoomInput({ room_number: "101", room_name: "", in_charge: "Ana Reyes", capacity: "0", is_active: true })).toMatchObject({
+      capacity: 0,
+      in_charge: "Ana Reyes",
+    });
   });
 
   it("needs a number and takes digits for the capacity", () => {
@@ -95,7 +99,6 @@ describe("teacher form", () => {
     expect(toTeacherForm(null)).toMatchObject({
       personnel_type: "teaching",
       shift: "WHOLE_DAY",
-      max_subjects: "5",
       max_hours_per_week: "30",
       is_active: true,
       qualifications: [],
@@ -116,7 +119,6 @@ describe("teacher form", () => {
       department_id: 3,
       designation_id: null,
       shift: "AM",
-      max_subjects: 5,
       max_hours_per_week: 30,
       is_active: true,
       qualifications: original.qualifications,
@@ -124,11 +126,8 @@ describe("teacher form", () => {
     });
   });
 
-  it("accepts a limit from 0 to 8 only", () => {
-    const form = toTeacherForm(teacher());
-
-    expect(TeacherFormSchema.safeParse({ ...form, max_subjects: "0" }).success).toBe(true);
-    expect(TeacherFormSchema.safeParse({ ...form, max_subjects: "9" }).success).toBe(false);
+  it("does not send a load limit: it is one for the whole school", () => {
+    expect(toTeacherInput(toTeacherForm(teacher()))).not.toHaveProperty("max_subjects");
   });
 
   it("accepts 1 to 60 hours a week only", () => {
@@ -177,5 +176,27 @@ describe("isOverLimit", () => {
   it("is over only past the limit", () => {
     expect(isOverLimit({ assigned: 5, max_subjects: 5 })).toBe(false);
     expect(isOverLimit({ assigned: 6, max_subjects: 5 })).toBe(true);
+  });
+});
+
+describe("floor plan", () => {
+  it("reads the floor from the room number", () => {
+    expect(floorOf("101")).toBe(1);
+    expect(floorOf("204")).toBe(2);
+    expect(floorOf("B-305")).toBe(3);
+    expect(floorOf("Library")).toBeNull();
+    expect(floorOf("12")).toBeNull();
+    expect(floorLabel(2)).toBe("2nd floor");
+    expect(floorLabel(null)).toBe("Other rooms");
+  });
+
+  it("puts the top floor first and other rooms last", () => {
+    const rooms = [{ room_number: "101" }, { room_number: "Lab" }, { room_number: "201" }, { room_number: "102" }];
+
+    expect(roomsByFloor(rooms).map(({ floor, rooms: list }) => [floor, list.map(({ room_number }) => room_number)])).toEqual([
+      [2, ["201"]],
+      [1, ["101", "102"]],
+      [null, ["Lab"]],
+    ]);
   });
 });

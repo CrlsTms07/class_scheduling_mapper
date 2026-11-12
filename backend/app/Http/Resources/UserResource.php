@@ -21,6 +21,10 @@ class UserResource extends JsonResource
             'last_name' => $this->last_name,
             'suffix' => $this->suffix,
             'status' => $this->status,
+            // Null until the person accepts the Terms and Conditions; the app asks before anything else.
+            'terms_accepted_at' => $this->terms_accepted_at,
+            // Set after the Admin gave a temporary password: a new one comes before anything else.
+            'must_change_password' => (bool) $this->must_change_password,
             'role' => $this->getRoleNames()->first(),
             'preferences' => [
                 // Subjects in color on the schedule. On unless the user turned it off.

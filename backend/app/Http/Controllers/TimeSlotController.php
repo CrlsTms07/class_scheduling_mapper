@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\SaveDayPatternRequest;
 use App\Http\Requests\PresetSlotsRequest;
+use App\Http\Requests\SaveDayPatternRequest;
 use App\Http\Requests\SaveTimeSlotRequest;
 use App\Http\Resources\DayPatternResource;
 use App\Models\DayPattern;
 use App\Models\SchoolYear;
 use App\Models\TimeSlot;
+use App\Models\User;
 use App\Services\TimeSlotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,11 +18,14 @@ use Illuminate\Support\Facades\Gate;
 
 class TimeSlotController extends Controller
 {
-    public function index(SchoolYear $schoolYear): AnonymousResourceCollection
+    public function index(Request $request, SchoolYear $schoolYear): AnonymousResourceCollection
     {
-        Gate::authorize('manage', SchoolYear::class);
+        Gate::authorize('manage', DayPattern::class);
+        // A Chairperson or Master Teacher sees the bell schedules of their own department only.
+        $departments = $request->user()->hasRole(User::ROLE_ADMIN) ? null : $request->user()->departmentsInScope();
 
         $patterns = DayPattern::where('school_year_id', $schoolYear->id)
+            ->when($departments !== null, fn ($query) => $query->whereIn('level', $departments))
             ->with('timeSlots.dayPattern')
             ->orderBy('level')
             ->orderBy('shift')
@@ -47,7 +51,7 @@ class TimeSlotController extends Controller
 
     public function destroyPattern(Request $request, DayPattern $dayPattern, TimeSlotService $service): JsonResponse
     {
-        Gate::authorize('manage', SchoolYear::class);
+        Gate::authorize('manage', [DayPattern::class, $dayPattern->level]);
 
         $service->deletePattern($dayPattern, $request->user());
 
@@ -84,7 +88,7 @@ class TimeSlotController extends Controller
 
     public function destroySlot(Request $request, TimeSlot $timeSlot, TimeSlotService $service): JsonResponse
     {
-        Gate::authorize('manage', SchoolYear::class);
+        Gate::authorize('manage', [DayPattern::class, $timeSlot->dayPattern->level]);
 
         $service->deleteSlot($timeSlot, $request->user());
 

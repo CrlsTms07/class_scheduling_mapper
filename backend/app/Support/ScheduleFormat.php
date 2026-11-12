@@ -32,6 +32,15 @@ class ScheduleFormat
         return (int) ((strtotime($end) - strtotime($start)) / 60);
     }
 
+    /** 360 becomes "6 hours", 330 "5.5 hours", 60 "1 hour": the totals line of the Class Program. */
+    public static function hoursText(int $minutes): string
+    {
+        $hours = round($minutes / 60, 2);
+        $text = rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.');
+
+        return $text.((float) $text === 1.0 ? ' hour' : ' hours');
+    }
+
     /**
      * 595 becomes "9 hours 55 minutes".
      */

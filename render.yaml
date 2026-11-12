@@ -33,8 +33,19 @@ services:
         value: database
       - key: QUEUE_CONNECTION
         value: sync
+      - key: QUEUE_FAILED_DRIVER
+        value: "null"
       - key: LOG_CHANNEL
         value: stderr
-      # No email service yet: reset links go to the log until one is added.
+      # Gmail over HTTPS (Render's free plan blocks SMTP). See docs/deployment.md, "Email".
+      # Until the GMAIL_* values are set, use "log": reset links go to the log.
       - key: MAIL_MAILER
         value: log
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // The host ends HTTPS at its own proxy, so the app must believe it about the address.
         $middleware->trustProxies(at: '*');
+
+        // Browser safety headers on every answer (see the class).
+        $middleware->append(SecurityHeaders::class);
 
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,

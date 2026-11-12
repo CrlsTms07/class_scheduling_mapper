@@ -187,10 +187,7 @@ it('is locked once submitted', function (string $status) {
     expect(DB::table('schedule_entries')->find($this->monday)->start_time)->toBe('07:00:00');
 })->with(['pending', 'approved', 'rejected']);
 
-it('is not for the Admin, or for another grade level', function () {
-    $this->actingAs(User::factory()->create()->assignRole('super_admin'));
-    $this->postJson($this->url, moveBody($this))->assertForbidden();
-
+it('is not for another grade level', function () {
     $other = User::factory()->create()->assignRole('glc');
     $other->gradeLevels()->attach(moveGrade(8));
     $this->actingAs($other);

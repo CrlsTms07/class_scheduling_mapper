@@ -64,9 +64,9 @@ describe("route guards", () => {
     expect(await screen.findByText("Welcome, Demo")).toBeInTheDocument();
   });
 
-  it("sends a teacher away from staff pages to their own schedule", async () => {
+  it("sends a teacher away from staff pages to their dashboard", async () => {
     openApp("/schedule", userWith("teacher"));
-    expect(await screen.findByText("My Schedule", { selector: "p" })).toBeInTheDocument();
+    expect(await screen.findByText("Welcome, Demo")).toBeInTheDocument();
     expect(screen.queryByText("Schedule Configuration")).not.toBeInTheDocument();
   });
 
@@ -81,9 +81,42 @@ describe("route guards", () => {
   });
 });
 
+describe("landing page", () => {
+  it("introduces the school and leads to the guest view and to signing in", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        reply(200, {
+          data: {
+            school_name: "Emmanuel Resurreccion Congressional Integrated High School",
+            short_name: "ERCIHS",
+            address: "Poinsettia St., City of Dasmariñas",
+            phone: "(046) 894-1463",
+            email: "301179@deped.gov.ph",
+            website: null,
+            facebook_url: null,
+            tagline: null,
+            vision: null,
+            mission: null,
+            core_values: null,
+            has_photo: false,
+          },
+        }),
+      ),
+    );
+    openApp("/", null);
+
+    expect(await screen.findByRole("heading", { name: "Emmanuel Resurreccion Congressional Integrated High School" })).toBeInTheDocument();
+    expect(await screen.findByText("301179@deped.gov.ph")).toBeInTheDocument();
+    expect(screen.getByText("Poinsettia St., City of Dasmariñas")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View class schedules" })).toHaveAttribute("href", "/guest");
+    expect(screen.getAllByRole("link", { name: /Sign in/ })[0]).toHaveAttribute("href", "/login");
+  });
+});
+
 describe("login page", () => {
   it("has a View as Guest button and a sign-up link", async () => {
-    openApp("/", null);
+    openApp("/login", null);
     expect(await screen.findByRole("link", { name: "View as Guest" })).toHaveAttribute(
       "href",
       "/guest",
@@ -97,7 +130,7 @@ describe("login page", () => {
   it("stops a non-DepEd email before calling the API", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    openApp("/", null);
+    openApp("/login", null);
 
     await submitLogin("juan@gmail.com", "Password123!");
 
@@ -119,7 +152,7 @@ describe("login page", () => {
             }),
       ),
     );
-    openApp("/", null);
+    openApp("/login", null);
 
     await submitLogin("juan@deped.gov.ph", "Password123!");
 
@@ -137,7 +170,7 @@ describe("login page", () => {
           : reply(200, { data: userWith("glc") }),
       ),
     );
-    openApp("/", null);
+    openApp("/login", null);
 
     await submitLogin("demo@deped.gov.ph", "Password123!");
 

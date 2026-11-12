@@ -9,6 +9,7 @@ import {
 import { ROLES } from "./lib/navigation";
 
 // Each page downloads only when opened, so phones do not load the whole system at once.
+const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -17,6 +18,8 @@ const Index = lazy(() => import("./pages/Index"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const PlotterPage = lazy(() => import("./features/schedule/plotter/PlotterPage"));
 const RoomSchedulePage = lazy(() => import("./features/schedule/RoomSchedulePage"));
+const BuildingViewPage = lazy(() => import("./features/schedule/BuildingViewPage"));
+const TeacherDetailPage = lazy(() => import("./features/teachers/TeacherDetailPage"));
 const DashboardIndex = lazy(() => import("./features/dashboard/DashboardIndex"));
 const GuestViewIndex = lazy(() => import("./features/guest/GuestViewIndex"));
 const GuestSectionPage = lazy(() => import("./features/guest/GuestSectionPage"));
@@ -50,7 +53,8 @@ function App() {
         <Route path="reset-password" element={<ResetPassword />} />
 
         <Route element={<GuestOnly />}>
-          <Route index element={<Login />} />
+          <Route index element={<Landing />} />
+          <Route path="login" element={<Login />} />
           <Route path="signup" element={<SignUp />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
         </Route>
@@ -58,26 +62,29 @@ function App() {
         {/* Signed-in users, inside the header and sidebar layout */}
         <Route element={<RequireAuth />}>
           <Route element={<Index />}>
-            <Route element={<RequireRole roles={ROLES.STAFF} />}>
+            <Route element={<RequireRole roles={ROLES.EVERYONE} />}>
               <Route path="dashboard" element={<DashboardIndex />} />
+            </Route>
+
+            <Route element={<RequireRole roles={ROLES.STAFF} />}>
               <Route path="schedule" element={<Schedule />} />
               <Route path="schedule/sections/:sectionId" element={<PlotterPage />} />
               <Route path="schedule/rooms/:roomId" element={<RoomSchedulePage />} />
+              <Route path="schedule/buildings/:buildingId" element={<BuildingViewPage />} />
               <Route path="teachers" element={<TeachersIndex />} />
+              <Route path="teachers/:teacherId" element={<TeacherDetailPage />} />
               <Route path="subjects" element={<SubjectsIndex />} />
               <Route path="buildings" element={<BuildingsIndex />} />
+              <Route path="time-slots" element={<TimeSlotsIndex />} />
               <Route path="reports" element={<ReportsIndex />} />
             </Route>
 
-            <Route element={<RequireRole roles={ROLES.SCHEDULERS} />}>
               <Route path="teacher-loading" element={<TeacherLoadingIndex />} />
-            </Route>
+              <Route path="sections" element={<SectionsIndex />} />
 
             <Route element={<RequireRole roles={ROLES.ADMIN} />}>
               <Route path="approvals" element={<ApprovalsIndex />} />
-              <Route path="sections" element={<SectionsIndex />} />
               <Route path="school-years" element={<SchoolYearsIndex />} />
-              <Route path="time-slots" element={<TimeSlotsIndex />} />
               <Route path="users" element={<UsersIndex />} />
               <Route path="report-settings" element={<ReportSettingsIndex />} />
             </Route>

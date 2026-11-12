@@ -77,8 +77,12 @@ const SubjectCard = ({ subject, terms, canManage, onOpen }: RowProp) => (
             <dd>{subject.track}</dd>
           </>
         )}
-        <dt className="text-neutral-600">Type</dt>
-        <dd>{SUBJECT_TYPE_LABELS[subject.subject_type]}</dd>
+        {subject.level === "SHS" && (
+          <>
+            <dt className="text-neutral-600">Type</dt>
+            <dd>{SUBJECT_TYPE_LABELS[subject.subject_type]}</dd>
+          </>
+        )}
         <dt className="text-neutral-600">Per week</dt>
         <dd>{subject.minutes_per_week} mins</dd>
       </dl>
@@ -118,7 +122,7 @@ const SubjectsTable = ({
             <td className="p-3">{subject.grade}</td>
             <td className="p-3">{termLabel(subject.term_no, terms)}</td>
             <td className="p-3">{subject.track ?? "–"}</td>
-            <td className="p-3">{SUBJECT_TYPE_LABELS[subject.subject_type]}</td>
+            <td className="p-3">{subject.level === "SHS" ? SUBJECT_TYPE_LABELS[subject.subject_type] : "–"}</td>
             <td className="p-3 whitespace-nowrap">{subject.minutes_per_week} mins</td>
             <td className="p-1 text-right">
               <OpenButton subject={subject} canManage={canManage} onOpen={onOpen} />
@@ -136,7 +140,7 @@ const SubjectsIndex = () => {
   const year = term?.school_year;
   const { data: subjects, isPending, isError } = useSubjects(year?.id);
   const { data: options } = useSubjectOptions(year?.id);
-  const canManage = !!me?.role && ROLES.SCHEDULERS.includes(me.role);
+  const canManage = !!me?.role && ROLES.STAFF.includes(me.role);
 
   const [search, setSearch] = React.useState("");
   const [grade, setGrade] = React.useState("");

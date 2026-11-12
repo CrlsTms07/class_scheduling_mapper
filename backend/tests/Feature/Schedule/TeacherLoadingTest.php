@@ -88,13 +88,16 @@ describe('who can do it', function () {
         $this->deleteJson("/api/terms/{$this->termId}/sections/{$otherSection}/loading/{$this->mathId}")->assertForbidden();
     });
 
-    it('does not let the Admin or a teacher load subjects', function (string $role) {
-        $this->actingAs(User::factory()->create()->assignRole($role));
+    it('lets the Admin load subjects too, but not a teacher', function () {
+        $this->actingAs(User::factory()->create()->assignRole('super_admin'));
+        $this->getJson($this->url)->assertOk();
+        $this->putJson("{$this->url}/{$this->mathId}", ['teacher_id' => $this->anaId])->assertOk();
 
+        $this->actingAs(User::factory()->create()->assignRole('teacher'));
         $this->getJson($this->url)->assertForbidden();
         $this->putJson("{$this->url}/{$this->mathId}", ['teacher_id' => $this->anaId])->assertForbidden();
         $this->deleteJson("{$this->url}/{$this->mathId}")->assertForbidden();
-    })->with(['super_admin', 'teacher']);
+    });
 
     it('answers 404 when the term is of another school year', function () {
         $otherYear = DB::table('school_years')->insertGetId([

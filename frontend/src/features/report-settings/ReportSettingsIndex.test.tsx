@@ -24,6 +24,12 @@ const SETTINGS: ReportSettings = {
     phone: null,
     email: null,
     website: null,
+    facebook_url: null,
+    tagline: null,
+    vision: null,
+    mission: null,
+    core_values: null,
+    has_photo: false,
   },
   logos: ["data:image/png;base64,AAAA", "data:image/png;base64,BBBB"],
   max_logos: 4,
@@ -126,6 +132,13 @@ describe("school profile", () => {
       phone: "123",
       email: null,
       website: null,
+      region: null,
+      division: null,
+      facebook_url: null,
+      tagline: null,
+      vision: null,
+      mission: null,
+      core_values: null,
     });
     expect(await screen.findByText("The school details were saved.")).toBeInTheDocument();
   });

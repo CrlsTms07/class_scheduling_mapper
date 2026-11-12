@@ -53,7 +53,7 @@ npm run test
 npm run build
 ```
 
-## Current status (Nov 6, 2026)
+## Current status (Nov 12, 2026)
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
@@ -88,6 +88,15 @@ npm run build
   applied to a section, grade or all sections with an Unplaced list, Load Distribution in hours a week
   (`max_hours_per_week`, default 30), free teachers on a conflict, bell schedule presets (8/10/14/16 rows),
   color coding per user, and Auto-fill with preview and undo.
+- **Working, layout and hand-built schedules (team decisions, Nov 11, 2026, see `docs/client-notes.md`):**
+  breadcrumbs and term tabs, classroom and section pages with day cards, typed Start/End times that become
+  bell-schedule periods (`PeriodService`), break times, "+ Add Section" on rooms, building view with print,
+  Section and Teachers Directories, teacher detail, Terms and Conditions at sign-up, and
+  `php artisan app:clear-school-data` for a fresh import.
+- **Working, accounts, forms and rooms (team decisions, Nov 12, 2026, see `docs/client-notes.md`):** one
+  maximum load of 5 subjects, Admin reset password with a required change, Gmail email (SMTP or Gmail API),
+  `php artisan app:backup`, the Class Program PDF matching the official form, logo placement, the Adviser
+  Summary report, room "in charge" and the building floor plan.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
 - **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
   the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.
@@ -135,8 +144,8 @@ npm run build
 
 | Role | Access |
 |------|--------|
-| `super_admin` (Admin) | **Does not plot schedules.** Manages school years and terms, time slots and breaks, **sections** (encoded yearly), teachers and rooms (team decision, Nov 7, 2026: sections need them), users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
-| `glc` | Within assigned JHS grade levels: teacher loading, plot schedules, submit for approval, reports and exports. Manages teachers, subjects and rooms. |
+| `super_admin` (Admin) | **Can also plot any section** (team decision, Nov 10, 2026). Manages school years and terms, time slots and breaks, sections, teachers, subjects, rooms, users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
+| `glc` | Within assigned JHS grade levels: teacher loading, plot schedules, submit for approval, reports and exports. Manages teachers, **sections of their grade levels** (team decision, Nov 10, 2026), subjects, rooms, and the **bell schedules (Time Slots) of their department** (team decision, Nov 10, 2026: they make the schedules, so every step is theirs). |
 | `master_teacher` | Same as `glc`, for assigned SHS grade levels. |
 | `teacher` | Read-only: own schedule (weekly and list view) and own profile. |
 | Guest (no login) | Approved schedules of the active term only (see Guest view). |
@@ -158,7 +167,8 @@ npm run build
   teaching-related tasks (ICT/SSG Coordinator, Lab Manager) per term.
 
 ### Sections
-- Encoded by the **Admin** once per **school year** (they change yearly). Each has a
+- Encoded once per **school year** (they change yearly) by the **Admin**, or by a GLC or Master Teacher
+  for their own grade levels (team decision, Nov 10, 2026). Each has a
   grade level, an optional track (SHS), a shift, an **adviser** (one advisory per
   teacher per year), an optional **co-adviser**, a home room (JHS) or optional usual room (SHS; team decision, Nov 7,
   2026: the plotter's default, each class can still use another room) and a class size.
@@ -170,7 +180,8 @@ npm run build
   - A day must not belong to two patterns of the same year, level and shift (check in the app).
 - `time_slots` = the periods and breaks of a pattern, each with its own start and end.
   Lengths may differ.
-- The Admin edits patterns and slots, with a "copy pattern" button.
+- The Admin edits patterns and slots, with a "copy pattern" button. A GLC or Master Teacher edits those of
+  their own department (JHS or SHS), since they make the schedules (team decision, Nov 10, 2026).
 - The plotter shows the slots of the selected pattern. A subject placed in a pattern is
   saved as one `schedule_entries` row **per day** of that pattern. Each entry must
   match a slot of its day's pattern and must not overlap a break.

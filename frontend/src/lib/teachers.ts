@@ -32,7 +32,6 @@ export const TeacherFormSchema = z.object({
   department_id: z.string(),
   designation_id: z.string(),
   shift: z.enum(["AM", "PM", "WHOLE_DAY"]),
-  max_subjects: z.string().regex(/^[0-8]$/, "Enter a number from 0 to 8"),
   max_hours_per_week: z
     .string()
     .regex(/^\d{1,2}$/, "Enter a number from 1 to 60")
@@ -63,7 +62,6 @@ export function toTeacherForm(teacher: ManagedTeacher | null): TeacherFormValues
     department_id: teacher?.department_id == null ? "" : String(teacher.department_id),
     designation_id: teacher?.designation_id == null ? "" : String(teacher.designation_id),
     shift: teacher?.shift ?? "WHOLE_DAY",
-    max_subjects: String(teacher?.max_subjects ?? DEFAULT_MAX_LOAD),
     max_hours_per_week: String(teacher?.max_hours_per_week ?? DEFAULT_MAX_HOURS),
     is_active: teacher?.is_active ?? true,
     qualifications: (teacher?.qualifications ?? []).map((item) => ({
@@ -90,7 +88,6 @@ export function toTeacherInput(values: TeacherFormValues): TeacherInput {
     department_id: idOrNull(values.department_id),
     designation_id: idOrNull(values.designation_id),
     shift: values.shift,
-    max_subjects: Number(values.max_subjects),
     max_hours_per_week: Number(values.max_hours_per_week),
     is_active: values.is_active,
     qualifications: values.qualifications.map((item) => ({

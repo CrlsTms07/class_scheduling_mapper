@@ -98,7 +98,7 @@ describe("buildings and rooms page", () => {
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].url).toMatch(/\/buildings\/2\/rooms$/);
-    expect(calls[0].body).toEqual({ room_number: "201", room_name: null, capacity: null, is_active: true });
+    expect(calls[0].body).toEqual({ room_number: "201", room_name: null, in_charge: null, capacity: null, is_active: true });
   });
 
   it("marks a room as not in use", async () => {
@@ -156,5 +156,40 @@ describe("buildings and rooms page", () => {
     await click("Save");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("already has a room");
+  });
+});
+
+describe("deleting from the list", () => {
+  it("deletes a free room after asking", async () => {
+    const calls = openPage();
+
+    await click("Delete room 102 of Main");
+    expect(screen.getByText("Delete Room 102 of Main?")).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+    await click("Yes, delete");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/rooms\/11$/);
+  });
+
+  it("says why a room or a building with rooms stays", async () => {
+    openPage();
+
+    await click("Delete room 101 of Main");
+    expect(screen.getByText(/It is the home room of a section/)).toBeInTheDocument();
+    await click("Close");
+
+    await click("Delete building Main");
+    expect(screen.getByText("Remove its rooms first.")).toBeInTheDocument();
+  });
+
+  it("deletes an empty building after asking", async () => {
+    const calls = openPage();
+
+    await click("Delete building Annex");
+    await click("Yes, delete");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/buildings\/2$/);
   });
 });

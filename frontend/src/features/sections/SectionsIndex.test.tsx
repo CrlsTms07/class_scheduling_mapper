@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import SelectedTermProvider from "@/context/SelectedTermProvider";
 import type { ManagedSection, SectionOptions, Term } from "@/types/api";
@@ -70,7 +71,7 @@ const OPTIONS: SectionOptions = {
 
 type Call = { url: string; method: string; body: Record<string, unknown> };
 
-function openPage(sections: ManagedSection[] = [HONESTY, RIZAL], reply: unknown = { data: HONESTY }, status = 200) {
+function openPage(sections: ManagedSection[] = [HONESTY, RIZAL], reply: unknown = { data: HONESTY }, status = 200, path = "/sections") {
   const calls: Call[] = [];
 
   vi.stubGlobal(
@@ -99,9 +100,11 @@ function openPage(sections: ManagedSection[] = [HONESTY, RIZAL], reply: unknown 
 
   render(
     <QueryClientProvider client={client}>
-      <SelectedTermProvider>
-        <SectionsIndex />
-      </SelectedTermProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <SelectedTermProvider>
+          <SectionsIndex />
+        </SelectedTermProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 
@@ -116,12 +119,47 @@ describe("sections page", () => {
   it("lists sections with their details", () => {
     openPage();
 
-    expect(screen.getByText("2 in SY 2026-2027")).toBeInTheDocument();
+    expect(screen.getByText(/SY 2026-2027/)).toBeInTheDocument();
     const rows = table();
     expect(rows.getByText("Grade 7 – Honesty")).toBeInTheDocument();
     expect(rows.getByText("Ana Reyes")).toBeInTheDocument();
     expect(rows.getByText("Main – 101")).toBeInTheDocument();
     expect(rows.getByText("Academic")).toBeInTheDocument();
+  });
+
+  it("offers only the grade levels the user handles in the filter", async () => {
+    openPage();
+    await click("Filters");
+
+    const options = within(screen.getByRole("combobox", { name: "Grade level" })).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["All grades", "Grade 7", "Grade 11"]);
+  });
+
+  it("views a section's schedule", () => {
+    openPage();
+
+    expect(screen.getAllByRole("link", { name: "View Grade 7 – Honesty", hidden: true })[0]).toHaveAttribute("href", "/schedule/sections/10");
+  });
+
+  it("deletes a section from the list after asking", async () => {
+    const calls = openPage();
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Delete Grade 7 – Honesty", hidden: true })[0]);
+    expect(screen.getByText("Delete Grade 7 – Honesty?")).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+    await click("Yes, delete");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/sections\/10$/);
+  });
+
+  it("says why a section with work on it cannot be deleted", async () => {
+    openPage([{ ...HONESTY, locked_reason: "This section already has teacher loading." }]);
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Delete Grade 7 – Honesty", hidden: true })[0]);
+
+    expect(screen.getByText("Grade 7 – Honesty cannot be deleted")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yes, delete" })).not.toBeInTheDocument();
   });
 
   it("counts the sections with no adviser", () => {
@@ -137,6 +175,7 @@ describe("sections page", () => {
     expect(table().queryByText("Grade 7 – Honesty")).not.toBeInTheDocument();
     expect(table().getByText("Grade 11 – Rizal")).toBeInTheDocument();
 
+    await click("Filters");
     await userEvent.selectOptions(screen.getByLabelText("Grade level"), "7");
     expect(screen.getByText("No section matches your search.")).toBeInTheDocument();
   });
@@ -301,5 +340,13 @@ describe("section form", () => {
     await click("Save");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("already has a section");
+  });
+});
+
+describe("opened from Add section elsewhere", () => {
+  it("opens the form for a new section right away", async () => {
+    openPage(undefined, undefined, undefined, "/sections?add=1");
+
+    expect(await screen.findByText("Add section", { selector: "h2, [data-slot=sheet-title]" })).toBeInTheDocument();
   });
 });

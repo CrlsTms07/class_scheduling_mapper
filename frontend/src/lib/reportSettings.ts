@@ -77,6 +77,13 @@ export const ProfileSchema = z.object({
   phone: z.string().trim().max(50),
   email: z.union([z.literal(""), z.email("Enter a valid email")]),
   website: z.string().trim().max(150),
+  region: z.string().trim().max(120),
+  division: z.string().trim().max(150),
+  facebook_url: z.union([z.literal(""), z.url("Enter a full link, starting with https://")]),
+  tagline: z.string().trim().max(200, "Use 200 characters or fewer"),
+  vision: z.string().trim().max(2000, "Use 2,000 characters or fewer"),
+  mission: z.string().trim().max(2000, "Use 2,000 characters or fewer"),
+  core_values: z.string().trim().max(255, "Use 255 characters or fewer"),
 });
 
 export type ProfileValues = z.infer<typeof ProfileSchema>;

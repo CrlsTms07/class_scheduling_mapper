@@ -16,7 +16,8 @@ class SubjectPolicy
     }
 
     /**
-     * A Chairperson or Master Teacher manages the subjects of their own grade levels only.
+     * The Admin manages every subject; a Chairperson or Master Teacher those of their own
+     * grade levels only.
      */
     public function manageGrade(User $user, Subject|int $subjectOrGradeLevelId): bool
     {
@@ -24,7 +25,7 @@ class SubjectPolicy
             ? $subjectOrGradeLevelId->grade_level_id
             : $subjectOrGradeLevelId;
 
-        return $user->hasAnyRole(['glc', 'master_teacher'])
+        return $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher'])
             && in_array($gradeLevelId, $user->gradeLevelIdsInScope());
     }
 }

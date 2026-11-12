@@ -41,7 +41,7 @@ class ReportService
 
         $pdf->render();
 
-        [$x, $y] = $orientation === 'landscape' ? [788, 559] : [541, 806];
+        [$x, $y] = $orientation === 'landscape' ? [787, 566] : [541, 806];
         $pdf->getCanvas()->page_text($x, $y, '{PAGE_NUM} of {PAGE_COUNT}', null, 6.5, [0, 0, 0]);
 
         return $pdf->output();
@@ -78,6 +78,8 @@ class ReportService
         return [
             'school' => DB::table('school_profile')->first(),
             'logos' => $this->settings->logoDataUris(),
+            'headerLogos' => $this->settings->logoDataUris('header'),
+            'footerLogos' => $this->settings->logoDataUris('footer'),
             'title' => $this->title($settings?->title_format, $section),
             'term' => $term,
             'section' => $section,
@@ -132,6 +134,8 @@ class ReportService
 
                 return [
                     'name' => $pattern->name,
+                    // "Friday – Inclusive of HGP" on the form.
+                    'has_homeroom' => $rows->contains(fn ($row) => ! $row['is_break'] && preg_match('/\bHGP\b|homeroom/i', (string) $row['subject'])),
                     'rows' => $rows,
                     'total_minutes' => $totalMinutes,
                     'class_minutes' => $rows->where('is_break', false)->sum('minutes'),

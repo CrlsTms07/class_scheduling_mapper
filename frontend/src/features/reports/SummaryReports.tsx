@@ -1,4 +1,4 @@
-import { useGradeTimetable, useTeacherLoadReport } from "@/api/reports";
+import { useAdviserSummary, useGradeTimetable, useTeacherLoadReport } from "@/api/reports";
 import DownloadButtons from "@/components/global-component/DownloadButtons";
 import { Badge } from "@/components/ui/badge";
 
@@ -38,6 +38,60 @@ export const TeacherLoadReport = ({ termId }: { termId: number }) => {
               </li>
             ))}
           </ul>
+        </>
+      )}
+    </div>
+  );
+};
+
+/** Each grade's sections with their room, adviser and co-adviser; the PDF puts two grades side by side. */
+export const AdviserSummaryReport = ({ termId }: { termId: number }) => {
+  const { data, isPending, isError } = useAdviserSummary(termId);
+
+  return (
+    <div className="space-y-4">
+      <DownloadButtons basePath={`/terms/${termId}/reports/adviser-summary`} label="Adviser Summary" />
+      {isPending && <p className="text-sm text-neutral-600">Loading...</p>}
+      {isError && <p className="text-sm text-destructive">Could not load the report.</p>}
+
+      {data && (
+        <>
+          <p className="text-sm text-neutral-800">
+            {data.summary.sections} {data.summary.sections === 1 ? "section" : "sections"}
+            {data.summary.without_adviser > 0 && `, ${data.summary.without_adviser} without an adviser`}.
+          </p>
+          {data.grades.length === 0 && <p className="text-sm text-neutral-700">No section has been encoded for this school year yet.</p>}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {data.grades.map((grade) => (
+              <section key={grade.grade} aria-label={`Grade ${grade.grade} advisers`} className="overflow-hidden rounded-md border">
+                <h3 className="bg-[#790D16] p-2 text-center text-sm font-semibold tracking-wide text-white">{grade.title}</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs sm:text-sm">
+                    <thead className="bg-[#790D16]/5 text-neutral-700">
+                      <tr>
+                        <th scope="col" className="p-2 font-medium">#</th>
+                        <th scope="col" className="p-2 font-medium">Section</th>
+                        <th scope="col" className="p-2 font-medium">Room</th>
+                        <th scope="col" className="p-2 font-medium">Adviser</th>
+                        <th scope="col" className="p-2 font-medium">Co-Adviser</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {grade.sections.map((section) => (
+                        <tr key={section.id}>
+                          <td className="p-2 text-neutral-600">{section.number}</td>
+                          <td className="p-2 font-medium text-neutral-900">{section.name}</td>
+                          <td className="p-2">{section.room ?? "–"}</td>
+                          <td className={`p-2 ${section.adviser ? "" : "text-amber-800"}`}>{section.adviser ?? "No adviser yet"}</td>
+                          <td className="p-2">{section.co_adviser ?? ""}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ))}
+          </div>
         </>
       )}
     </div>

@@ -40,7 +40,7 @@ export function toSubjectForm(subject: ManagedSubject | null): SubjectFormValues
   };
 }
 
-/** Converts the form for the API. Only Senior High subjects have a track. */
+/** Converts the form for the API. Only Senior High subjects have a track and a type (Junior High: core). */
 export function toSubjectInput(values: SubjectFormValues, isSeniorHigh: boolean): SubjectInput {
   return {
     grade_level_id: Number(values.grade_level_id),
@@ -48,7 +48,7 @@ export function toSubjectInput(values: SubjectFormValues, isSeniorHigh: boolean)
     term_no: idOrNull(values.term_no),
     code: emptyToNull(values.code),
     name: values.name,
-    subject_type: values.subject_type,
+    subject_type: isSeniorHigh ? values.subject_type : "core",
     minutes_per_week: Number(values.minutes_per_week),
     is_priority: values.is_priority,
     is_active: values.is_active,

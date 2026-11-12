@@ -6,12 +6,11 @@ use App\Models\SchoolTerm;
 use App\Models\Section;
 use App\Models\Teacher;
 use App\Services\ScheduleReportService;
+use App\Support\SheetResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Excel as ExcelWriter;
-use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -59,10 +58,7 @@ class MyRecordsController extends Controller
         $teacher = $this->teacherOrFail($request);
         $sheet = $reports->gridSheet($reports->teacherProgram($term, $teacher, self::FINAL_ONLY), 'My Schedule');
 
-        return response(Excel::raw($sheet, ExcelWriter::XLSX), 200, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="'.$this->fileName($term, $teacher).'.xlsx"',
-        ]);
+        return SheetResponse::make($sheet, $this->fileName($term, $teacher), SheetResponse::formatOf($request));
     }
 
     public function profile(Request $request, SchoolTerm $term): JsonResponse

@@ -27,6 +27,7 @@ class BuildingService
                     'id' => $room->id,
                     'room_number' => $room->room_number,
                     'room_name' => $room->room_name,
+                    'in_charge' => $room->in_charge,
                     'capacity' => $room->capacity,
                     'is_active' => $room->is_active,
                     'cannot_delete_reason' => $this->whyRoomCannotBeDeleted($room),

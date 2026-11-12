@@ -33,7 +33,7 @@ const PATTERN: ManagedPattern = {
 
 type Call = { url: string; method: string; body: Record<string, unknown> };
 
-function openPage(patterns: ManagedPattern[] = [PATTERN], reply: unknown = { data: PATTERN }, status = 200) {
+function openPage(patterns: ManagedPattern[] = [PATTERN], reply: unknown = { data: PATTERN }, status = 200, me: unknown = { role: "super_admin", grade_levels: [] }) {
   const calls: Call[] = [];
 
   vi.stubGlobal(
@@ -59,6 +59,7 @@ function openPage(patterns: ManagedPattern[] = [PATTERN], reply: unknown = { dat
   });
   client.setQueryData(["terms"], [TERM]);
   client.setQueryData(["school-years", 1, "day-patterns"], patterns);
+  client.setQueryData(["me"], me);
 
   render(
     <QueryClientProvider client={client}>
@@ -270,5 +271,28 @@ describe("presets", () => {
     openPage();
 
     expect(screen.queryByRole("button", { name: "Use a preset" })).not.toBeInTheDocument();
+  });
+});
+
+describe("a department with no bell schedule yet", () => {
+  it("says what to do, with a tip for Senior High shifts", async () => {
+    openPage([PATTERN]);
+
+    await userEvent.click(screen.getByRole("tab", { name: "SHS" }));
+
+    expect(screen.getByText(/No SHS bell schedule for the/)).toBeInTheDocument();
+    expect(screen.getByText(/AM and a PM shift/)).toBeInTheDocument();
+  });
+});
+
+describe("for a Master Teacher", () => {
+  it("shows the Senior High bell schedules only, with no department choice", () => {
+    openPage([PATTERN, { ...PATTERN, id: 99, level: "SHS", name: "Monday – Friday" }], undefined, 200, {
+      role: "master_teacher",
+      grade_levels: [{ id: 5, grade: 11, level: "SHS" }],
+    });
+
+    expect(screen.getByText(/Bell schedules of SY 2026-2027, Senior High/)).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "JHS" })).not.toBeInTheDocument();
   });
 });

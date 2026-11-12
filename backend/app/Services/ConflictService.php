@@ -39,11 +39,11 @@ class ConflictService
 
         foreach ($entries as $entry) {
             if ((int) $entry->teacher_id === $teacherId) {
-                $this->addToGroup($groups, 'teacher', "{$entry->teacher->printedName()} is teaching {$entry->section->label()}", $entry);
+                $this->addToGroup($groups, 'teacher', "{$entry->teacher->printedName()} is teaching {$entry->section->labelFor(withArticle: true)}", $entry);
             }
 
             if ((int) $entry->room_id === $roomId) {
-                $this->addToGroup($groups, 'room', "{$entry->room->label()} is used by {$entry->section->label()}", $entry);
+                $this->addToGroup($groups, 'room', "{$entry->room->label()} is used by {$entry->section->labelFor(withArticle: true)}", $entry);
             }
         }
 
@@ -133,7 +133,7 @@ class ConflictService
                 ->get();
 
             foreach ($busy as $other) {
-                $this->addToGroup($groups, 'teacher', "{$other->teacher->printedName()} is teaching {$other->section->label()}", $other);
+                $this->addToGroup($groups, 'teacher', "{$other->teacher->printedName()} is teaching {$other->section->labelFor(withArticle: true)}", $other);
             }
         }
 
@@ -148,14 +148,15 @@ class ConflictService
      */
     private function addToGroup(array &$groups, string $type, string $what, ScheduleEntry $entry): void
     {
-        $subject = $entry->subjectName() ?? 'Open slot';
+        $viewer = auth()->user();
+        $subject = ! $viewer || $entry->section->isVisibleTo($viewer) ? ($entry->subjectName() ?? 'Open slot') : 'a class';
         $key = "{$type}|{$what}|{$subject}|{$entry->start_time}";
 
         $groups[$key]['type'] = $type;
         $groups[$key]['what'] = $what;
         $groups[$key]['time'] = ScheduleFormat::time($entry->start_time);
         $groups[$key]['range'] = ScheduleFormat::time($entry->start_time).' – '.ScheduleFormat::time($entry->end_time);
-        $groups[$key]['section'] = $entry->section->label();
+        $groups[$key]['section'] = $entry->section->labelFor();
         $groups[$key]['subject'] = $subject;
         $groups[$key]['days'][] = $entry->day_of_week;
     }

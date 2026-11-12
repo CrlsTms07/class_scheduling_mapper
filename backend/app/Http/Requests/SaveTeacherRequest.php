@@ -27,7 +27,6 @@ class SaveTeacherRequest extends FormRequest
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'designation_id' => ['nullable', 'integer', 'exists:designations,id'],
             'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
-            'max_subjects' => ['required', 'integer', 'between:0,8'],
             'max_hours_per_week' => ['sometimes', 'integer', 'between:1,60'],
             'is_active' => ['required', 'boolean'],
             'qualifications' => ['present', 'array', 'max:10'],

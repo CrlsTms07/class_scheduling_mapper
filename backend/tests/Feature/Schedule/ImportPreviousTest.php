@@ -91,8 +91,14 @@ it('refuses a later term as the source', function () {
         ->assertJsonValidationErrors('from_term_id');
 });
 
-it('is for schedulers, not the Admin', function () {
+it('is for the Admin too, who imports for every grade', function () {
     $this->actingAs(User::where('email', 'admin@deped.gov.ph')->first());
+
+    importFrom($this, $this->third, $this->active)->assertOk()->assertJsonPath('data.sections', 2);
+});
+
+it('is not for teachers', function () {
+    $this->actingAs(User::where('email', 'teacher@deped.gov.ph')->first());
 
     importFrom($this, $this->third, $this->active)->assertForbidden();
 });

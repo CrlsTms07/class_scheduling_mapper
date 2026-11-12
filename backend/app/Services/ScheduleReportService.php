@@ -113,12 +113,18 @@ class ScheduleReportService
             'signatories' => $this->reports->signatories($term, 'teacher_program', null, ['teacher' => $teacher->printedName()]),
             ...$this->grid($entries, fn (ScheduleEntry $entry) => $entry->activity_id !== null
                 ? [$entry->subjectName()]
-                : [
-                    $entry->section->label(),
-                    $entry->subjectName(),
-                    $entry->room?->label(),
-                ]),
+                : ($this->isOwn($entry)
+                    ? [$entry->section->label(), $entry->subjectName(), $entry->room?->label()]
+                    : [$entry->section->labelFor()])),
         ];
+    }
+
+    /** Whether the person looking may see this class in full: their own department, or the Admin. */
+    private function isOwn(ScheduleEntry $entry): bool
+    {
+        $viewer = auth()->user();
+
+        return ! $viewer || $entry->section->isVisibleTo($viewer);
     }
 
     /**
@@ -167,11 +173,9 @@ class ScheduleReportService
                 $room->capacity ? "Capacity: {$room->capacity}" : null,
             ])),
             'signatories' => $this->reports->signatories($term, 'room_schedule', null),
-            ...$this->grid($entries, fn (ScheduleEntry $entry) => [
-                $entry->section->label(),
-                $entry->subjectName(),
-                $entry->teacher?->printedName(),
-            ]),
+            ...$this->grid($entries, fn (ScheduleEntry $entry) => $this->isOwn($entry)
+                ? [$entry->section->label(), $entry->subjectName(), $entry->teacher?->printedName()]
+                : [$entry->section->labelFor()]),
         ];
     }
 
@@ -180,7 +184,8 @@ class ScheduleReportService
      *
      * @return array<string, mixed>
      */
-    public function roomUsage(SchoolTerm $term): array
+    /** With a building, only that building's rooms: the printout of the building view. */
+    public function roomUsage(SchoolTerm $term, ?int $buildingId = null): array
     {
         $term->loadMissing('schoolYear');
 
@@ -191,12 +196,14 @@ class ScheduleReportService
             ->keyBy('id');
 
         $rooms = Room::with('building')
+            ->when($buildingId, fn ($query) => $query->where('building_id', $buildingId))
             ->orderBy('building_id')
             ->orderBy('room_number')
             ->get()
             ->filter(fn (Room $room) => $room->is_active || $usage->has($room->id));
 
         $buildings = $rooms->groupBy('building_id')->map(fn (Collection $group) => [
+            'id' => $group->first()->building_id,
             'name' => $group->first()->building->name,
             'rooms' => $group->map(function (Room $room) use ($usage, $sections) {
                 $rows = $usage->get($room->id, collect());
@@ -206,10 +213,12 @@ class ScheduleReportService
                     'room_number' => $room->room_number,
                     'room_name' => $room->room_name,
                     'periods_per_week' => (int) $rows->sum('periods_per_week'),
+                    // Another department's sections are added up under its name.
                     'sections' => $rows
-                        ->map(fn ($row) => [
-                            'label' => $sections[$row->section_id]->label(),
-                            'periods_per_week' => (int) $row->periods_per_week,
+                        ->groupBy(fn ($row) => $sections[$row->section_id]->labelFor())
+                        ->map(fn (Collection $group, string $label) => [
+                            'label' => $label,
+                            'periods_per_week' => (int) $group->sum('periods_per_week'),
                         ])
                         ->sortBy('label')
                         ->values()
@@ -219,7 +228,9 @@ class ScheduleReportService
         ])->values()->all();
 
         return [
-            'title' => 'ROOM AND BUILDING USAGE',
+            'title' => $buildingId && $rooms->isNotEmpty()
+                ? mb_strtoupper($rooms->first()->building->name).' – ROOM USAGE'
+                : 'ROOM AND BUILDING USAGE',
             'term' => $term,
             'term_label' => "{$term->name}, School Year {$term->schoolYear->name}",
             'buildings' => $buildings,

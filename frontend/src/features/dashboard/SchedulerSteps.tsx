@@ -24,7 +24,7 @@ function describe(step: SchedulerStep): { title: string; detail: string; to: str
     case "subjects":
       return {
         title: "Subjects & Sections",
-        detail: "Subjects and activities of your grade levels, and the sections the Admin encoded.",
+        detail: "Subjects and activities of your grade levels, and your sections.",
         to: "/subjects",
         status: `${plural(step.counts.subjects, "subject")} · ${plural(step.counts.activities, "activity", "activities")} · ${plural(step.counts.sections, "section")}`,
       };

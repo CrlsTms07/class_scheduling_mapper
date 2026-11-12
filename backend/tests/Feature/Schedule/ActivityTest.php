@@ -163,9 +163,13 @@ describe('placing an activity', function () {
         placeActivity($this, $this->sectionA, $break, $this->catchUp, 'section', [5])->assertUnprocessable();
     });
 
-    it('is placed by schedulers only, not by the Admin', function () {
+    it('can be placed by the Admin too, but not by a teacher', function () {
         $this->actingAs(User::where('email', 'admin@deped.gov.ph')->first());
+        placeActivity($this, $this->sectionA, $this->friday, $this->catchUp, 'section', [5])->assertOk();
+    });
 
+    it('is not for teachers', function () {
+        $this->actingAs(User::where('email', 'teacher@deped.gov.ph')->first());
         placeActivity($this, $this->sectionA, $this->friday, $this->catchUp, 'section', [5])->assertForbidden();
     });
 });

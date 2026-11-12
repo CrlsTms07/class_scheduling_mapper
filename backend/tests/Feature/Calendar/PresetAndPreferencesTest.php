@@ -73,7 +73,7 @@ describe('bell schedule presets', function () {
         expect(TimeSlot::where('day_pattern_id', $this->patternId)->count())->toBe(0);
     });
 
-    it('is for the Admin only', function () {
+    it('is not for a Chairperson with no grade level yet', function () {
         $this->actingAs(User::factory()->create()->assignRole('glc'));
 
         $this->postJson("/api/day-patterns/{$this->patternId}/slots/preset", ['slots' => tenRows()])->assertForbidden();

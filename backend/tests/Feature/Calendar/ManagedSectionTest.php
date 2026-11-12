@@ -62,15 +62,29 @@ function addLoadingTo(object $test, int $sectionId): array
     return [$subjectId, $loadingId];
 }
 
-it('keeps section management to the Admin', function () {
-    $sectionId = insertSection($this);
-    $this->actingAs(User::factory()->create()->assignRole('glc'));
+it('lets a Chairperson manage the sections of their own grade levels only', function () {
+    $own = insertSection($this);
+    $other = insertSection($this, ['grade_level_id' => sectionGradeId(8), 'name' => 'Other']);
+    $glc = User::factory()->create()->assignRole('glc');
+    $glc->gradeLevels()->sync([sectionGradeId(7)]);
+    $this->actingAs($glc);
+
+    $this->getJson("/api/school-years/{$this->yearId}/sections")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $own);
+    $this->getJson("/api/school-years/{$this->yearId}/section-options")->assertOk()->assertJsonCount(1, 'data.grade_levels');
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody())->assertCreated();
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['grade_level_id' => sectionGradeId(8), 'name' => 'Faith']))->assertForbidden();
+    $this->putJson("/api/sections/{$own}", sectionBody(['name' => 'Renamed']))->assertOk();
+    $this->putJson("/api/sections/{$own}", sectionBody(['grade_level_id' => sectionGradeId(8)]))->assertForbidden();
+    $this->putJson("/api/sections/{$other}", sectionBody(['grade_level_id' => sectionGradeId(8)]))->assertForbidden();
+    $this->deleteJson("/api/sections/{$other}")->assertForbidden();
+    $this->deleteJson("/api/sections/{$own}")->assertOk();
+});
+
+it('keeps teachers out of section management', function () {
+    $this->actingAs(User::factory()->create()->assignRole('teacher'));
 
     $this->getJson("/api/school-years/{$this->yearId}/sections")->assertForbidden();
-    $this->getJson("/api/school-years/{$this->yearId}/section-options")->assertForbidden();
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody())->assertForbidden();
-    $this->putJson("/api/sections/{$sectionId}", sectionBody())->assertForbidden();
-    $this->deleteJson("/api/sections/{$sectionId}")->assertForbidden();
 });
 
 it('creates a JHS section with adviser, room and class size, and writes an audit log', function () {

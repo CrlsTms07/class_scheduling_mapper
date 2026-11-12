@@ -16,7 +16,7 @@ import { Link, useSearchParams } from "react-router";
 
 const BackToSignin = () => (
   <Link
-    to="/"
+    to="/login"
     className={buttonVariants({ variant: "link", className: "h-11 px-0 text-xs" })}
   >
     <ArrowLeft />

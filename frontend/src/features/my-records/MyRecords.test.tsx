@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SelectedTermProvider from "@/context/SelectedTermProvider";
@@ -74,7 +75,9 @@ function open(page: ReactElement, data: unknown) {
 
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <SelectedTermProvider>{page}</SelectedTermProvider>
+      <MemoryRouter>
+        <SelectedTermProvider>{page}</SelectedTermProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -89,7 +92,8 @@ describe("My Schedule", () => {
     open(<MySchedulePage />, SCHEDULE);
 
     expect(await screen.findByText("ANA REYES")).toBeInTheDocument();
-    expect(screen.getByText("Teacher I · Mathematics")).toBeInTheDocument();
+    expect(screen.getByText("Teacher I")).toBeInTheDocument();
+    expect(screen.getByText("Mathematics")).toBeInTheDocument();
     expect(within(screen.getByRole("table")).getByText("Math 7")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Friday" })).toBeInTheDocument();
 

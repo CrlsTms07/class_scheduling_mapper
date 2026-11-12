@@ -86,7 +86,7 @@ describe("schedule page", () => {
     expect(screen.getByRole("tab", { name: "All sections" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("link", { name: /Grade 7 – Faith/ })).toHaveAttribute("href", "/schedule/sections/6");
     expect(screen.getByRole("link", { name: /Grade 11 – Rizal/ })).toBeInTheDocument();
-    expect(screen.queryByText("Room: 101")).not.toBeInTheDocument();
+    expect(screen.queryByText("Room 101")).not.toBeInTheDocument();
   });
 
   it("filters all sections by grade", async () => {
@@ -144,8 +144,8 @@ describe("schedule page", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Annex" }));
 
-    expect(screen.getByText("Room: 201")).toBeInTheDocument();
-    expect(screen.queryByText("Room: 101")).not.toBeInTheDocument();
+    expect(screen.getByText("Room 201")).toBeInTheDocument();
+    expect(screen.queryByText("Room 101")).not.toBeInTheDocument();
   });
 
   it("has a tab for sections with no room", async () => {
@@ -160,7 +160,7 @@ describe("schedule page", () => {
     openPage();
 
     await userEvent.type(screen.getByLabelText("Search rooms and sections"), "201");
-    expect(screen.getByText("Room: 201")).toBeInTheDocument();
+    expect(screen.getByText("Room 201")).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Main" })).not.toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText("Search rooms and sections"));
@@ -172,10 +172,18 @@ describe("schedule page", () => {
     expect(screen.getByText("Nothing matches your search.")).toBeInTheDocument();
   });
 
-  it("explains an empty school", () => {
+  it("explains an empty school, and leads to adding a section", () => {
     openPage("/schedule", { buildings: [], unassigned: [] }, []);
 
-    expect(screen.getByText(/no rooms or sections/)).toBeInTheDocument();
+    expect(screen.getByText("No sections yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add a section" })).toHaveAttribute("href", "/sections?add=1");
+  });
+
+  it("offers New schedule and Add section", () => {
+    openPage("/schedule");
+
+    expect(screen.getByRole("button", { name: "New schedule" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add section" })).toHaveAttribute("href", "/sections?add=1");
   });
 });
 
@@ -183,7 +191,7 @@ describe("room schedule page", () => {
   it("shows the classes of each day, and which days are free", () => {
     openPage("/schedule/rooms/2");
 
-    expect(screen.getByText("Main – 101")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Main – 101" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Monday" })).toHaveTextContent("Math 7");
     expect(screen.getByRole("region", { name: "Monday" })).toHaveTextContent("Ana Reyes");
     expect(screen.getByRole("region", { name: "Wednesday" })).toHaveTextContent("free all day");

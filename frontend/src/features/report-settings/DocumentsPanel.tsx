@@ -69,8 +69,8 @@ const DocumentCard = ({ document, saved }: DocumentCardProp) => {
             control={form.control}
             idPrefix={prefix}
             name="reference_note"
-            label="Reference note"
-            placeholder="DO 12, s. 2024"
+            label="Reference notes (separate lines with ;)"
+            placeholder="DO 10, s. 2024; DO 12, s. 2024"
           />
           <Button type="submit" className="h-11 w-full" disabled={save.isPending}>
             {save.isPending ? "Saving..." : `Save ${document.title}`}

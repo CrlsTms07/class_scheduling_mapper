@@ -134,9 +134,16 @@ it('says when no grade level is assigned yet', function () {
         ->assertJsonPath('data.sections', 0);
 });
 
-it('is only for Chairpersons and Master Teachers', function (string $role) {
-    $this->actingAs(User::factory()->create()->assignRole($role))->getJson($this->url)->assertForbidden();
-})->with(['super_admin', 'teacher']);
+it('is not for teachers', function () {
+    $this->actingAs(User::factory()->create()->assignRole('teacher'))->getJson($this->url)->assertForbidden();
+});
+
+it('gives the Admin the same steps, for every grade level', function () {
+    $this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)
+        ->assertOk()
+        ->assertJsonPath('data.has_scope', true)
+        ->assertJsonCount(4, 'data.steps');
+});
 
 it('needs a sign-in', function () {
     $this->getJson($this->url)->assertUnauthorized();

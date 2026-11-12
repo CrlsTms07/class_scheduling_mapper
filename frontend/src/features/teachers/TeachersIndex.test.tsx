@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import SelectedTermProvider from "@/context/SelectedTermProvider";
 import type { ManagedTeacher, PersonnelOptions, Term } from "@/types/api";
@@ -69,7 +70,7 @@ const OPTIONS: PersonnelOptions = {
 
 type Call = { url: string; method: string; body: Record<string, unknown> };
 
-function openPage(reply: unknown = { data: { id: 8, name: "Science" } }, status = 200) {
+function openPage(reply: unknown = { data: { id: 8, name: "Science" } }, status = 200, teachers: ManagedTeacher[] = [ANA, BEN]) {
   const calls: Call[] = [];
 
   vi.stubGlobal(
@@ -84,7 +85,7 @@ function openPage(reply: unknown = { data: { id: 8, name: "Science" } }, status 
         });
         return new Response(JSON.stringify(reply), { status });
       }
-      const data = url.includes("personnel-options") ? OPTIONS : url.includes("/teachers") ? [ANA, BEN] : [TERM];
+      const data = url.includes("personnel-options") ? OPTIONS : url.includes("/teachers") ? teachers : [TERM];
       return new Response(JSON.stringify({ data }), { status: 200 });
     }),
   );
@@ -93,14 +94,16 @@ function openPage(reply: unknown = { data: { id: 8, name: "Science" } }, status 
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   client.setQueryData(["terms"], [TERM]);
-  client.setQueryData(["terms", 2, "teachers"], [ANA, BEN]);
+  client.setQueryData(["terms", 2, "teachers"], teachers);
   client.setQueryData(["personnel-options"], OPTIONS);
 
   render(
     <QueryClientProvider client={client}>
-      <SelectedTermProvider>
-        <TeachersIndex />
-      </SelectedTermProvider>
+      <MemoryRouter>
+        <SelectedTermProvider>
+          <TeachersIndex />
+        </SelectedTermProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 
@@ -118,7 +121,8 @@ describe("teachers page", () => {
 
     const rows = table();
     expect(rows.getByText("Ana Reyes")).toBeInTheDocument();
-    expect(rows.getByText("6 of 5 (over the limit)")).toBeInTheDocument();
+    expect(rows.getByText("Over the limit")).toBeInTheDocument();
+    expect(rows.getByText("6 of 5")).toBeInTheDocument();
     expect(rows.getByText(/adviser of Grade 7 – Honesty/)).toBeInTheDocument();
     expect(rows.getByText("Inactive")).toBeInTheDocument();
   });
@@ -130,6 +134,7 @@ describe("teachers page", () => {
     expect(table().queryByText("Ana Reyes")).not.toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText("Search"));
+    await click("Filters");
     await userEvent.selectOptions(screen.getByLabelText("Status"), "active");
     expect(table().queryByText("Ben Cruz")).not.toBeInTheDocument();
 
@@ -157,7 +162,6 @@ describe("teachers page", () => {
       department_id: null,
       designation_id: null,
       shift: "WHOLE_DAY",
-      max_subjects: 5,
       max_hours_per_week: 30,
       is_active: true,
       qualifications: [],
@@ -165,17 +169,16 @@ describe("teachers page", () => {
     });
   });
 
-  it("needs the names and a valid limit", async () => {
+  it("needs the names, and shows the one load limit of every teacher", async () => {
     const calls = openPage();
 
     await click("Add personnel");
-    await userEvent.clear(screen.getByLabelText(/Maximum load/));
-    await userEvent.type(screen.getByLabelText(/Maximum load/), "9");
+    expect(screen.queryByLabelText(/Maximum load/)).not.toBeInTheDocument();
+    expect(screen.getByText("5 subjects")).toBeInTheDocument();
     await click("Save");
 
     expect(await screen.findByText("Enter the first name")).toBeInTheDocument();
     expect(screen.getByText("Enter the last name")).toBeInTheDocument();
-    expect(screen.getByText("Enter a number from 0 to 8")).toBeInTheDocument();
     expect(calls).toHaveLength(0);
   });
 
@@ -234,6 +237,25 @@ describe("teachers page", () => {
     expect(calls[0].url).toMatch(/\/teachers\/2$/);
   });
 
+  it("views a record on its own page", () => {
+    openPage();
+
+    expect(screen.getAllByRole("link", { name: "View Ana Reyes", hidden: true })[0]).toHaveAttribute("href", "/teachers/1");
+  });
+
+  it("deletes from the list after asking, or says why it cannot", async () => {
+    const calls = openPage();
+
+    await openRecord("Delete Ana Reyes");
+    expect(screen.getByText("Ana Reyes cannot be deleted")).toBeInTheDocument();
+    await click("Close");
+
+    await openRecord("Delete Ben Cruz");
+    await click("Yes, delete");
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/teachers\/2$/);
+  });
+
   it("shows the API's reason when saving fails", async () => {
     openPage({
       message: "This person has an advisory or teacher loading, so they must stay as teaching personnel.",
@@ -244,5 +266,19 @@ describe("teachers page", () => {
     await click("Save");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("must stay as teaching");
+  });
+});
+
+describe("a teacher of the other department only", () => {
+  it("is listed, but opens view only", async () => {
+    const carlo: ManagedTeacher = { ...BEN, id: 3, first_name: "Carlo", printed_name: "Carlo Cruz", can_edit: false };
+    const calls = openPage(undefined, 200, [ANA, carlo]);
+
+    expect(screen.getAllByRole("button", { name: "Edit Ana Reyes" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "View Carlo Cruz", hidden: true })[0]).toHaveAttribute("href", "/teachers/3");
+    expect(screen.getAllByText("View only").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Edit Carlo Cruz", hidden: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete Carlo Cruz", hidden: true })).not.toBeInTheDocument();
+    expect(calls).toHaveLength(0);
   });
 });

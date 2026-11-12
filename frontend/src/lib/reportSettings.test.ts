@@ -98,7 +98,10 @@ describe("forms", () => {
   });
 
   it("allows a blank email but not a wrong one", () => {
-    const profile = { school_name: "X", school_id: "", address: "", phone: "", website: "" };
+    const profile = {
+      school_name: "X", school_id: "", address: "", phone: "", website: "", region: "", division: "",
+      facebook_url: "", tagline: "", vision: "", mission: "", core_values: "",
+    };
 
     expect(ProfileSchema.safeParse({ ...profile, email: "" }).success).toBe(true);
     expect(ProfileSchema.safeParse({ ...profile, email: "nope" }).success).toBe(false);

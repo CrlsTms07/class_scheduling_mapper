@@ -10,7 +10,7 @@ export function useMe() {
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<User | null> => {
       try {
-        return (await api<DataResponse<User>>("/me")).data;
+        return (await api<DataResponse<User | null>>("/me")).data;
       } catch (error) {
         if (isSessionLost(error)) {
           return null;
@@ -21,13 +21,22 @@ export function useMe() {
   });
 }
 
+/**
+ * Whether the user just signed out on this page. The route guards then go to the home page
+ * instead of the login page, which is only for someone who opened a page without signing in.
+ */
+export const session = { hasSignedOut: false };
+
 export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (credentials: { email: string; password: string }) =>
       api<DataResponse<User>>("/login", { method: "POST", body: credentials }),
-    onSuccess: ({ data }) => queryClient.setQueryData(ME_QUERY_KEY, data),
+    onSuccess: ({ data }) => {
+      session.hasSignedOut = false;
+      queryClient.setQueryData(ME_QUERY_KEY, data);
+    },
   });
 }
 
@@ -37,7 +46,8 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => api<MessageResponse>("/logout", { method: "POST" }),
     onSuccess: () => {
-      // Setting the user to null tells the route guards to go to the login page.
+      // Setting the user to null tells the route guards to leave, to the home page.
+      session.hasSignedOut = true;
       queryClient.setQueryData(ME_QUERY_KEY, null);
 
       // Nothing from this user's session should remain for the next user.
@@ -87,6 +97,27 @@ export function useResetPassword() {
 /** Subjects in color on the schedule. On unless the user turned it off. */
 export function useColorCoding(): boolean {
   return useMe().data?.preferences?.color_coding ?? true;
+}
+
+/** The user's own new password, after the Admin gave a temporary one. */
+export function useChangePassword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: { current_password: string; password: string; password_confirmation: string }) =>
+      api<DataResponse<User>>("/me/password", { method: "PUT", body }),
+    onSuccess: ({ data }) => queryClient.setQueryData(ME_QUERY_KEY, data),
+  });
+}
+
+/** Accepts the Terms and Conditions for the signed-in account. */
+export function useAcceptTerms() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api<DataResponse<User>>("/me/accept-terms", { method: "POST", body: { accept_terms: true } }),
+    onSuccess: ({ data }) => queryClient.setQueryData(ME_QUERY_KEY, data),
+  });
 }
 
 export function useUpdatePreferences() {

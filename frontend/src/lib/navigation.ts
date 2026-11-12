@@ -22,8 +22,9 @@ const SCHEDULERS: RoleName[] = ["glc", "master_teacher"];
 const STAFF: RoleName[] = [...ADMIN, ...SCHEDULERS];
 const TEACHER: RoleName[] = ["teacher"];
 const TEACHING: RoleName[] = [...TEACHER, ...SCHEDULERS];
+const EVERYONE: RoleName[] = [...STAFF, ...TEACHER];
 
-export const ROLES = { ADMIN, SCHEDULERS, STAFF, TEACHER, TEACHING };
+export const ROLES = { ADMIN, SCHEDULERS, STAFF, TEACHER, TEACHING, EVERYONE };
 
 export const ROLE_LABELS: Record<RoleName, string> = {
   super_admin: "Admin",
@@ -43,29 +44,51 @@ type NavItem = {
 
 type NavGroup = { label: string; items: NavItem[] };
 
+/**
+ * The menu, grouped the way the school works (team decision, Nov 10, 2026):
+ * Main is where schedules are made, Manage holds the records they are made from.
+ */
 const NAVIGATION: NavGroup[] = [
   {
     label: "Main",
     items: [
-      { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: STAFF },
-      { name: "Approvals", path: "/approvals", icon: CircleCheck, roles: ADMIN },
+      { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: EVERYONE },
       { name: "Schedule", path: "/schedule", icon: CalendarCheck, roles: STAFF },
-      { name: "My Schedule", path: "/my-schedule", icon: CalendarCheck, roles: TEACHING, isOwnRecord: true },
-      { name: "My Profile", path: "/my-profile", icon: UserRound, roles: TEACHING, isOwnRecord: true },
-      { name: "Teacher Loading", path: "/teacher-loading", icon: ClipboardList, roles: SCHEDULERS },
-      { name: "Teachers", path: "/teachers", icon: CircleUserRound, roles: STAFF },
-      { name: "Sections", path: "/sections", icon: Blocks, roles: ADMIN },
-      { name: "Reports", path: "/reports", icon: FolderUser, roles: STAFF },
+      { name: "Teacher Loading", path: "/teacher-loading", icon: ClipboardList, roles: STAFF },
+      { name: "My Schedule", path: "/my-schedule", icon: CalendarCheck, roles: TEACHER },
+      { name: "My Profile", path: "/my-profile", icon: UserRound, roles: TEACHER },
     ],
   },
   {
     label: "Manage",
     items: [
-      { name: "School Years", path: "/school-years", icon: CalendarDays, roles: ADMIN },
-      { name: "Time Slots", path: "/time-slots", icon: Clock, roles: ADMIN },
+      { name: "Teachers", path: "/teachers", icon: CircleUserRound, roles: STAFF },
+      { name: "Sections", path: "/sections", icon: Blocks, roles: STAFF },
       { name: "Subjects", path: "/subjects", icon: CirclePile, roles: STAFF },
-      { name: "Building", path: "/buildings", icon: Building, roles: STAFF },
-      { name: "Users", path: "/users", icon: UserGroup, roles: ADMIN },
+      { name: "Rooms & Buildings", path: "/buildings", icon: Building, roles: STAFF },
+      { name: "Time Slots", path: "/time-slots", icon: Clock, roles: STAFF },
+      { name: "Users & Roles", path: "/users", icon: UserGroup, roles: ADMIN },
+    ],
+  },
+  {
+    label: "Approvals",
+    items: [{ name: "Approvals", path: "/approvals", icon: CircleCheck, roles: ADMIN }],
+  },
+  {
+    label: "Reports",
+    items: [{ name: "Reports", path: "/reports", icon: FolderUser, roles: STAFF }],
+  },
+  {
+    label: "My Records",
+    items: [
+      { name: "My Schedule", path: "/my-schedule", icon: CalendarCheck, roles: SCHEDULERS, isOwnRecord: true },
+      { name: "My Profile", path: "/my-profile", icon: UserRound, roles: SCHEDULERS, isOwnRecord: true },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { name: "School Years", path: "/school-years", icon: CalendarDays, roles: ADMIN },
       { name: "Report Settings", path: "/report-settings", icon: FileCog, roles: ADMIN },
     ],
   },
@@ -86,5 +109,5 @@ export function navigationFor(role: RoleName | null, hasPersonnel = false): NavG
 
 /** Where a role lands after signing in. */
 export function homePathFor(role: RoleName | null): string {
-  return role === "teacher" ? "/my-schedule" : "/dashboard";
+  return role === null ? "/" : "/dashboard";
 }

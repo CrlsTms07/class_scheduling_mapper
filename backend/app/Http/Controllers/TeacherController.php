@@ -50,6 +50,8 @@ class TeacherController extends Controller
 
     public function update(SaveTeacherRequest $request, SchoolTerm $term, Teacher $teacher, TeacherService $service): JsonResponse
     {
+        $this->ensureOwnDepartment($request, $term, $teacher, $service);
+
         $service->update($teacher, $term, $request->validated(), $request->user());
 
         return response()->json(['data' => ['id' => $teacher->id]]);
@@ -59,8 +61,23 @@ class TeacherController extends Controller
     {
         Gate::authorize('manage-school-records');
 
+        $term = SchoolTerm::where('is_active', true)->first();
+        if ($term) {
+            $this->ensureOwnDepartment($request, $term, $teacher, $service);
+        }
+
         $service->delete($teacher, $request->user());
 
         return response()->json(['message' => 'The record was deleted.']);
+    }
+
+    /** A teacher of the other department only is changed by the Admin, not by a scheduler. */
+    private function ensureOwnDepartment(Request $request, SchoolTerm $term, Teacher $teacher, TeacherService $service): void
+    {
+        abort_if(
+            $service->otherDepartmentOnly($term, $request->user())->contains($teacher->id),
+            403,
+            'This teacher teaches only in the other department. The Admin keeps this record up to date.',
+        );
     }
 }

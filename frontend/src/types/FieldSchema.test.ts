@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ResetPasswordSchema, SigninSchema, SignUpSchema } from "./FieldSchema";
+import { ForgotPasswordSchema, ResetPasswordSchema, SigninSchema, SignUpSchema } from "./FieldSchema";
 
 const signUp = {
   first_name: "Juan",
@@ -9,6 +9,7 @@ const signUp = {
   email: "juan@deped.gov.ph",
   password: "Password123!",
   confirmPassword: "Password123!",
+  accept_terms: true,
 };
 
 describe("SigninSchema", () => {
@@ -31,6 +32,11 @@ describe("SigninSchema", () => {
 describe("SignUpSchema", () => {
   it("accepts valid details with optional fields empty", () => {
     expect(SignUpSchema.safeParse(signUp).success).toBe(true);
+  });
+
+  it("requires the Terms and Conditions accepted", () => {
+    const result = SignUpSchema.safeParse({ ...signUp, accept_terms: false });
+    expect(result.success).toBe(false);
   });
 
   it("requires a DepEd email", () => {
@@ -66,5 +72,14 @@ describe("ResetPasswordSchema", () => {
       confirmPassword: "Password123!",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("ForgotPasswordSchema", () => {
+  it("takes only the official DepEd email of the account", () => {
+    expect(ForgotPasswordSchema.safeParse({ email: "juan.delacruz@deped.gov.ph" }).success).toBe(true);
+    const gmail = ForgotPasswordSchema.safeParse({ email: "juan@gmail.com" });
+    expect(gmail.success).toBe(false);
+    expect(gmail.error?.issues[0].message).toBe("Use your official DepEd email (@deped.gov.ph)");
   });
 });

@@ -160,7 +160,6 @@ it('rejects bad records', function (array $overrides, string $field) {
     'no last name' => [['last_name' => ''], 'last_name'],
     'unknown type' => [['personnel_type' => 'guest'], 'personnel_type'],
     'unknown shift' => [['shift' => 'NIGHT'], 'shift'],
-    'limit above the maximum' => [['max_subjects' => 9], 'max_subjects'],
     'unknown department' => [['department_id' => 999], 'department_id'],
     'unknown task' => [['task_ids' => [999]], 'task_ids.0'],
     'qualification without a degree' => [['qualifications' => [['degree_level' => 'Bachelor', 'degree' => '']]], 'qualifications.0.degree'],
@@ -238,4 +237,10 @@ it('offers only teaching, active people as advisers on the Sections form', funct
     $this->getJson("/api/school-years/{$this->yearId}/section-options")
         ->assertJsonCount(1, 'data.teachers')
         ->assertJsonPath('data.teachers.0.name', 'Ana Reyes');
+});
+
+it('gives every teacher the same load limit, whatever is sent (team decision, Nov 12, 2026)', function () {
+    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['max_subjects' => 8]))->assertCreated();
+
+    expect(DB::table('teachers')->orderByDesc('id')->value('max_subjects'))->toBe(5);
 });

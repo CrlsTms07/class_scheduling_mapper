@@ -27,7 +27,7 @@ class GuestController extends Controller
 
         $statuses = DB::table('section_term_status')->where('term_id', $term->id)->pluck('status', 'section_id');
 
-        $sections = Section::with(['gradeLevel', 'track'])
+        $sections = Section::with(['gradeLevel', 'track', 'adviser', 'coAdviser'])
             ->where('school_year_id', $term->school_year_id)
             ->get()
             ->sortBy(fn (Section $section) => [$section->gradeLevel->grade, $section->name])
@@ -37,6 +37,9 @@ class GuestController extends Controller
                 'grade' => $section->gradeLevel->grade,
                 'level' => $section->gradeLevel->level,
                 'track' => $section->track?->name,
+                // Only the adviser and co-adviser are named in public (team decision, Nov 7, 2026).
+                'adviser' => $section->adviser?->printedName(),
+                'co_adviser' => $section->coAdviser?->printedName(),
                 'is_ready' => ($statuses[$section->id] ?? null) === 'approved',
             ])
             ->values();
