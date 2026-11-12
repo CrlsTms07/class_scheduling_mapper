@@ -54,4 +54,6 @@ function Button({
   )
 }
 
+// shadcn/ui shares the variants with links that look like buttons, so they stay in this file.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants }

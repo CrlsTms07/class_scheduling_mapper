@@ -1,0 +1,51 @@
+# Render Blueprint: creates the live server. See docs/deployment.md.
+services:
+  - type: web
+    name: ercihs-scheduling
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    # Paused for now (team decision, Nov 8, 2026): a push does not deploy.
+    # Deploy by hand from the Render dashboard ("Manual Deploy") when ready.
+    autoDeploy: false
+    envVars:
+      # Secrets: Render asks for these when the Blueprint is first created.
+      - key: APP_KEY
+        sync: false
+      - key: DB_URL
+        sync: false
+      - key: APP_NAME
+        value: ERCIHS Scheduling
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: QUEUE_FAILED_DRIVER
+        value: "null"
+      - key: LOG_CHANNEL
+        value: stderr
+      # Gmail over HTTPS (Render's free plan blocks SMTP). See docs/deployment.md, "Email".
+      # Until the GMAIL_* values are set, use "log": reset links go to the log.
+      - key: MAIL_MAILER
+        value: log
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false

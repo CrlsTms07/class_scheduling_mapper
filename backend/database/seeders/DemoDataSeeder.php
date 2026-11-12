@@ -75,6 +75,8 @@ class DemoDataSeeder extends Seeder
         $activeTermId = $this->seedTerms($schoolYearId);
         $this->seedBellSchedule($schoolYearId);
         $this->seedGradeSeven($schoolYearId, $activeTermId);
+        $this->seedActivities($schoolYearId);
+        $this->seedDocumentSettings();
 
         foreach (['Academic', 'TechPro'] as $track) {
             DB::table('tracks')->insert(['name' => $track]);
@@ -98,6 +100,7 @@ class DemoDataSeeder extends Seeder
                 'last_name' => ucwords(str_replace(['.', '_'], ' ', $role)),
                 'status' => 'active',
             ]);
+            $user->forceFill(['terms_accepted_at' => now()])->save();
             $user->assignRole($role);
 
             foreach ($grades as $grade) {
@@ -161,7 +164,7 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * Two Grade 7 sections, with Sample A fully loaded so the plotter has data to work with.
+     * Two fully loaded Grade 7 sections, so the plotter has data to work with.
      */
     private function seedGradeSeven(int $schoolYearId, int $termId): void
     {
@@ -190,9 +193,9 @@ class DemoDataSeeder extends Seeder
             'user_id' => User::where('email', 'teacher@deped.gov.ph')->value('id'),
         ]);
 
-        $sampleAId = null;
+        $sectionIds = [];
         foreach (['Sample A', 'Sample B'] as $index => $name) {
-            $sectionId = DB::table('sections')->insertGetId([
+            $sectionIds[] = DB::table('sections')->insertGetId([
                 'school_year_id' => $schoolYearId,
                 'grade_level_id' => $gradeId,
                 'name' => $name,
@@ -200,7 +203,6 @@ class DemoDataSeeder extends Seeder
                 'home_room_id' => $roomIds[$index],
                 'class_size' => 40,
             ]);
-            $sampleAId ??= $sectionId;
         }
 
         foreach (array_keys(self::GRADE_7_SUBJECTS) as $index => $name) {
@@ -216,12 +218,76 @@ class DemoDataSeeder extends Seeder
                 'is_priority' => $isHomeroom,
             ]);
 
-            DB::table('section_subjects')->insert([
-                'term_id' => $termId,
-                'section_id' => $sampleAId,
-                'subject_id' => $subjectId,
-                'teacher_id' => $teacherIds[$index],
-            ]);
+            // Both sections share the same teachers, so teacher conflicts can be tried out.
+            foreach ($sectionIds as $sectionId) {
+                DB::table('section_subjects')->insert([
+                    'term_id' => $termId,
+                    'section_id' => $sectionId,
+                    'subject_id' => $subjectId,
+                    'teacher_id' => $teacherIds[$index],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Activities take a period but have no teacher. Recess and lunch are breaks instead.
+     */
+    private function seedActivities(int $schoolYearId): void
+    {
+        foreach ([['FLAG', 'Flag Ceremony'], ['CUF', 'Catch-up Friday']] as [$code, $name]) {
+            DB::table('activities')->insert(['school_year_id' => $schoolYearId, 'code' => $code, 'name' => $name]);
+        }
+    }
+
+    /**
+     * Placeholder document details, all editable later in Admin → Report Settings.
+     */
+    private function seedDocumentSettings(): void
+    {
+        DB::table('school_profile')->insert([
+            'school_name' => 'Emmanuel Resurreccion Congressional Integrated High School',
+            'address' => 'Sample Address, Sample City',
+            'phone' => '(000) 000-0000',
+            'email' => 'school@deped.gov.ph',
+            'website' => 'https://www.example.com',
+        ]);
+
+        DB::table('school_logos')->insert([
+            'mime_type' => 'image/png',
+            'image_base64' => base64_encode(file_get_contents(resource_path('report-assets/school-logo.png'))),
+        ]);
+
+        DB::table('report_settings')->insert([
+            'report_type' => 'class_program',
+            'level' => 'JHS',
+            'title_format' => '{level} GRADE {grade} – CLASS PROGRAM',
+            'doc_ref_code' => 'SAMPLE-F001',
+            'revision_no' => '00',
+            'effectivity_date' => '2026-06-08',
+            'reference_note' => 'DO 12, s. 2024',
+        ]);
+
+        $signatories = [
+            ['Prepared by', 'Sample Head Teacher', 'Head Teacher III', null],
+            ['Conforme', null, 'Class Adviser', 'section_adviser'],
+            ['Recommending Approval', 'Sample Principal', 'School Principal II', null],
+            ['Approved by', 'Sample Supervisor', 'PSDS Cluster IV', null],
+        ];
+
+        foreach (DB::table('school_terms')->pluck('id') as $termId) {
+            foreach ($signatories as $index => [$label, $name, $position, $autoSource]) {
+                DB::table('report_signatories')->insert([
+                    'term_id' => $termId,
+                    'report_type' => 'class_program',
+                    'level' => 'JHS',
+                    'label' => $label,
+                    'name' => $name,
+                    'position' => $position,
+                    'auto_source' => $autoSource,
+                    'sort_order' => $index + 1,
+                ]);
+            }
         }
     }
 }

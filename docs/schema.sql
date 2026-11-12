@@ -40,6 +40,8 @@ CREATE TABLE users (
     suffix          VARCHAR(10),
     phone_number    VARCHAR(20),
     status          account_status NOT NULL DEFAULT 'pending',
+    preferences     JSONB NOT NULL DEFAULT '{}',          -- e.g. {"color_coding": false}
+    terms_accepted_at TIMESTAMPTZ,                        -- Terms and Conditions accepted at sign-up
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -156,6 +158,7 @@ CREATE TABLE teachers (
     designation_id   INT REFERENCES designations(id) ON DELETE RESTRICT,
     shift            shift_type NOT NULL DEFAULT 'WHOLE_DAY',
     max_subjects     SMALLINT NOT NULL DEFAULT 5 CHECK (max_subjects BETWEEN 0 AND 8),
+    max_hours_per_week SMALLINT NOT NULL DEFAULT 30 CHECK (max_hours_per_week BETWEEN 1 AND 60),  -- Load Distribution
     display_name     VARCHAR(80),              -- name printed on schedules, e.g. 'Rhalf T. Tagaduar'
     is_active        BOOLEAN NOT NULL DEFAULT true
 );
@@ -206,6 +209,16 @@ CREATE TABLE subjects (                    -- curriculum is per school year (can
 CREATE UNIQUE INDEX subjects_unique ON subjects
     (school_year_id, grade_level_id, COALESCE(track_id, 0), COALESCE(term_no, 0), name);
 
+-- Activities (Flag Ceremony, Catch-up Friday...): they take a period but have no
+-- teacher, room or required minutes. Recess and lunch stay as breaks in time_slots.
+CREATE TABLE activities (
+    id              SERIAL PRIMARY KEY,
+    school_year_id  INT NOT NULL REFERENCES school_years(id) ON DELETE RESTRICT,
+    code            VARCHAR(20),
+    name            VARCHAR(100) NOT NULL,
+    UNIQUE (school_year_id, name)
+);
+
 -- ---------------------------------------------------------------------
 -- Sections (encoded by the Admin once per school year)
 -- ---------------------------------------------------------------------
@@ -220,6 +233,8 @@ CREATE TABLE sections (
     home_room_id     INT REFERENCES rooms(id) ON DELETE RESTRICT,       -- JHS fixed room
     class_size       SMALLINT CHECK (class_size >= 0),
     UNIQUE (school_year_id, grade_level_id, name),
+    co_adviser_id    BIGINT REFERENCES teachers(id) ON DELETE RESTRICT,  -- optional, named on the public schedule
+    CHECK (co_adviser_id <> adviser_id),
     UNIQUE (school_year_id, adviser_id)                                  -- 1 advisory per year
 );
 
@@ -269,6 +284,7 @@ CREATE TABLE schedule_entries (
     created_by          BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     review_id           BIGINT REFERENCES schedule_reviews(id) ON DELETE RESTRICT,
     copied_from_id      BIGINT REFERENCES schedule_entries(id) ON DELETE SET NULL,
+    activity_id         INT REFERENCES activities(id) ON DELETE RESTRICT,   -- an activity, not a class
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -277,7 +293,11 @@ CREATE TABLE schedule_entries (
         ON UPDATE CASCADE ON DELETE RESTRICT,
 
     -- an open slot (no subject yet) is only allowed while in draft
-    CHECK (status = 'draft' OR (section_subject_id IS NOT NULL AND room_id IS NOT NULL)),
+    -- an activity needs no subject, teacher or room
+    CONSTRAINT entry_complete_unless_draft
+        CHECK (status = 'draft' OR activity_id IS NOT NULL OR (section_subject_id IS NOT NULL AND room_id IS NOT NULL)),
+    CONSTRAINT activity_has_no_class
+        CHECK (activity_id IS NULL OR (section_subject_id IS NULL AND teacher_id IS NULL)),
     CHECK ((section_subject_id IS NULL) = (teacher_id IS NULL)),
 
     -- ===== DATABASE-LEVEL CONFLICT DETECTION =====
@@ -299,10 +319,36 @@ CREATE TABLE schedule_entries (
     ) WHERE (status <> 'rejected')
 );
 
+-- Auto-fill runs, so one run can be undone without touching what was placed by hand
+CREATE TABLE auto_fill_runs (
+    id            BIGSERIAL PRIMARY KEY,
+    term_id       INT NOT NULL REFERENCES school_terms(id) ON DELETE RESTRICT,
+    scope         VARCHAR(10) NOT NULL CHECK (scope IN ('section', 'grade', 'all')),
+    scope_ref_id  INT,
+    created_by    BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    undone_at     TIMESTAMPTZ
+);
+-- set to NULL when the entry is edited by hand
+ALTER TABLE schedule_entries
+    ADD COLUMN auto_fill_run_id BIGINT REFERENCES auto_fill_runs(id) ON DELETE SET NULL;
+
 -- Lookups used by the plotter, reports and approvals
 CREATE INDEX section_subjects_teacher_term_idx ON section_subjects (teacher_id, term_id);
 CREATE INDEX schedule_entries_section_term_idx ON schedule_entries (section_id, term_id);
 CREATE INDEX schedule_entries_status_term_idx  ON schedule_entries (term_id, status);
+
+-- A scheduler's record that they saw a soft flag and are submitting anyway
+CREATE TABLE schedule_flag_acknowledgements (
+    id               BIGSERIAL PRIMARY KEY,
+    term_id          INT    NOT NULL REFERENCES school_terms(id) ON DELETE CASCADE,
+    section_id       INT    NOT NULL REFERENCES sections(id)     ON DELETE CASCADE,
+    flag_key         VARCHAR(80) NOT NULL,     -- changes when the problem changes, e.g. 'minutes:12:320'
+    note             TEXT,
+    acknowledged_by  BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (term_id, section_id, flag_key)
+);
 
 -- ---------------------------------------------------------------------
 -- Printed documents: school header/footer, document control, signatories
@@ -315,9 +361,15 @@ CREATE TABLE school_profile (              -- single row
     address       VARCHAR(255),
     phone         VARCHAR(50),
     email         VARCHAR(150),
-    website       VARCHAR(150),
-    logo_path     VARCHAR(255),              -- school logo
-    extra_logos   JSONB NOT NULL DEFAULT '[]' -- DepEd, Bagong Pilipinas, ...
+    website       VARCHAR(150)
+);
+
+-- Kept here and not on disk, because free hosting erases its disk on every restart.
+CREATE TABLE school_logos (
+    id            BIGSERIAL PRIMARY KEY,
+    mime_type     VARCHAR(50) NOT NULL,
+    image_base64  TEXT        NOT NULL,      -- the first logo is the school's own
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TYPE report_type AS ENUM ('class_program', 'teacher_program', 'room_schedule');
@@ -399,3 +451,29 @@ JOIN rooms r     ON r.id = e.room_id
 JOIN buildings b ON b.id = r.building_id
 WHERE e.status <> 'rejected'
 GROUP BY e.term_id, b.id, b.name, r.id, r.room_number, r.room_name, e.section_id;
+
+-- One status per section per term (dashboard, approvals, guest view)
+CREATE VIEW section_term_status AS
+SELECT counts.term_id, counts.section_id,
+       counts.draft_count, counts.pending_count, counts.approved_count,
+       counts.rejected_count, counts.open_slot_count,
+       CASE
+           WHEN counts.draft_count + counts.pending_count + counts.approved_count + counts.rejected_count = 0
+                THEN 'not_started'
+           WHEN counts.rejected_count > 0 THEN 'rejected'
+           WHEN counts.draft_count > 0    THEN 'draft'
+           WHEN counts.pending_count > 0  THEN 'pending'
+           ELSE 'approved'
+       END AS status
+FROM (
+    SELECT t.id AS term_id, s.id AS section_id,
+           COUNT(e.id) FILTER (WHERE e.status = 'draft')    AS draft_count,
+           COUNT(e.id) FILTER (WHERE e.status = 'pending')  AS pending_count,
+           COUNT(e.id) FILTER (WHERE e.status = 'approved') AS approved_count,
+           COUNT(e.id) FILTER (WHERE e.status = 'rejected') AS rejected_count,
+           COUNT(e.id) FILTER (WHERE e.section_subject_id IS NULL AND e.activity_id IS NULL) AS open_slot_count
+    FROM school_terms t
+    JOIN sections s ON s.school_year_id = t.school_year_id
+    LEFT JOIN schedule_entries e ON e.term_id = t.id AND e.section_id = s.id
+    GROUP BY t.id, s.id
+) counts;
