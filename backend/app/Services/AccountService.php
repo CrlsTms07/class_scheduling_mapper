@@ -49,7 +49,12 @@ class AccountService
      */
     public function register(array $data): User
     {
-        return User::create([...$data, 'status' => 'pending']);
+        unset($data['accept_terms']);
+
+        $user = User::create([...$data, 'status' => 'pending']);
+        $user->forceFill(['terms_accepted_at' => now()])->save();
+
+        return $user;
     }
 
     public function sendPasswordResetLink(string $email): void
@@ -63,7 +68,8 @@ class AccountService
     public function resetPassword(array $data): void
     {
         $status = Password::reset($data, function (User $user, string $password) {
-            $user->forceFill(['password' => $password, 'remember_token' => Str::random(60)])->save();
+            // A password they chose themselves: no temporary password is left to change.
+            $user->forceFill(['password' => $password, 'remember_token' => Str::random(60), 'must_change_password' => false])->save();
 
             // Sign out every device that used the old password.
             DB::table('sessions')->where('user_id', $user->id)->delete();
@@ -81,6 +87,31 @@ class AccountService
      *
      * @param  array{role: string, grade_level_ids: array<int>, teacher_id?: int|null}  $data
      */
+    /**
+     * The Admin's way back in for someone whose reset email did not arrive: a temporary password,
+     * shown once to the Admin, that must be changed on the next sign-in. Every session of the
+     * account is signed out.
+     */
+    public function adminResetPassword(User $user, User $admin): string
+    {
+        $temporary = 'ERC-'.Str::upper(Str::random(4)).'-'.random_int(1000, 9999);
+
+        DB::transaction(function () use ($user, $admin, $temporary) {
+            $user->forceFill(['password' => $temporary, 'must_change_password' => true, 'remember_token' => Str::random(60)])->save();
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+            $this->audit->log($admin, 'reset_password', 'users', $user->id, null, ['must_change_password' => true]);
+        });
+
+        return $temporary;
+    }
+
+    /** The user's own new password, which also ends a required change. */
+    public function changePassword(User $user, string $password): void
+    {
+        $user->forceFill(['password' => $password, 'must_change_password' => false])->save();
+        $this->audit->log($user, 'change_password', 'users', $user->id);
+    }
+
     public function activate(User $user, User $admin, array $data): void
     {
         DB::transaction(function () use ($user, $admin, $data) {

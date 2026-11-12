@@ -1,5 +1,5 @@
 import * as z from "zod";
-import type { ManagedPattern, SchoolLevel, Shift, TimeSlot } from "@/types/api";
+import type { ManagedPattern, SchoolLevel, Shift, SlotInput, TimeSlot } from "@/types/api";
 import { DAY_NAMES, WEEK_DAYS } from "./schedule";
 
 export const LEVELS: SchoolLevel[] = ["JHS", "SHS"];
@@ -75,3 +75,51 @@ export const SlotSchema = z
       });
     }
   });
+
+/** How many rows a preset bell schedule has, periods and breaks together. */
+export const PRESET_ROWS = [8, 10, 14, 16] as const;
+
+export type PresetOptions = {
+  rows: (typeof PRESET_ROWS)[number];
+  start: string;
+  periodMinutes: number;
+  /** A break comes right after this period. Leave out a break by setting minutes to 0. */
+  recess: { after: number; minutes: number };
+  lunch: { after: number; minutes: number };
+};
+
+const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+const toTime = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+/**
+ * The rows of a preset bell schedule, one after another from the start time: periods of the
+ * same length, with a recess and a lunch after the chosen periods. Null when it does not fit
+ * in one day, or a break comes after a period that does not exist.
+ */
+export function presetRows(options: PresetOptions): SlotInput[] | null {
+  const breaks = [
+    { ...options.recess, label: "Recess" },
+    { ...options.lunch, label: "Lunch" },
+  ].filter(({ minutes }) => minutes > 0);
+  const periods = options.rows - breaks.length;
+
+  if (breaks.some(({ after }) => after < 1 || after >= periods) || options.periodMinutes < 1) return null;
+
+  const rows: SlotInput[] = [];
+  let time = toMinutes(options.start);
+
+  for (let period = 1; period <= periods; period += 1) {
+    rows.push({ is_break: false, label: "", start_time: toTime(time), end_time: toTime(time + options.periodMinutes) });
+    time += options.periodMinutes;
+
+    for (const { after, minutes, label } of breaks) {
+      if (after === period) {
+        rows.push({ is_break: true, label, start_time: toTime(time), end_time: toTime(time + minutes) });
+        time += minutes;
+      }
+    }
+  }
+
+  return time < 24 * 60 ? rows : null;
+}

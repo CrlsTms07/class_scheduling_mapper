@@ -63,6 +63,9 @@ const ScheduleDayList = ({
                 {slotTimeLabel(slot)} · {slot.minutes} mins
               </p>
               <ScheduleCell
+                isDraggable={false}
+                slot={slot}
+                day={day}
                 entry={entryAt(entries, day, slot)}
                 label={`${DAY_NAMES[day]}, ${slotTimeLabel(slot)}`}
                 onSelect={onSelect && (() => onSelect(slot, day))}

@@ -126,6 +126,23 @@ class TimeSlotService
     }
 
     /**
+     * Fills an empty bell schedule from a preset, all rows or none.
+     *
+     * @param  array<int, array<string, mixed>>  $slots
+     */
+    public function addSlots(DayPattern $pattern, array $slots, User $admin): void
+    {
+        DB::transaction(function () use ($pattern, $slots, $admin) {
+            foreach ($slots as $data) {
+                $pattern->timeSlots()->create($this->slotValues($data, $pattern));
+            }
+            $this->renumberPeriods($pattern);
+
+            $this->audit->log($admin, 'create', 'time_slots', $pattern->id, null, ['preset_rows' => count($slots)]);
+        });
+    }
+
+    /**
      * The name of a slot can always change. Its times and type are locked once it has schedules.
      *
      * @param  array<string, mixed>  $data

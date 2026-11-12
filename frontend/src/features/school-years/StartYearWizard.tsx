@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sheet";
 import { TermFields, YearFields } from "./CalendarFields";
 
-const STEPS = ["School year", "Term structure", "Copy from last year", "Review"];
+const STEPS = ["School year", "Structure", "Copy from last year", "Review"];
 const DEFAULT_PRESET = TERM_PRESETS[0];
 
 const countOf = (count: number, one: string, many: string) =>
@@ -187,7 +187,7 @@ const StartYearWizard = ({ years, activeTermName, onClose }: StartYearWizardProp
             Pick how the year is divided. The dates below are an even split, so adjust them to the
             official calendar.
           </p>
-          <div role="group" aria-label="Term structure" className="grid grid-cols-2 gap-2">
+          <div role="group" aria-label="Structure" className="grid grid-cols-2 gap-2">
             {[
               ...TERM_PRESETS,
               { key: CUSTOM_PRESET, title: "Custom", hint: "Set your own" },
@@ -309,8 +309,8 @@ const StartYearWizard = ({ years, activeTermName, onClose }: StartYearWizardProp
         </dl>
         <p className="text-xs text-neutral-700">
           {activeTermName
-            ? `${activeTermName} stays the active term. Switch it on this page when the new year begins.`
-            : "No term is active yet. Set one as active on this page when classes begin."}
+            ? `${activeTermName} stays active. Switch it on this page when the new year begins.`
+            : "Nothing is active yet. Set one as active on this page when classes begin."}
         </p>
       </>
     );
@@ -340,7 +340,7 @@ const StartYearWizard = ({ years, activeTermName, onClose }: StartYearWizardProp
               {!!copied?.subjects_skipped && (
                 <FormAlert>
                   {countOf(copied.subjects_skipped, "subject was", "subjects were")} not copied
-                  because they belong to a term this year does not have. Encode them again if they
+                  because they belong to a part of the year that this one does not have. Encode them again if they
                   are still needed.
                 </FormAlert>
               )}

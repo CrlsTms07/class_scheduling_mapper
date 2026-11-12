@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\DepEdEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -19,7 +20,7 @@ class ResetPasswordRequest extends FormRequest
     {
         return [
             'token' => ['required', 'string'],
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', new DepEdEmail],
             'password' => ['required', 'confirmed', Password::defaults()],
         ];
     }

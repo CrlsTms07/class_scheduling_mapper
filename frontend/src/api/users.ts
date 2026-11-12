@@ -34,6 +34,13 @@ export function useChangeUserStatus(userId: number) {
   });
 }
 
+/** A temporary password for someone whose reset email did not arrive. */
+export function useResetUserPassword(userId: number) {
+  return useMutation({
+    mutationFn: () => api<{ temporary_password: string; message: string }>(`/users/${userId}/reset-password`, { method: "POST" }),
+  });
+}
+
 export function useDeleteUser(userId: number) {
   const queryClient = useQueryClient();
 

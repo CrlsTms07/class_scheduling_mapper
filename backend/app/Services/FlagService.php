@@ -26,6 +26,7 @@ class FlagService
             ...$this->adviser($section),
             ...$this->minutes($section, $termId),
             ...$this->openSlots($section, $termId),
+            ...$this->noRoom($section, $termId),
             ...$this->breaksAndShifts($section, $termId),
             ...$this->overloadedTeachers($section, $termId),
         ];
@@ -55,6 +56,16 @@ class FlagService
 
     private function minutes(Section $section, int $termId): array
     {
+        // Before anything is placed, every subject is short. That is a to-do list, not a problem.
+        $isStarted = ScheduleEntry::where('term_id', $termId)
+            ->where('section_id', $section->id)
+            ->where('status', '<>', 'rejected')
+            ->exists();
+
+        if (! $isStarted) {
+            return [];
+        }
+
         $rows = DB::table('subject_minutes_check')
             ->where('term_id', $termId)
             ->where('section_id', $section->id)
@@ -80,6 +91,7 @@ class FlagService
             ->where('section_id', $section->id)
             ->where('status', '<>', 'rejected')
             ->whereNull('section_subject_id')
+            ->whereNull('activity_id')
             ->count();
 
         return $count === 0 ? [] : [[
@@ -87,6 +99,27 @@ class FlagService
             'type' => 'open_slots',
             'severity' => 'red',
             'message' => "{$count} open ".($count === 1 ? 'slot is' : 'slots are').' still unfilled.',
+            'blocking' => true,
+        ]];
+    }
+
+    /**
+     * Classes imported before the section had a home room. Setting the home room fills them.
+     */
+    private function noRoom(Section $section, int $termId): array
+    {
+        $count = ScheduleEntry::where('term_id', $termId)
+            ->where('section_id', $section->id)
+            ->where('status', '<>', 'rejected')
+            ->whereNotNull('section_subject_id')
+            ->whereNull('room_id')
+            ->count();
+
+        return $count === 0 ? [] : [[
+            'key' => 'no_room',
+            'type' => 'no_room',
+            'severity' => 'red',
+            'message' => "{$count} ".($count === 1 ? 'class has' : 'classes have').' no room yet. Set the home room of this section, or choose a room for each class.',
             'blocking' => true,
         ]];
     }

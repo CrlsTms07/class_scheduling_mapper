@@ -58,7 +58,7 @@ function plotFirstSlot(object $test): void
     ]);
 }
 
-it('keeps bell schedules to the Admin', function () {
+it('keeps bell schedules from a Chairperson with no grade level yet', function () {
     $this->actingAs(User::factory()->create()->assignRole('glc'));
 
     $this->getJson("/api/school-years/{$this->yearId}/day-patterns")->assertForbidden();
@@ -265,4 +265,35 @@ describe('once a section has schedules on it', function () {
 
         $this->deleteJson("/api/day-patterns/{$otherPattern}")->assertOk();
     });
+});
+
+it('lets a Chairperson manage the Junior High bell schedules only', function () {
+    $chair = User::factory()->create()->assignRole('glc');
+    $chair->gradeLevels()->sync(DB::table('grade_levels')->where('grade', 7)->pluck('id'));
+    $this->actingAs($chair);
+    $senior = DB::table('day_patterns')->insertGetId([
+        'school_year_id' => $this->yearId, 'level' => 'SHS', 'shift' => 'WHOLE_DAY', 'name' => 'Monday – Friday', 'days' => '{1,2,3,4,5}',
+    ]);
+
+    $listed = $this->getJson("/api/school-years/{$this->yearId}/day-patterns")->assertOk()->json('data');
+    expect(collect($listed)->pluck('level')->unique()->values()->all())->toBe(['JHS']);
+
+    $this->postJson("/api/school-years/{$this->yearId}/day-patterns", pattern())->assertCreated();
+    $this->postJson("/api/day-patterns/{$this->patternId}/slots", period())->assertCreated();
+    $this->putJson("/api/time-slots/{$this->firstSlotId}", period(['start_time' => '07:00', 'end_time' => '07:40']))->assertOk();
+
+    $this->postJson("/api/school-years/{$this->yearId}/day-patterns", pattern(['level' => 'SHS']))->assertForbidden();
+    $this->postJson("/api/day-patterns/{$senior}/slots", period())->assertForbidden();
+    $this->postJson("/api/day-patterns/{$this->patternId}/copy", pattern(['level' => 'SHS', 'name' => 'Copy']))->assertForbidden();
+    $this->deleteJson("/api/day-patterns/{$senior}")->assertForbidden();
+});
+
+it('lets a Master Teacher manage the Senior High bell schedules only', function () {
+    $master = User::factory()->create()->assignRole('master_teacher');
+    $master->gradeLevels()->sync(DB::table('grade_levels')->whereIn('grade', [11, 12])->pluck('id'));
+    $this->actingAs($master);
+
+    $this->postJson("/api/school-years/{$this->yearId}/day-patterns", pattern(['level' => 'SHS', 'name' => 'Monday – Friday', 'days' => [1, 2, 3, 4, 5]]))->assertCreated();
+    $this->putJson("/api/time-slots/{$this->firstSlotId}", period())->assertForbidden();
+    $this->deleteJson("/api/day-patterns/{$this->patternId}")->assertForbidden();
 });

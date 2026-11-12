@@ -62,16 +62,29 @@ function addLoadingTo(object $test, int $sectionId): array
     return [$subjectId, $loadingId];
 }
 
-it('keeps section management to the Admin', function () {
-    $sectionId = insertSection($this);
-    $this->actingAs(User::factory()->create()->assignRole('glc'));
+it('lets a Chairperson manage the sections of their own grade levels only', function () {
+    $own = insertSection($this);
+    $other = insertSection($this, ['grade_level_id' => sectionGradeId(8), 'name' => 'Other']);
+    $glc = User::factory()->create()->assignRole('glc');
+    $glc->gradeLevels()->sync([sectionGradeId(7)]);
+    $this->actingAs($glc);
+
+    $this->getJson("/api/school-years/{$this->yearId}/sections")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $own);
+    $this->getJson("/api/school-years/{$this->yearId}/section-options")->assertOk()->assertJsonCount(1, 'data.grade_levels');
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody())->assertCreated();
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['grade_level_id' => sectionGradeId(8), 'name' => 'Faith']))->assertForbidden();
+    $this->putJson("/api/sections/{$own}", sectionBody(['name' => 'Renamed']))->assertOk();
+    $this->putJson("/api/sections/{$own}", sectionBody(['grade_level_id' => sectionGradeId(8)]))->assertForbidden();
+    $this->putJson("/api/sections/{$other}", sectionBody(['grade_level_id' => sectionGradeId(8)]))->assertForbidden();
+    $this->deleteJson("/api/sections/{$other}")->assertForbidden();
+    $this->deleteJson("/api/sections/{$own}")->assertOk();
+});
+
+it('keeps teachers out of section management', function () {
+    $this->actingAs(User::factory()->create()->assignRole('teacher'));
 
     $this->getJson("/api/school-years/{$this->yearId}/sections")->assertForbidden();
-    $this->getJson("/api/school-years/{$this->yearId}/section-options")->assertForbidden();
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody())->assertForbidden();
-    $this->putJson("/api/sections/{$sectionId}", sectionBody())->assertForbidden();
-    $this->deleteJson("/api/sections/{$sectionId}")->assertForbidden();
-    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertForbidden();
 });
 
 it('creates a JHS section with adviser, room and class size, and writes an audit log', function () {
@@ -95,6 +108,49 @@ it('creates an SHS section with a track and no home room', function () {
         ->assertCreated()
         ->assertJsonPath('data.level', 'SHS')
         ->assertJsonPath('data.track', 'Academic');
+});
+
+it('takes a co-adviser, who may advise another section', function () {
+    DB::table('sections')->insert([
+        'school_year_id' => $this->yearId, 'grade_level_id' => sectionGradeId(8), 'name' => 'Other', 'adviser_id' => $this->teacherId,
+    ]);
+    $adviser = DB::table('teachers')->insertGetId(['first_name' => 'Ben', 'last_name' => 'Cruz']);
+
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $adviser, 'co_adviser_id' => $this->teacherId]))
+        ->assertCreated()
+        ->assertJsonPath('data.co_adviser_id', $this->teacherId);
+});
+
+it('refuses a co-adviser who is also the adviser, or is not teaching', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $this->teacherId, 'co_adviser_id' => $this->teacherId]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['co_adviser_id' => 'other than the adviser']);
+
+    $staff = DB::table('teachers')->insertGetId(['first_name' => 'Cy', 'last_name' => 'Staff', 'personnel_type' => 'non_teaching']);
+
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['co_adviser_id' => $staff]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['co_adviser_id' => 'teaching personnel']);
+});
+
+it('keeps a teacher who is a co-adviser from being deleted', function () {
+    $coAdviser = DB::table('teachers')->insertGetId(['first_name' => 'Dee', 'last_name' => 'Santos']);
+    DB::table('sections')->insert([
+        'school_year_id' => $this->yearId, 'grade_level_id' => sectionGradeId(8), 'name' => 'Other', 'co_adviser_id' => $coAdviser,
+    ]);
+
+    $this->deleteJson("/api/teachers/{$coAdviser}")
+        ->assertUnprocessable();
+
+    expect(DB::table('teachers')->where('id', $coAdviser)->exists())->toBeTrue();
+});
+
+it('lets an SHS section have a usual room', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody([
+        'grade_level_id' => sectionGradeId(11), 'track_id' => $this->trackId, 'shift' => 'AM', 'home_room_id' => $this->roomId,
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('data.home_room', 'Main – 101');
 });
 
 it('lists only the sections of that year, by grade and then name', function () {
@@ -127,7 +183,6 @@ it('rejects bad sections', function (callable $change, string $field) {
     'unknown shift' => [fn ($test) => ['shift' => 'NIGHT'], 'shift'],
     'negative class size' => [fn ($test) => ['class_size' => -1], 'class_size'],
     'track on a JHS section' => [fn ($test) => ['track_id' => $test->trackId], 'track_id'],
-    'home room on an SHS section' => [fn ($test) => ['grade_level_id' => sectionGradeId(11), 'home_room_id' => $test->roomId], 'home_room_id'],
 ]);
 
 it('allows the same name in another grade or another school year', function () {
@@ -243,6 +298,12 @@ it('counts an advisory only in its own school year', function () {
 
     $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['adviser_id' => $this->teacherId]))
         ->assertCreated();
+});
+
+it('keeps adding tracks away from people who only teach', function () {
+    $this->actingAs(User::factory()->create()->assignRole('teacher'));
+
+    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertForbidden();
 });
 
 it('adds a track once', function () {

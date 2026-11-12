@@ -151,7 +151,7 @@ const SignatorySheet = ({
           {signatory && (
             <ConfirmDelete
               label="Remove this signatory"
-              warning="This removes them from this form in this term. Are you sure?"
+              warning="This removes them from this form. Are you sure?"
               confirmLabel="Yes, remove"
               isPending={remove.isPending}
               onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
@@ -191,7 +191,7 @@ const SignatoriesPanel = () => {
     <div className="space-y-4">
       <p className="text-sm text-neutral-700">
         Showing <span className="font-medium">{term.name}, SY {term.school_year.name}</span>. Change
-        the term in the selector at the top. On the printed form they sign two per row, in this
+        it in the selector at the top. On the printed form they sign two per row, in this
         order.
       </p>
 
@@ -306,12 +306,11 @@ const SignatoriesPanel = () => {
             {copy.isError && <FormAlert>{apiErrorMessage(copy.error)}</FormAlert>}
             {copy.isSuccess && (
               <FormAlert variant="success">
-                The other {copy.data.data.terms === 1 ? "term" : `${copy.data.data.terms} terms`} of
-                this school year now use these signatories.
+                The rest of this school year now uses these signatories.
               </FormAlert>
             )}
             <ConfirmDelete
-              label={`Use ${term.name}'s signatories in all terms`}
+              label={`Use ${term.name}'s signatories for the whole year`}
               warning={`The other terms of SY ${term.school_year.name} will have the same signatories as ${term.name}, for all documents. What they have now will be replaced.`}
               confirmLabel="Yes, use in all"
               icon={CopyCheck}

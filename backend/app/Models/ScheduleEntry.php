@@ -28,4 +28,15 @@ class ScheduleEntry extends Model
     {
         return $this->belongsTo(Room::class);
     }
+
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(Activity::class);
+    }
+
+    /** The subject, or the activity, this period holds. Null for an open slot. */
+    public function subjectName(): ?string
+    {
+        return $this->sectionSubject?->subject->name ?? $this->activity?->name;
+    }
 }

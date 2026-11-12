@@ -53,11 +53,11 @@ npm run test
 npm run build
 ```
 
-## Current status (Nov 6, 2026)
+## Current status (Nov 12, 2026)
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
-- **Working, JHS flow:** section list, plotter (tap-to-assign, conflicts with suggestions, flags),
+- **Working, JHS flow:** section list, plotter (tap-to-assign and drag-and-drop, also to move a placed class, conflicts with suggestions, flags),
   term selector, submit with flag acknowledgements, approvals by scope (approve, reject, reopen),
   revise after rejection, and Class Program PDF.
 - **Working, Admin:** School Years page, Start New School Year wizard, Calendar settings and
@@ -66,10 +66,40 @@ npm run build
   change access, deactivate, reactivate, delete); Report Settings page (school profile and logos,
   document control block, signatories per term); Admin Dashboard (counts, setup checklist,
   schedules by grade level, overloaded teachers).
-- **Not built yet:** teacher loading screen, teachers, subjects, rooms and other CRUD screens, SHS Class Program, Teacher Program, Room Schedule, My Schedule, Guest view.
-- **Front-end, not started:** all Admin screens, Guest view.
+- **Working, Admin, Chairperson and Master Teacher:** Teachers page (personnel, qualifications, tasks
+  per term) and Buildings and Rooms page.
+- **Working, Chairperson and Master Teacher within scope (Admin views):** Subjects page (per school
+  year, term, track, minutes per week); Teacher Loading page (per section and term, quick-add teacher,
+  locks with pending or approved schedules, copy from another term).
+- **Working, Schedule module:** Building tabs, room cards, Room Schedule page, and plotter with day
+  cards (team decision, Nov 7, 2026: the default on wide screens) and the weekly grid as a choice.
+- **Working, Copy schedule:** from another term of the year, by section, grade or all, with a review
+  first. Periods become draft open slots; teachers and subjects that continue can be filled in.
+- **Working, Reports page:** JHS and SHS Class Program, Teacher Program, Room Schedule, room usage, the
+  Conflict and Validation Report, Teacher Load Report and Grade Level Timetable, in PDF and XLSX. Teacher Program and Room Schedule have no official form yet, so their layout is to be
+  confirmed with the school.
+- **Working, Teacher:** My Schedule (approved entries only, PDF and XLSX) and My Profile. Chairpersons
+  and Master Teachers with a personnel record have them too.
+- **Working, Chairperson and Master Teacher:** dashboard with their own counts and next steps.
+- **Working, Guest:** pick department, grade and section; approved schedules of the active term only;
+  Print, PDF, shareable link and QR code.
+- **Working, schedule-creation flow (team decisions, Nov 9, 2026, see `docs/client-notes.md`):**
+  four steps on the scheduler dashboard with Import previous data (teacher loading only), activities
+  applied to a section, grade or all sections with an Unplaced list, Load Distribution in hours a week
+  (`max_hours_per_week`, default 30), free teachers on a conflict, bell schedule presets (8/10/14/16 rows),
+  color coding per user, and Auto-fill with preview and undo.
+- **Working, layout and hand-built schedules (team decisions, Nov 11, 2026, see `docs/client-notes.md`):**
+  breadcrumbs and term tabs, classroom and section pages with day cards, typed Start/End times that become
+  bell-schedule periods (`PeriodService`), break times, "+ Add Section" on rooms, building view with print,
+  Section and Teachers Directories, teacher detail, Terms and Conditions at sign-up, and
+  `php artisan app:clear-school-data` for a fresh import.
+- **Working, accounts, forms and rooms (team decisions, Nov 12, 2026, see `docs/client-notes.md`):** one
+  maximum load of 5 subjects, Admin reset password with a required change, Gmail email (SMTP or Gmail API),
+  `php artisan app:backup`, the Class Program PDF matching the official form, logo placement, the Adviser
+  Summary report, room "in charge" and the building floor plan.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
-  First Admin on a new server: `php artisan app:create-admin`.
+- **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
+  the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.
 
 ---
 
@@ -114,8 +144,8 @@ npm run build
 
 | Role | Access |
 |------|--------|
-| `super_admin` (Admin) | **Does not plot schedules.** Manages school years and terms, time slots and breaks, **sections** (encoded yearly), users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
-| `glc` | Within assigned JHS grade levels: teacher loading, plot schedules, submit for approval, reports and exports. Manages teachers, subjects and rooms. |
+| `super_admin` (Admin) | **Can also plot any section** (team decision, Nov 10, 2026). Manages school years and terms, time slots and breaks, sections, teachers, subjects, rooms, users, roles and scopes, and report signatories. Approves, rejects or reopens schedules. Views everything. |
+| `glc` | Within assigned JHS grade levels: teacher loading, plot schedules, submit for approval, reports and exports. Manages teachers, **sections of their grade levels** (team decision, Nov 10, 2026), subjects, rooms, and the **bell schedules (Time Slots) of their department** (team decision, Nov 10, 2026: they make the schedules, so every step is theirs). |
 | `master_teacher` | Same as `glc`, for assigned SHS grade levels. |
 | `teacher` | Read-only: own schedule (weekly and list view) and own profile. |
 | Guest (no login) | Approved schedules of the active term only (see Guest view). |
@@ -137,9 +167,11 @@ npm run build
   teaching-related tasks (ICT/SSG Coordinator, Lab Manager) per term.
 
 ### Sections
-- Encoded by the **Admin** once per **school year** (they change yearly). Each has a
+- Encoded once per **school year** (they change yearly) by the **Admin**, or by a GLC or Master Teacher
+  for their own grade levels (team decision, Nov 10, 2026). Each has a
   grade level, an optional track (SHS), a shift, an **adviser** (one advisory per
-  teacher per year), a home room (JHS) and a class size.
+  teacher per year), an optional **co-adviser**, a home room (JHS) or optional usual room (SHS; team decision, Nov 7,
+  2026: the plotter's default, each class can still use another room) and a class size.
 - Teacher loading (`section_subjects`) is **per term**: section + subject + teacher.
 
 ### Day patterns, time slots and breaks
@@ -148,7 +180,8 @@ npm run build
   - A day must not belong to two patterns of the same year, level and shift (check in the app).
 - `time_slots` = the periods and breaks of a pattern, each with its own start and end.
   Lengths may differ.
-- The Admin edits patterns and slots, with a "copy pattern" button.
+- The Admin edits patterns and slots, with a "copy pattern" button. A GLC or Master Teacher edits those of
+  their own department (JHS or SHS), since they make the schedules (team decision, Nov 10, 2026).
 - The plotter shows the slots of the selected pattern. A subject placed in a pattern is
   saved as one `schedule_entries` row **per day** of that pattern. Each entry must
   match a slot of its day's pattern and must not overlap a break.
@@ -248,7 +281,9 @@ cleaner:
 filter by grade level.
 
 ## Guest view (no login)
-- "View Schedule" button on the login page.
+- "View as Guest" button on the login page.
+- **Only the adviser and co-adviser are named** (team decision, Nov 7, 2026). Teachers of subjects and
+  signatories are left out, on screen and in the public PDF.
 - Pick **Department → Grade Level → Section** (searchable). **No student-name search**,
   for privacy reasons (minors).
 - Shows approved schedules of the **active term only**, and only when the whole section

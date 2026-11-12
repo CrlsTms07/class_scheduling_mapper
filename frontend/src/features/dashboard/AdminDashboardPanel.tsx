@@ -1,11 +1,13 @@
 import { Link } from "react-router";
 import { ArrowRight, Check, CircleDashed } from "lucide-react";
-import { useAdminDashboard } from "@/api/dashboard";
+import { useAdminDashboard, useSchedulerDashboard } from "@/api/dashboard";
 import { useSelectedTerm } from "@/context/selectedTerm";
-import { STATUS_LABELS } from "@/lib/schedule";
-import type { AdminDashboard, ChecklistKey, ScheduleStatus } from "@/types/api";
+import { termWord } from "@/lib/schedule";
+import type { AdminDashboard, ChecklistKey } from "@/types/api";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { OverloadedTeachers, ProgressSection, StatTile } from "./DashboardParts";
+import SchedulerSteps from "./SchedulerSteps";
 
 const CHECKLIST_LINKS: Record<ChecklistKey, string> = {
   calendar: "/school-years",
@@ -15,30 +17,6 @@ const CHECKLIST_LINKS: Record<ChecklistKey, string> = {
   signatories: "/report-settings",
   schedulers: "/users",
 };
-
-const STAGES: ScheduleStatus[] = ["not_started", "draft", "pending", "approved", "rejected"];
-
-type StatTileProp = {
-  label: string;
-  value: string | number;
-  note: string;
-  to: string;
-};
-
-const StatTile = ({ label, value, note, to }: StatTileProp) => (
-  <Link
-    to={to}
-    className="block rounded-xl focus-visible:outline-2 focus-visible:outline-[#790D16]"
-  >
-    <Card className="shadow shadow-[#790D16]/40 h-full hover:bg-[#790D16]/5 transition-colors">
-      <CardContent className="space-y-1">
-        <p className="text-xs text-neutral-700">{label}</p>
-        <p className="text-lg sm:text-2xl font-bold text-teal-700 break-words">{value}</p>
-        <p className="text-xs text-neutral-700">{note}</p>
-      </CardContent>
-    </Card>
-  </Link>
-);
 
 const SetupChecklist = ({ items }: { items: AdminDashboard["checklist"] }) => {
   const doneCount = items.filter(({ done }) => done).length;
@@ -82,96 +60,12 @@ const SetupChecklist = ({ items }: { items: AdminDashboard["checklist"] }) => {
   );
 };
 
-const ProgressSection = ({ rows }: { rows: AdminDashboard["progress"] }) => (
-  <section className="space-y-3">
-    <p className="font-medium text-teal-700">Schedules by grade level</p>
-
-    {rows.length === 0 && (
-      <p className="text-sm text-neutral-700">There are no sections in this school year yet.</p>
-    )}
-
-    {rows.length > 0 && (
-      <>
-        <div className="hidden md:block overflow-x-auto rounded-md border">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[#790D16]/5 text-xs text-neutral-700">
-              <tr>
-                <th scope="col" className="p-3 font-medium">Grade</th>
-                <th scope="col" className="p-3 font-medium">Sections</th>
-                {STAGES.map((stage) => (
-                  <th key={stage} scope="col" className="p-3 font-medium">
-                    {STATUS_LABELS[stage]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map((row) => (
-                <tr key={row.grade}>
-                  <td className="p-3 font-medium text-teal-700">
-                    Grade {row.grade} ({row.level})
-                  </td>
-                  <td className="p-3">{row.sections}</td>
-                  {STAGES.map((stage) => (
-                    <td key={stage} className="p-3">
-                      {row[stage]}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:hidden">
-          {rows.map((row) => (
-            <Card key={row.grade} className="shadow shadow-[#790D16]/40">
-              <CardContent className="space-y-2">
-                <p className="font-medium text-teal-700">
-                  Grade {row.grade} ({row.level}), {row.sections}{" "}
-                  {row.sections === 1 ? "section" : "sections"}
-                </p>
-                <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-xs text-neutral-800">
-                  {STAGES.map((stage) => (
-                    <div key={stage} className="contents">
-                      <dt className="text-neutral-600">{STATUS_LABELS[stage]}</dt>
-                      <dd className="text-right font-medium">{row[stage]}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </>
-    )}
-  </section>
-);
-
-const OverloadedTeachers = ({ teachers }: { teachers: AdminDashboard["overloaded_teachers"] }) => (
-  <section className="space-y-3">
-    <p className="font-medium text-teal-700">Overloaded teachers</p>
-    {teachers.length === 0 ? (
-      <p className="text-sm text-neutral-700">No teacher is over their limit in this term.</p>
-    ) : (
-      <ul className="divide-y rounded-md border">
-        {teachers.map(({ id, name, assigned, limit }) => (
-          <li key={id} className="flex items-center justify-between gap-3 p-3 text-sm">
-            <span className="font-medium text-neutral-900">{name}</span>
-            <span className="shrink-0 text-xs text-neutral-700">
-              {assigned} assigned, limit {limit}
-            </span>
-          </li>
-        ))}
-      </ul>
-    )}
-  </section>
-);
-
 /** What the Admin needs to see first, for the term in the selector at the top. */
 const AdminDashboardPanel = () => {
   const { terms, term, isPending: isTermPending } = useSelectedTerm();
   const { data, isPending, isError } = useAdminDashboard(term?.id);
+  // The same four steps of making a schedule as a Chairperson or Master Teacher, for every grade level.
+  const { data: making } = useSchedulerDashboard(term?.id);
   const activeTerm = terms.find(({ is_active }) => is_active);
 
   if (!term) {
@@ -212,7 +106,7 @@ const AdminDashboardPanel = () => {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatTile
-          label="Active term"
+          label={`Active ${termWord(activeTerm ?? term)}`}
           value={activeTerm?.name ?? "None"}
           note={activeTerm ? `School Year ${activeTerm.school_year.name}` : "Set one in School Years"}
           to="/school-years"
@@ -242,6 +136,8 @@ const AdminDashboardPanel = () => {
       </div>
 
       <SetupChecklist items={data.checklist} />
+
+      {making && <SchedulerSteps steps={making.steps} term={term} terms={terms} />}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5 items-start">
         <ProgressSection rows={data.progress} />

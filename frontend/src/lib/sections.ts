@@ -8,6 +8,7 @@ export const SectionFormSchema = z.object({
   shift: z.enum(["AM", "PM", "WHOLE_DAY"]),
   track_id: z.string(),
   adviser_id: z.string(),
+  co_adviser_id: z.string(),
   home_room_id: z.string(),
   class_size: z.string().regex(/^\d{0,3}$/, "Enter a number"),
 });
@@ -23,8 +24,9 @@ export function toSectionInput(values: SectionFormValues, isSeniorHigh: boolean)
     name: values.name,
     shift: values.shift as Shift,
     track_id: isSeniorHigh ? idOrNull(values.track_id) : null,
-    home_room_id: isSeniorHigh ? null : idOrNull(values.home_room_id),
+    home_room_id: idOrNull(values.home_room_id),
     adviser_id: idOrNull(values.adviser_id),
+    co_adviser_id: idOrNull(values.co_adviser_id),
     class_size: idOrNull(values.class_size),
   };
 }
@@ -38,6 +40,7 @@ export function toSectionForm(section: ManagedSection | null): SectionFormValues
     shift: section?.shift ?? "WHOLE_DAY",
     track_id: text(section?.track_id),
     adviser_id: text(section?.adviser_id),
+    co_adviser_id: text(section?.co_adviser_id),
     home_room_id: text(section?.home_room_id),
     class_size: text(section?.class_size),
   };

@@ -6,6 +6,7 @@ import { afterEach, vi } from "vitest";
 configure({ asyncUtilTimeout: 8000 });
 
 afterEach(() => {
+  localStorage.clear();
   cleanup();
   vi.unstubAllGlobals();
 });

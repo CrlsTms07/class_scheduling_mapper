@@ -11,7 +11,7 @@ const AppSideBar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
   return (
     <nav aria-label="Main menu">
-      {navigationFor(user?.role ?? null).map((group) => (
+      {navigationFor(user?.role ?? null, Boolean(user?.personnel)).map((group) => (
         <div key={group.label} className="p-5 space-y-2">
           <p className="text-neutral-600 text-sm pl-3">{group.label}</p>
 

@@ -1,6 +1,7 @@
-import { DAY_NAMES, entryAt, slotTimeLabel } from "@/lib/schedule";
+import { DAY_NAMES, entryAt, hasSubject, slotTimeLabel } from "@/lib/schedule";
 import type { DayPattern, ScheduleEntry, TimeSlot } from "@/types/api";
 import ScheduleCell from "./ScheduleCell";
+import SlotDropZone from "./SlotDropZone";
 
 type ScheduleGridProp = {
   pattern: DayPattern;
@@ -42,15 +43,23 @@ const ScheduleGrid = ({ pattern, entries, onSelect }: ScheduleGridProp) => {
                   {slot.label?.toUpperCase()}
                 </td>
               ) : (
-                pattern.days.map((day) => (
-                  <td key={day} className="p-1 h-px align-top">
-                    <ScheduleCell
-                      entry={entryAt(entries, day, slot)}
-                      label={`${DAY_NAMES[day]}, ${slotTimeLabel(slot)}`}
-                      onSelect={onSelect && (() => onSelect(slot, day))}
-                    />
-                  </td>
-                ))
+                pattern.days.map((day) => {
+                  const entry = entryAt(entries, day, slot);
+
+                  return (
+                    <td key={day} className="p-1 h-px align-top">
+                      <SlotDropZone slot={slot} day={day} isDisabled={!onSelect || hasSubject(entry)}>
+                        <ScheduleCell
+                          entry={entry}
+                          slot={slot}
+                          day={day}
+                          label={`${DAY_NAMES[day]}, ${slotTimeLabel(slot)}`}
+                          onSelect={onSelect && (() => onSelect(slot, day))}
+                        />
+                      </SlotDropZone>
+                    </td>
+                  );
+                })
               )}
             </tr>
           ))}

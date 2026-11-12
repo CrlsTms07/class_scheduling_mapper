@@ -9,6 +9,7 @@ use App\Models\Room;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Teacher;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\SectionService;
 use Illuminate\Http\JsonResponse;
@@ -16,19 +17,22 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 /**
- * The Admin encodes sections once per school year.
+ * Sections, encoded once per school year: the Admin for every grade, a Chairperson or
+ * Master Teacher for their own grade levels.
  */
 class ManagedSectionController extends Controller
 {
-    private const WITH = ['gradeLevel', 'track', 'adviser', 'homeRoom.building'];
+    private const WITH = ['gradeLevel', 'track', 'adviser', 'coAdviser', 'homeRoom.building'];
 
-    public function index(SchoolYear $schoolYear): AnonymousResourceCollection
+    public function index(Request $request, SchoolYear $schoolYear): AnonymousResourceCollection
     {
         Gate::authorize('manage', Section::class);
 
         $sections = Section::with(self::WITH)
+            ->visibleTo($request->user())
             ->where('school_year_id', $schoolYear->id)
             ->get()
             ->sortBy(fn (Section $section) => [$section->gradeLevel->grade, $section->name])
@@ -40,7 +44,7 @@ class ManagedSectionController extends Controller
     /**
      * The choices of the section form. A teacher who already advises a section says which.
      */
-    public function options(SchoolYear $schoolYear): JsonResponse
+    public function options(Request $request, SchoolYear $schoolYear): JsonResponse
     {
         Gate::authorize('manage', Section::class);
 
@@ -70,7 +74,10 @@ class ManagedSectionController extends Controller
             ->map(fn (Room $room) => ['id' => $room->id, 'label' => $room->label()]);
 
         return response()->json(['data' => [
-            'grade_levels' => DB::table('grade_levels')->orderBy('grade')->get(['id', 'grade', 'level']),
+            'grade_levels' => DB::table('grade_levels')
+                ->whereIn('id', $request->user()->gradeLevelIdsInScope())
+                ->orderBy('grade')
+                ->get(['id', 'grade', 'level']),
             'tracks' => DB::table('tracks')->orderBy('name')->get(['id', 'name']),
             'teachers' => $teachers,
             'rooms' => $rooms,
@@ -93,11 +100,38 @@ class ManagedSectionController extends Controller
 
     public function destroy(Request $request, Section $section, SectionService $service): JsonResponse
     {
-        Gate::authorize('manage', Section::class);
+        Gate::authorize('manage', [Section::class, $section->grade_level_id]);
 
         $service->delete($section, $request->user());
 
         return response()->json(['message' => "{$section->name} was deleted."]);
+    }
+
+    /**
+     * A misspelled track can go, but not one that sections or subjects are using.
+     */
+    public function destroyTrack(Request $request, int $track, AuditLogger $audit): JsonResponse
+    {
+        Gate::authorize('manage', Section::class);
+        // Tracks are shared by every grade, so only the Admin removes one.
+        abort_unless($request->user()->hasRole(User::ROLE_ADMIN), 403);
+
+        $row = DB::table('tracks')->where('id', $track)->first();
+        abort_unless($row, 404);
+
+        $sections = DB::table('sections')->where('track_id', $track)->count();
+        $subjects = DB::table('subjects')->where('track_id', $track)->count();
+
+        if ($sections + $subjects > 0) {
+            throw ValidationException::withMessages([
+                'track' => "{$row->name} is used by {$sections} sections and {$subjects} subjects, so it stays.",
+            ]);
+        }
+
+        DB::table('tracks')->where('id', $track)->delete();
+        $audit->log($request->user(), 'delete', 'tracks', $track, ['name' => $row->name]);
+
+        return response()->json(['message' => 'The track was deleted.']);
     }
 
     public function storeTrack(StoreTrackRequest $request, AuditLogger $audit): JsonResponse

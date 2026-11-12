@@ -24,7 +24,7 @@ export const CUSTOM_PRESET = "custom";
 
 /** "First Term", "Second Semester", ... */
 export function termName(position: number, label: string): string {
-  return `${ORDINALS[position] ?? `Term ${position + 1}`} ${label}`;
+  return `${ORDINALS[position] ?? `No. ${position + 1}`} ${label}`;
 }
 
 /**
@@ -94,7 +94,7 @@ export const SchoolYearSchema = z
           end_date: requiredDate,
         }),
       )
-      .min(1, "Add at least one term")
+      .min(1, "Add at least one")
       .max(MAX_TERMS),
   })
   .superRefine((year, context) => {
@@ -123,13 +123,13 @@ export const SchoolYearSchema = z
         context.addIssue({ code: "custom", path: ["terms", index, field], message });
 
       const nameKey = term.name.toLowerCase();
-      if (seenNames.has(nameKey)) fail("name", "Each term needs its own name");
+      if (seenNames.has(nameKey)) fail("name", "Each one needs its own name");
       seenNames.add(nameKey);
 
       const previous = year.terms[index - 1];
       if (term.start_date < year.start_date) fail("start_date", "Before the school year starts");
       else if (previous && term.start_date <= previous.end_date) {
-        fail("start_date", "Must start after the previous term ends");
+        fail("start_date", "Must start after the previous one ends");
       }
 
       if (term.end_date <= term.start_date) fail("end_date", "Must end after it starts");

@@ -35,14 +35,16 @@ export const SignUpSchema = z
     email: DepEdEmail,
     password: EmailPassword.password,
     confirmPassword: z.string().min(1, "Please confirm your password"),
+    accept_terms: z.boolean().refine((value) => value, "Please read and accept the Terms and Conditions."),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
+// The reset link goes to the account's official DepEd email, the one used to sign in.
 export const ForgotPasswordSchema = z.object({
-  email: EmailPassword.email,
+  email: DepEdEmail,
 });
 
 export const ResetPasswordSchema = z

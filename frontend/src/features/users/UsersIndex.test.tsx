@@ -52,6 +52,9 @@ function openPage() {
           method: init.method,
           body: init.body ? JSON.parse(init.body as string) : {},
         });
+        if (url.endsWith("/reset-password")) {
+          return new Response(JSON.stringify({ temporary_password: "ERC-ABCD-1234", message: "ok" }), { status: 200 });
+        }
         return new Response(JSON.stringify({ data: TEACHER }), { status: 200 });
       }
       const data = url.includes("access-options") ? OPTIONS : USERS;
@@ -168,6 +171,20 @@ describe("an active account", () => {
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].body).toEqual({ role: "teacher", grade_level_ids: [], teacher_id: 30 });
+  });
+
+  it("gets a temporary password after a warning, shown once", async () => {
+    const calls = openPage();
+
+    await manage("Change access: Linked Reyes");
+    await click("Give a temporary password");
+    expect(screen.getByText(/must choose a new password on the next sign-in/)).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+
+    await click("Yes, reset");
+
+    expect(await screen.findByText("ERC-ABCD-1234")).toBeInTheDocument();
+    expect(calls[0].url).toMatch(/\/users\/3\/reset-password$/);
   });
 
   it("can be deactivated after a warning", async () => {

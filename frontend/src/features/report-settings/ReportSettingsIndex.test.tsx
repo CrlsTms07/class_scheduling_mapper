@@ -24,6 +24,12 @@ const SETTINGS: ReportSettings = {
     phone: null,
     email: null,
     website: null,
+    facebook_url: null,
+    tagline: null,
+    vision: null,
+    mission: null,
+    core_values: null,
+    has_photo: false,
   },
   logos: ["data:image/png;base64,AAAA", "data:image/png;base64,BBBB"],
   max_logos: 4,
@@ -126,6 +132,13 @@ describe("school profile", () => {
       phone: "123",
       email: null,
       website: null,
+      region: null,
+      division: null,
+      facebook_url: null,
+      tagline: null,
+      vision: null,
+      mission: null,
+      core_values: null,
     });
     expect(await screen.findByText("The school details were saved.")).toBeInTheDocument();
   });
@@ -307,11 +320,11 @@ describe("signatories", () => {
     expect(calls[0].url).toMatch(/\/signatories\/1$/);
   });
 
-  it("warns before using these signatories in all terms", async () => {
+  it("warns before using these signatories for the whole year", async () => {
     const calls = openPage();
 
     await openTab("Signatories");
-    await click("Use First Term's signatories in all terms");
+    await click("Use First Term's signatories for the whole year");
 
     expect(screen.getByText(/What they have now will be replaced/)).toBeInTheDocument();
     expect(calls).toHaveLength(0);
@@ -319,6 +332,6 @@ describe("signatories", () => {
     await click("Yes, use in all");
 
     await waitFor(() => expect(calls[0]?.url).toMatch(/\/terms\/2\/signatories\/copy$/));
-    expect(await screen.findByText(/The other 2 terms of this school year/)).toBeInTheDocument();
+    expect(await screen.findByText(/The rest of this school year now uses/)).toBeInTheDocument();
   });
 });

@@ -32,6 +32,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'preferences' => 'array',
         ];
     }
 
@@ -54,6 +55,23 @@ class User extends Authenticatable
      *
      * @return array<int, int>
      */
+    /**
+     * The departments (JHS, SHS) of a Chairperson's or Master Teacher's grade levels. Null for
+     * everyone else, and for a scheduler with no grade level yet: nothing to keep apart.
+     *
+     * @return array<int, string>|null
+     */
+    public function departmentsInScope(): ?array
+    {
+        if (! $this->hasAnyRole(['glc', 'master_teacher'])) {
+            return null;
+        }
+
+        $levels = GradeLevel::whereIn('id', $this->gradeLevelIdsInScope())->distinct()->pluck('level')->all();
+
+        return $levels === [] ? null : $levels;
+    }
+
     public function gradeLevelIdsInScope(): array
     {
         if ($this->hasRole(self::ROLE_ADMIN)) {

@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   useAddTrack,
+  useDeleteTrack,
   useCreateSection,
   useDeleteSection,
   useManagedSections,
@@ -99,6 +100,9 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
   });
   const gradeId = useWatch({ control: form.control, name: "grade_level_id" });
   const roomId = useWatch({ control: form.control, name: "home_room_id" });
+  const adviserId = useWatch({ control: form.control, name: "adviser_id" });
+  const trackId = useWatch({ control: form.control, name: "track_id" });
+  const deleteTrack = useDeleteTrack();
   const shift = useWatch({ control: form.control, name: "shift" });
   const sharedWith = homeRoomSharedWith(
     sections ?? [],
@@ -176,6 +180,20 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
                 ))}
               </SelectField>
 
+              {trackId !== "" && (
+                <>
+                  {deleteTrack.isError && <FormAlert>{apiErrorMessage(deleteTrack.error)}</FormAlert>}
+                  <ConfirmDelete
+                    label="Delete this track"
+                    warning="This removes the track from the list. It only works if no section or subject uses it."
+                    isPending={deleteTrack.isPending}
+                    onConfirm={() =>
+                      deleteTrack.mutate(Number(trackId), { onSuccess: () => form.setValue("track_id", "") })
+                    }
+                  />
+                </>
+              )}
+
               {isAddingTrack ? (
                 <div className="space-y-2 rounded-md border p-3">
                   <label htmlFor="new-track" className="text-sm text-neutral-800">
@@ -235,24 +253,43 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
             ))}
           </SelectField>
 
-          {level !== "SHS" && (
-            <div className="space-y-2">
-              <SelectField form={form} name="home_room_id" label="Home room (optional)">
-                <NativeSelectOption value="">None yet</NativeSelectOption>
-                {options?.rooms.map(({ id, label }) => (
-                  <NativeSelectOption key={id} value={String(id)}>
-                    {label}
-                  </NativeSelectOption>
-                ))}
-              </SelectField>
-              {sharedWith.length > 0 && (
+          <SelectField form={form} name="co_adviser_id" label="Co-adviser (optional)">
+            <NativeSelectOption value="">None</NativeSelectOption>
+            {options?.teachers.map(({ id, name }) => (
+              <NativeSelectOption key={id} value={String(id)} disabled={String(id) === adviserId}>
+                {name}
+              </NativeSelectOption>
+            ))}
+          </SelectField>
+          <p className="text-xs text-neutral-700">
+            The adviser and co-adviser are the only teachers named on the public schedule.
+          </p>
+
+          <div className="space-y-2">
+            <SelectField
+              form={form}
+              name="home_room_id"
+              label={level === "SHS" ? "Usual room (optional)" : "Home room (optional)"}
+            >
+              <NativeSelectOption value="">None yet</NativeSelectOption>
+              {options?.rooms.map(({ id, label }) => (
+                <NativeSelectOption key={id} value={String(id)}>
+                  {label}
+                </NativeSelectOption>
+              ))}
+            </SelectField>
+            {level === "SHS" && (
+              <p className="text-xs text-neutral-700">
+                The plotter fills this in, so there are fewer taps. Each class can still use another room.
+              </p>
+            )}
+            {level !== "SHS" && sharedWith.length > 0 && (
                 <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                   This room is also the home room of {sharedWith.join(", ")} at the same time of
                   day. You can still save, but their schedules may conflict.
                 </p>
               )}
-            </div>
-          )}
+          </div>
 
           <FormTextField
             control={form.control}

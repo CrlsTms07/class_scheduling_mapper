@@ -21,6 +21,8 @@ const section = (overrides: Partial<ManagedSection> = {}): ManagedSection => ({
   track: null,
   adviser_id: 3,
   adviser: "Ana Reyes",
+  co_adviser_id: null,
+  co_adviser: null,
   home_room_id: 4,
   home_room: "Main – 101",
   class_size: 40,
@@ -35,6 +37,7 @@ describe("toSectionInput", () => {
     shift: "AM" as const,
     track_id: "2",
     adviser_id: "",
+    co_adviser_id: "",
     home_room_id: "4",
     class_size: "",
   };
@@ -47,12 +50,13 @@ describe("toSectionInput", () => {
       track_id: null,
       home_room_id: 4,
       adviser_id: null,
+      co_adviser_id: null,
       class_size: null,
     });
   });
 
-  it("keeps the track and drops the home room for Senior High", () => {
-    expect(toSectionInput(form, true)).toMatchObject({ track_id: 2, home_room_id: null });
+  it("keeps the track and the usual room for Senior High", () => {
+    expect(toSectionInput(form, true)).toMatchObject({ track_id: 2, home_room_id: 4 });
   });
 
   it("keeps a class size of zero", () => {
@@ -69,6 +73,7 @@ describe("toSectionForm", () => {
     expect(toSectionForm(section())).toMatchObject({
       grade_level_id: "1",
       adviser_id: "3",
+      co_adviser_id: "",
       class_size: "40",
       track_id: "",
     });

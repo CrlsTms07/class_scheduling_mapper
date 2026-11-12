@@ -19,8 +19,12 @@ describe("navigationFor", () => {
     );
   });
 
-  it("does not give the Admin teacher loading, because the Admin does not plot", () => {
-    expect(menuPaths("super_admin")).not.toContain("/teacher-loading");
+  it("gives the Admin the whole schedule process too (team decision, Nov 10, 2026)", () => {
+    expect(menuPaths("super_admin")).toEqual(expect.arrayContaining(["/dashboard", "/schedule", "/teacher-loading"]));
+  });
+
+  it("groups the menu as Main, Manage, Approvals, Reports and Settings for the Admin", () => {
+    expect(navigationFor("super_admin").map((group) => group.label)).toEqual(["Main", "Manage", "Approvals", "Reports", "Settings"]);
   });
 
   it.each<RoleName>(["glc", "master_teacher"])(
@@ -29,16 +33,33 @@ describe("navigationFor", () => {
       const paths = menuPaths(role);
 
       expect(paths).toEqual(
-        expect.arrayContaining(["/schedule", "/teacher-loading", "/subjects"]),
+        expect.arrayContaining(["/dashboard", "/schedule", "/teacher-loading", "/subjects", "/sections", "/buildings", "/time-slots", "/reports"]),
       );
       expect(paths).not.toContain("/approvals");
       expect(paths).not.toContain("/users");
-      expect(paths).not.toContain("/sections");
+      expect(paths).not.toContain("/school-years");
     },
   );
 
-  it("gives a teacher only their own schedule and profile", () => {
-    expect(menuPaths("teacher")).toEqual(["/my-schedule", "/my-profile"]);
+  it("gives a teacher a dashboard, and their own schedule and profile", () => {
+    expect(menuPaths("teacher")).toEqual(["/dashboard", "/my-schedule", "/my-profile"]);
+  });
+
+  it.each<RoleName>(["glc", "master_teacher"])(
+    "gives %s their own schedule only when they have a personnel record",
+    (role) => {
+      const pathsWith = (hasPersonnel: boolean) =>
+        navigationFor(role, hasPersonnel).flatMap((group) => group.items.map((item) => item.path));
+
+      expect(pathsWith(false)).not.toContain("/my-schedule");
+      expect(pathsWith(true)).toEqual(expect.arrayContaining(["/my-schedule", "/my-profile"]));
+    },
+  );
+
+  it("never gives the Admin a schedule of their own", () => {
+    expect(
+      navigationFor("super_admin", true).flatMap((group) => group.items.map((item) => item.path)),
+    ).not.toContain("/my-schedule");
   });
 
   it("hides a group with nothing to show", () => {
@@ -51,8 +72,8 @@ describe("navigationFor", () => {
 });
 
 describe("homePathFor", () => {
-  it("sends teachers to their schedule and everyone else to the dashboard", () => {
-    expect(homePathFor("teacher")).toBe("/my-schedule");
+  it("sends everyone with a role to the dashboard", () => {
+    expect(homePathFor("teacher")).toBe("/dashboard");
     expect(homePathFor("super_admin")).toBe("/dashboard");
     expect(homePathFor("glc")).toBe("/dashboard");
   });

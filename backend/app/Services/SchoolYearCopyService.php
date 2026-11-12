@@ -55,7 +55,11 @@ class SchoolYearCopyService
 
         DB::table('subjects')->insert($this->rowsFor($fitting, ['school_year_id' => $to->id]));
 
-        return ['subjects' => $fitting->count(), 'subjects_skipped' => $skipped->count()];
+        // Activities (Flag Ceremony, Catch-up Friday...) come along with the subjects.
+        $activities = DB::table('activities')->where('school_year_id', $from->id)->get();
+        DB::table('activities')->insert($this->rowsFor($activities, ['school_year_id' => $to->id]));
+
+        return ['subjects' => $fitting->count(), 'subjects_skipped' => $skipped->count(), 'activities' => $activities->count()];
     }
 
     /**

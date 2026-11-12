@@ -25,6 +25,15 @@ class RegisterRequest extends FormRequest
             'suffix' => ['nullable', 'string', 'max:10'],
             'email' => ['required', 'email', 'max:150', new DepEdEmail, 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'accept_terms' => ['accepted'],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['accept_terms.accepted' => 'Please read and accept the Terms and Conditions.'];
     }
 }

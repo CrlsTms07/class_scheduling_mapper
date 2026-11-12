@@ -11,7 +11,7 @@ const TermSelect = ({ className = "" }: { className?: string }) => {
 
   return (
     <NativeSelect
-      aria-label="Term"
+      aria-label={term.school_year.term_label}
       className={`[&_select]:h-11 [&_select]:text-xs ${className}`}
       value={term.id}
       onChange={(event) => selectTerm(Number(event.target.value))}

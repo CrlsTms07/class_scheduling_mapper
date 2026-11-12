@@ -18,7 +18,8 @@ it('emails a link that opens the React reset page', function () {
     $this->postJson('/api/forgot-password', ['email' => $user->email])->assertOk();
 
     Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
-        $url = $notification->toMail($user)->actionUrl;
+        // The school's own email template: the link is the button's address.
+        $url = (string) ($notification->toMail($user)->viewData['url'] ?? '');
 
         return str_starts_with($url, 'http://localhost:5173/reset-password?token=')
             && str_contains($url, urlencode($user->email));
