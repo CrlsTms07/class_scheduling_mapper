@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sheet";
 import AppSideBar from "./AppSideBar";
 import NotificationBell from "./NotificationBell";
-import SignOutButton from "./SignOutButton";
 import TermSelect from "./TermSelect";
 
 const AppHeader = () => {
@@ -40,9 +39,11 @@ const AppHeader = () => {
                 </Button>
               }
             />
-            <SheetContent side="left" className="overflow-y-auto">
+            <SheetContent side="left" className="flex flex-col overflow-y-auto">
               <SheetTitle className="px-8 pt-5 text-branding">Menu</SheetTitle>
-              <AppSideBar onNavigate={() => setIsMenuOpen(false)} />
+              <div className="flex-1">
+                <AppSideBar onNavigate={() => setIsMenuOpen(false)} />
+              </div>
             </SheetContent>
           </Sheet>
           <img
@@ -74,7 +75,6 @@ const AppHeader = () => {
             </div>
           </div>
           <NotificationBell />
-          <SignOutButton />
         </div>
       </div>
       <TermSelect className="sm:hidden mt-1 w-full" />

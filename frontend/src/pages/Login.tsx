@@ -11,7 +11,8 @@ import Container from "@/components/global-component/Container";
 import FormAlert from "@/components/global-component/FormAlert";
 import PasswordInput from "@/components/global-component/PasswordInput";
 import TermsDialog from "@/components/global-component/TermsDialog";
-import { useLogin } from "@/api/auth";
+import { isCodeRequired, useLogin, type CodeRequired } from "@/api/auth";
+import LoginCodeStep from "@/components/global-component/LoginCodeStep";
 import { applyApiErrors } from "@/lib/forms";
 import { homePathFor } from "@/lib/navigation";
 import React from "react";
@@ -20,6 +21,8 @@ import * as z from "zod";
 const Login = () => {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isTermsOpen, setIsTermsOpen] = React.useState(false);
+  // Set when the API sent a code to the DepEd email: the second step shows in place of the form.
+  const [codeStep, setCodeStep] = React.useState<CodeRequired | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -38,9 +41,13 @@ const Login = () => {
   const handleSignin = (data: z.infer<typeof SigninSchema>) => {
     setFormError(null);
     login.mutate(data, {
-      onSuccess: ({ data: user }) => {
+      onSuccess: (result) => {
+        if (isCodeRequired(result)) {
+          setCodeStep(result);
+          return;
+        }
         // Back to the page they tried to open, otherwise to their home page.
-        navigate(location.state?.from ?? homePathFor(user.role), { replace: true });
+        navigate(location.state?.from ?? homePathFor(result.data.role), { replace: true });
       },
       onError: (error) => setFormError(applyApiErrors(form, error)),
     });
@@ -50,9 +57,19 @@ const Login = () => {
     <>
       <Container>
         <AuthenticationLayout
-          title="Sign in to your account"
-          description="Enter your DepEd email below to access your account"
+          title={codeStep ? "Enter your sign-in code" : "Sign in to your account"}
+          description={codeStep ? "One more step to keep your account safe" : "Enter your DepEd email below to access your account"}
         >
+          {codeStep ? (
+            <LoginCodeStep
+              sent={codeStep}
+              onBack={() => {
+                setCodeStep(null);
+                form.setValue("password", "");
+              }}
+              onSignedIn={(user) => navigate(location.state?.from ?? homePathFor(user.role), { replace: true })}
+            />
+          ) : (
           <>
           {googleMessage && (
             <div className="mb-4">
@@ -169,6 +186,7 @@ const Login = () => {
             <TermsDialog open={isTermsOpen} onOpenChange={setIsTermsOpen} />
           </form>
           </>
+          )}
         </AuthenticationLayout>
       </Container>
     </>

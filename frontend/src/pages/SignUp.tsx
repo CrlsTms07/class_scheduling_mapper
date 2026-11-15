@@ -44,6 +44,7 @@ const BackToSignin = () => (
 const SignUp = () => {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isTermsOpen, setIsTermsOpen] = React.useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = React.useState(false);
   const signUp = useSignUp();
   const form = useForm<SignUpValues>({
     resolver: zodResolver(SignUpSchema),
@@ -56,6 +57,7 @@ const SignUp = () => {
       password: "",
       confirmPassword: "",
       accept_terms: false,
+      accept_privacy: false,
     },
     mode: "onSubmit",
   });
@@ -211,7 +213,36 @@ const SignUp = () => {
                           >
                             Terms and Conditions
                           </button>
-                          , including how my information is used under the Data Privacy Act.
+                          .
+                        </label>
+                      </div>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="accept_privacy"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <div className="flex items-start gap-3 rounded-md border p-3">
+                        <Checkbox
+                          id="accept_privacy"
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                          aria-invalid={fieldState.invalid}
+                          className="mt-0.5 size-5"
+                        />
+                        <label htmlFor="accept_privacy" className="text-sm text-neutral-800">
+                          I have read the{" "}
+                          <button
+                            type="button"
+                            className="inline-flex min-h-11 items-center align-middle font-medium text-branding underline underline-offset-2"
+                            onClick={() => setIsPrivacyOpen(true)}
+                          >
+                            Data Privacy Notice
+                          </button>{" "}
+                          and agree to the processing of my personal information under the Data Privacy Act of 2012 (RA 10173).
                         </label>
                       </div>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -223,6 +254,12 @@ const SignUp = () => {
                 open={isTermsOpen}
                 onOpenChange={setIsTermsOpen}
                 onAgree={() => form.setValue("accept_terms", true, { shouldValidate: true })}
+              />
+              <TermsDialog
+                document="privacy"
+                open={isPrivacyOpen}
+                onOpenChange={setIsPrivacyOpen}
+                onAgree={() => form.setValue("accept_privacy", true, { shouldValidate: true })}
               />
               <BackToSignin />
               <Button

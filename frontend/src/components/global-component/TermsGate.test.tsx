@@ -54,7 +54,7 @@ describe("Terms and Conditions on sign-in", () => {
   it("must be accepted before the dashboard opens", async () => {
     const posted = open({ ...USER, terms_accepted_at: null });
 
-    expect(screen.getByRole("heading", { name: "Terms and Conditions" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Terms and Conditions" })).toBeInTheDocument();
     expect(screen.queryByText("Dashboard page")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
 
@@ -63,6 +63,27 @@ describe("Terms and Conditions on sign-in", () => {
 
     expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
     await waitFor(() => expect(posted[0]).toContain("/me/accept-terms"));
+  });
+
+  it("asks for the Data Privacy Notice with its own box, and only what is missing", async () => {
+    const posted = open({ ...USER, terms_accepted_at: "2026-11-10T08:00:00Z", privacy_accepted_at: null });
+
+    expect(screen.getByRole("heading", { level: 1, name: "Data Privacy Notice" })).toBeInTheDocument();
+    expect(screen.getByText(/National Privacy Commission/)).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /Data Privacy Act of 2012/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => expect(posted[0]).toContain("/me/accept-terms"));
+  });
+
+  it("asks both, each with its own box, for a new account", () => {
+    open({ ...USER, terms_accepted_at: null, privacy_accepted_at: null });
+
+    expect(screen.getByRole("heading", { level: 1, name: "Terms and Data Privacy" })).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2);
   });
 
   it("is not asked again once accepted", () => {

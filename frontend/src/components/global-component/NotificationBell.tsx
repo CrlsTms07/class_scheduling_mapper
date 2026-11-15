@@ -1,12 +1,10 @@
 import React from "react";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { Link } from "react-router";
 import { useMe } from "@/api/auth";
 import { useNotifications } from "@/api/notifications";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { unreadCount } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const seenKey = (userId: number | undefined) => `notifications-seen-${userId ?? "none"}`;
 
@@ -30,14 +28,25 @@ function writeSeen(key: string, value: string): void {
 const NotificationBell = () => {
   const { data: user } = useMe();
   const { data: items = [] } = useNotifications();
-  const isPhonePortrait = useMediaQuery("(orientation: portrait) and (max-width: 767px)");
   const [isOpen, setIsOpen] = React.useState(false);
   const key = seenKey(user?.id);
   const [seenAt, setSeenAt] = React.useState(() => readSeen(key));
 
   const unread = unreadCount(items, seenAt);
 
+  // Escape closes the panel, like a dialog.
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setIsOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
   const open = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
     setIsOpen(true);
     const now = new Date().toISOString();
     writeSeen(key, now);
@@ -45,11 +54,13 @@ const NotificationBell = () => {
   };
 
   return (
-    <>
+    <div className="relative">
       <Button
         variant="ghost"
         size="icon"
         aria-label={unread > 0 ? `Notifications, ${unread} new` : "Notifications"}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
         className="relative size-11 rounded-full bg-mauve-100"
         onClick={open}
       >
@@ -61,13 +72,26 @@ const NotificationBell = () => {
         )}
       </Button>
 
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side={isPhonePortrait ? "bottom" : "right"} className="max-h-[90dvh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="text-branding">Notifications</SheetTitle>
-            <SheetDescription>What needs your attention, and the Admin's recent decisions.</SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-4">
+      {isOpen && (
+        <>
+          {/* A tap outside closes it. */}
+          <button type="button" aria-label="Close notifications" tabIndex={-1} className="fixed inset-0 z-40 cursor-default" onClick={() => setIsOpen(false)} />
+          {/* Under the bell: across the screen on phones, a panel on the right on computers. */}
+          <div
+            role="dialog"
+            aria-label="Notifications"
+            className="fixed inset-x-2 top-16 z-50 max-h-[75dvh] overflow-y-auto rounded-xl border bg-background shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96"
+          >
+          <div className="flex items-start justify-between gap-2 border-b p-4">
+            <div>
+              <p className="font-semibold text-branding">Notifications</p>
+              <p className="text-xs text-neutral-600">What needs your attention, and the Admin's recent decisions.</p>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0" aria-label="Close" onClick={() => setIsOpen(false)}>
+              <X />
+            </Button>
+          </div>
+          <div className="p-4">
             {items.length === 0 ? (
               <p className="text-sm text-neutral-700">Nothing new. You are all caught up.</p>
             ) : (
@@ -88,9 +112,10 @@ const NotificationBell = () => {
               </ul>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
-    </>
+          </div>
+        </>
+      )}
+    </div>
   );
 };
 

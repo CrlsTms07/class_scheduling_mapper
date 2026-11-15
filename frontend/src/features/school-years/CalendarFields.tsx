@@ -1,19 +1,37 @@
 import { Plus, Trash2 } from "lucide-react";
-import { useFieldArray, type UseFormReturn } from "react-hook-form";
-import { MAX_TERMS, termName } from "@/lib/schoolYear";
+import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
+import { dayMonthYear, MAX_TERMS, termName } from "@/lib/schoolYear";
 import type { SchoolYearInput } from "@/types/api";
 import FormTextField from "@/components/global-component/FormTextField";
 import { Button } from "@/components/ui/button";
 
 export type CalendarForm = UseFormReturn<SchoolYearInput>;
 
+/** The chosen date as day/month/year under a date field, or a reminder that it is not set yet. */
+const DateHint = ({ form, name }: { form: CalendarForm; name: `start_date` | `end_date` | `terms.${number}.start_date` | `terms.${number}.end_date` }) => {
+  const value = (useWatch({ control: form.control, name }) as string | undefined) ?? "";
+  const text = dayMonthYear(value);
+
+  return (
+    <p className={`text-xs ${text ? "text-neutral-700" : "text-amber-800"}`} aria-live="polite">
+      {text || "Not set yet (dd/mm/yyyy)"}
+    </p>
+  );
+};
+
 /** The school year's name and dates. */
 export const YearFields = ({ form }: { form: CalendarForm }) => (
   <div className="space-y-4">
     <FormTextField control={form.control} name="name" label="School year" placeholder="2027-2028" />
     <div className="grid grid-cols-2 gap-3">
-      <FormTextField control={form.control} name="start_date" label="First day" type="date" />
-      <FormTextField control={form.control} name="end_date" label="Last day" type="date" />
+      <div className="space-y-1">
+        <FormTextField control={form.control} name="start_date" label="First day" type="date" />
+        <DateHint form={form} name="start_date" />
+      </div>
+      <div className="space-y-1">
+        <FormTextField control={form.control} name="end_date" label="Last day" type="date" />
+        <DateHint form={form} name="end_date" />
+      </div>
     </div>
   </div>
 );
@@ -55,18 +73,24 @@ export const TermFields = ({ form, canChangeStructure, removeBlockedBy = [] }: T
               label={`Part ${index + 1} name`}
             />
             <div className="grid grid-cols-2 gap-3">
-              <FormTextField
-                control={form.control}
-                name={`terms.${index}.start_date`}
-                label="Starts"
-                type="date"
-              />
-              <FormTextField
-                control={form.control}
-                name={`terms.${index}.end_date`}
-                label="Ends"
-                type="date"
-              />
+              <div className="space-y-1">
+                <FormTextField
+                  control={form.control}
+                  name={`terms.${index}.start_date`}
+                  label="Starts"
+                  type="date"
+                />
+                <DateHint form={form} name={`terms.${index}.start_date`} />
+              </div>
+              <div className="space-y-1">
+                <FormTextField
+                  control={form.control}
+                  name={`terms.${index}.end_date`}
+                  label="Ends"
+                  type="date"
+                />
+                <DateHint form={form} name={`terms.${index}.end_date`} />
+              </div>
             </div>
           </li>
         ))}

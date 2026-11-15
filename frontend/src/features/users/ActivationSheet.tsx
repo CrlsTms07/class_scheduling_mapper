@@ -53,6 +53,10 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
   const [teacherId, setTeacherId] = React.useState<number | null>(user.personnel?.id ?? null);
 
   const requiredLevel = role ? ROLE_LEVEL[role] : undefined;
+  // The link to a teacher's record is what lets an account open My Schedule and My Profile. An Admin
+  // does not teach, so it is only shown for an Admin who already has one (to take it off).
+  const canHaveRecord = role !== "super_admin" || !!user.personnel;
+  const freeRecords = options?.teachers ?? [];
   const availableGrades =
     options?.grade_levels.filter(({ level }) => level === requiredLevel) ?? [];
   const error = activate.error ?? changeStatus.error ?? remove.error;
@@ -75,7 +79,7 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
         userId: user.id,
         role,
         grade_level_ids: requiredLevel ? gradeIds : [],
-        teacher_id: teacherId,
+        teacher_id: canHaveRecord ? teacherId : null,
       },
       { onSuccess: onClose },
     );
@@ -163,9 +167,10 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
                 </fieldset>
               )}
 
+              {canHaveRecord && (
               <div className="space-y-1">
                 <label htmlFor="access-teacher" className="text-sm text-neutral-800">
-                  Personnel record (optional)
+                  Teacher record (for My Schedule)
                 </label>
                 <NativeSelect
                   id="access-teacher"
@@ -179,16 +184,24 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
                       {user.personnel.name} (current)
                     </NativeSelectOption>
                   )}
-                  {options?.teachers.map(({ id, first_name, last_name }) => (
+                  {freeRecords.map(({ id, first_name, last_name }) => (
                     <NativeSelectOption key={id} value={id}>
                       {last_name}, {first_name}
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
                 <p className="text-xs text-neutral-700">
-                  A teacher needs this to see their own schedule.
+                  Links this account to the person's record on the Teachers page, so they see their own classes in My
+                  Schedule and their details in My Profile. A sign-up whose name matches a record is linked automatically.
                 </p>
+                {freeRecords.length === 0 && !user.personnel && (
+                  <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">
+                    Every teacher record already has an account, or none was added yet. Add the person on the Teachers page
+                    first, then come back to link them.
+                  </p>
+                )}
               </div>
+              )}
 
               <div className="flex flex-col gap-2 pt-2">
                 <Button

@@ -192,13 +192,24 @@ describe("an active account", () => {
 
     await manage("Change access: Linked Reyes");
 
-    expect(screen.getByLabelText(/Personnel record/)).toHaveValue("30");
+    expect(screen.getByLabelText(/Teacher record/)).toHaveValue("30");
     expect(screen.getByRole("option", { name: "Linked Reyes (current)" })).toBeInTheDocument();
 
     await click("Save changes");
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].body).toEqual({ role: "teacher", grade_level_ids: [], teacher_id: 30 });
+  });
+
+  it("explains the teacher record, and leaves it out for an Admin with none", async () => {
+    openPage();
+
+    await manage("Change access: Linked Reyes");
+    expect(screen.getByText(/so they see their own classes in My/)).toBeInTheDocument();
+
+    await userEvent.selectOptions(document.getElementById("access-role") as HTMLSelectElement, "super_admin");
+    // Linked Reyes already has a record, so it stays shown to be taken off.
+    expect(screen.getByLabelText(/Teacher record/)).toBeInTheDocument();
   });
 
   it("gets a temporary password after a warning, shown once", async () => {

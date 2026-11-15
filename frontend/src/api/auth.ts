@@ -27,16 +27,43 @@ export function useMe() {
  */
 export const session = { hasSignedOut: false };
 
+/** After the password, the API may ask for the code it sent to the DepEd email. */
+export type CodeRequired = { code_required: true; sent_to: string; minutes: number; message: string };
+export type LoginResult = DataResponse<User> | CodeRequired;
+
+export const isCodeRequired = (result: LoginResult): result is CodeRequired => "code_required" in result;
+
 export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (credentials: { email: string; password: string }) =>
-      api<DataResponse<User>>("/login", { method: "POST", body: credentials }),
+      api<LoginResult>("/login", { method: "POST", body: credentials }),
+    onSuccess: (result) => {
+      if (isCodeRequired(result)) return; // Not signed in yet: the code comes next.
+      session.hasSignedOut = false;
+      queryClient.setQueryData(ME_QUERY_KEY, result.data);
+    },
+  });
+}
+
+/** Step two: the 6-digit code from the email; the device can be remembered for 30 days. */
+export function useVerifyLoginCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: { code: string; remember_device: boolean }) =>
+      api<DataResponse<User>>("/login/code", { method: "POST", body }),
     onSuccess: ({ data }) => {
       session.hasSignedOut = false;
       queryClient.setQueryData(ME_QUERY_KEY, data);
     },
+  });
+}
+
+export function useResendLoginCode() {
+  return useMutation({
+    mutationFn: () => api<CodeRequired>("/login/code/resend", { method: "POST" }),
   });
 }
 
@@ -115,7 +142,8 @@ export function useAcceptTerms() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => api<DataResponse<User>>("/me/accept-terms", { method: "POST", body: { accept_terms: true } }),
+    mutationFn: () =>
+      api<DataResponse<User>>("/me/accept-terms", { method: "POST", body: { accept_terms: true, accept_privacy: true } }),
     onSuccess: ({ data }) => queryClient.setQueryData(ME_QUERY_KEY, data),
   });
 }

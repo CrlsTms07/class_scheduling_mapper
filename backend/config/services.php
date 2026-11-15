@@ -25,7 +25,7 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost:8000'), '/').'/auth/google/callback'),
     ],
 
-    // The Gmail API mailer (MAIL_MAILER=gmail-api): made once in Google Cloud, see docs/deployment.md.
+    // The Gmail API mailer (MAIL_MAILER=gmail): made once in Google Cloud, see docs/deployment.md.
     'gmail' => [
         'client_id' => env('GMAIL_CLIENT_ID'),
         'client_secret' => env('GMAIL_CLIENT_SECRET'),

@@ -20,6 +20,8 @@ export type User = {
   status: AccountStatus;
   /** Null until the Terms and Conditions are accepted. */
   terms_accepted_at?: string | null;
+  /** When the Data Privacy Notice (RA 10173) was agreed to; null asks again at sign-in. */
+  privacy_accepted_at?: string | null;
   /** Set after the Admin gave a temporary password. */
   must_change_password?: boolean;
   role: RoleName | null;

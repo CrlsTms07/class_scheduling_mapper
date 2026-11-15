@@ -15,6 +15,7 @@ function signUpData(array $overrides = []): array
         'password' => 'Password123!',
         'password_confirmation' => 'Password123!',
         'accept_terms' => true,
+        'accept_privacy' => true,
         ...$overrides,
     ];
 }
@@ -85,7 +86,32 @@ it('asks an older account to accept the Terms and Conditions once, on sign-in', 
     $this->getJson('/api/me')->assertOk()->assertJsonPath('data.terms_accepted_at', null);
     $this->postJson('/api/me/accept-terms', ['accept_terms' => false])->assertUnprocessable();
 
-    $this->postJson('/api/me/accept-terms', ['accept_terms' => true])->assertOk();
-    expect($user->fresh()->terms_accepted_at)->not->toBeNull();
+    $this->postJson('/api/me/accept-terms', ['accept_terms' => true])->assertUnprocessable(); // the privacy notice too
+    $this->postJson('/api/me/accept-terms', ['accept_terms' => true, 'accept_privacy' => true])->assertOk();
+    expect($user->fresh()->terms_accepted_at)->not->toBeNull()
+        ->and($user->fresh()->privacy_accepted_at)->not->toBeNull();
     $this->getJson('/api/me')->assertJsonPath('data.terms_accepted_at', fn ($value) => $value !== null);
+});
+
+it('needs the Data Privacy Notice agreed to on its own, and keeps when it was', function () {
+    $this->postJson('/api/register', signUpData(['accept_privacy' => false]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['accept_privacy' => 'Data Privacy Notice']);
+
+    $this->postJson('/api/register', signUpData())->assertCreated();
+
+    expect(\App\Models\User::where('email', 'juan.delacruz@deped.gov.ph')->value('privacy_accepted_at'))->not->toBeNull();
+});
+
+it('asks an account that accepted only the terms for the privacy notice alone', function () {
+    $this->withHeader('Referer', 'http://localhost:5173');
+    $this->seed(\Database\Seeders\ReferenceDataSeeder::class);
+    $user = \App\Models\User::factory()->create(['status' => 'active', 'terms_accepted_at' => now()])->assignRole('teacher');
+    $this->actingAs($user);
+
+    $this->getJson('/api/me')->assertJsonPath('data.privacy_accepted_at', null);
+    $this->postJson('/api/me/accept-terms', [])->assertUnprocessable()->assertJsonValidationErrors(['accept_privacy']);
+    $this->postJson('/api/me/accept-terms', ['accept_privacy' => true])->assertOk();
+
+    expect($user->fresh()->privacy_accepted_at)->not->toBeNull();
 });

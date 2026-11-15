@@ -100,7 +100,7 @@ class DemoDataSeeder extends Seeder
                 'last_name' => ucwords(str_replace(['.', '_'], ' ', $role)),
                 'status' => 'active',
             ]);
-            $user->forceFill(['terms_accepted_at' => now()])->save();
+            $user->forceFill(['terms_accepted_at' => now(), 'privacy_accepted_at' => now()])->save();
             $user->assignRole($role);
 
             foreach ($grades as $grade) {

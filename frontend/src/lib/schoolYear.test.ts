@@ -69,11 +69,11 @@ describe("suggestNextYear", () => {
     end_date: "2028-02-29",
   } as SchoolYear;
 
-  it("moves the latest year forward by one, keeping dates real", () => {
+  it("suggests the next name, and leaves the dates for the Admin to set", () => {
     expect(suggestNextYear(latest)).toEqual({
       name: "2027-2028",
-      start_date: "2027-06-01",
-      end_date: "2029-02-28",
+      start_date: "",
+      end_date: "",
     });
   });
 

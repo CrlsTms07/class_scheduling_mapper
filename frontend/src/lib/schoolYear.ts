@@ -50,22 +50,28 @@ export function buildTerms(
   }));
 }
 
-const nextYearOf = (date: string) => {
-  const [year, month, day] = date.split("-");
-  const safeDay = month === "02" && day === "29" ? "28" : day;
-  return `${Number(year) + 1}-${month}-${safeDay}`;
-};
-
-/** The wizard starts from the year after the latest one. */
+/**
+ * The wizard suggests the name of the year after the latest one. The dates start empty, so the
+ * Admin sets them on purpose instead of keeping a guess (team decision, Nov 16, 2026).
+ */
 export function suggestNextYear(latest: SchoolYear | undefined, today = new Date()) {
   const firstYear = latest ? Number(latest.name.slice(0, 4)) + 1 : today.getFullYear();
   const isReadable = !Number.isNaN(firstYear);
 
   return {
     name: isReadable ? `${firstYear}-${firstYear + 1}` : "",
-    start_date: latest ? nextYearOf(latest.start_date) : "",
-    end_date: latest ? nextYearOf(latest.end_date) : "",
+    start_date: "",
+    end_date: "",
   };
+}
+
+/** "2027-06-08" as "08/06/2027 · Tuesday" (day/month/year); empty until a date is chosen. */
+export function dayMonthYear(date: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  const [year, month, day] = date.split("-");
+  const weekday = new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+
+  return `${day}/${month}/${year} · ${weekday}`;
 }
 
 /** A date from the API, as "Jun 1, 2026". */
