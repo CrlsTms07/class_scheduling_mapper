@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fil"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Class Scheduling System — Demo v2 (YT flow)</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --panel:#fff; --ink:#1b2430; --muted:#6b7684; --line:#e3e7ec;
+    --brand:#1f5fbf; --brand-soft:#e8f0fc; --ok:#1e8e5a; --ok-soft:#e5f5ec;
+    --bad:#c9372c; --bad-soft:#fdecea; --warn:#b26a00; --warn-soft:#fff4e0;
+    --act:#eef0f3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);font-size:14px;overflow:hidden}
+  #stage{position:relative;width:1280px;height:720px;overflow:hidden;background:var(--bg)}
+  /* app chrome */
+  .app{display:grid;grid-template-columns:210px 1fr;grid-template-rows:56px 1fr;height:100%}
+  .topbar{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:13px}
+  .user{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:700;font-size:12px}
+  .role{background:var(--brand-soft);color:var(--brand);padding:3px 9px;border-radius:99px;font-weight:600;font-size:12px}
+  .side{background:var(--panel);border-right:1px solid var(--line);padding:16px 12px}
+  .side a{display:block;padding:9px 12px;border-radius:8px;color:var(--muted);text-decoration:none;margin-bottom:2px;font-weight:500}
+  .side a.on{background:var(--brand-soft);color:var(--brand);font-weight:600}
+  .side .sect{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9aa4b0;margin:14px 12px 6px}
+  .main{padding:20px 26px 110px;overflow:hidden}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 16px}
+  .row{display:flex;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  table{border-collapse:collapse;width:100%}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);font-size:13px}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+  .p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)}
+  .p-warn{background:var(--warn-soft);color:var(--warn)} .p-gray{background:var(--act);color:var(--muted)}
+  .p-blue{background:var(--brand-soft);color:var(--brand)}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:13px;color:var(--ink)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.ghost{color:var(--brand);border-color:#c9d9f3}
+  .bar{height:8px;border-radius:99px;background:var(--act);overflow:hidden;width:140px;display:inline-block;vertical-align:middle;margin-right:8px}
+  .bar i{display:block;height:100%;background:var(--ok)}
+  .bar i.over{background:var(--bad)}
+  /* timetable */
+  .tt{border-collapse:separate;border-spacing:4px;width:100%}
+  .tt th{border:none;text-align:center;padding:4px}
+  .tt td{border:none;padding:0;height:52px;vertical-align:top}
+  .tt td.time{width:96px;color:var(--muted);font-size:12px;padding-top:8px;text-align:right;padding-right:6px}
+  .cell{height:100%;border-radius:8px;border:1px dashed #cfd6de;background:#fafbfc;padding:6px 8px;font-size:12px;line-height:1.25}
+  .cell b{display:block;font-size:12.5px}
+  .cell span{color:var(--muted);font-size:11.5px}
+  .cell.f{border:1px solid transparent}
+  .cell.act{background:var(--act);color:var(--muted);text-align:center;padding-top:9px;font-weight:600}
+  .cell.sel{border:2px solid var(--brand);background:var(--brand-soft)}
+  .cell.bad{border:2px solid var(--bad);background:var(--bad-soft)}
+  .cell.new{border:2px solid var(--ok);background:var(--ok-soft)}
+  .c1{background:#e7f0ff}.c2{background:#fdeedd}.c3{background:#e6f6ee}.c4{background:#f3e8fb}.c5{background:#fff3c9}.c6{background:#fde7ef}
+  /* overlays */
+  .modal-bg{position:absolute;inset:0;background:rgba(20,28,40,.38);display:grid;place-items:center}
+  .modal{width:440px;background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 18px 50px rgba(0,0,0,.2)}
+  .modal h3{margin:0 0 6px;font-size:17px}
+  .field{margin:12px 0}
+  .field label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
+  .select{border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;justify-content:space-between;background:#fff}
+  .select.focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .select.err{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}
+  .alert{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.4;margin-top:10px}
+  .alert.bad{background:var(--bad-soft);color:#8c231b;border:1px solid #f3c2bd}
+  .alert.ok{background:var(--ok-soft);color:#14603d;border:1px solid #bfe5cf}
+  .toast{position:absolute;bottom:112px;right:30px;background:#14202e;color:#fff;padding:11px 16px;border-radius:10px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+  .cursor{position:absolute;width:22px;height:22px;pointer-events:none;z-index:50}
+  /* demo overlays */
+  .caption{position:absolute;left:50%;transform:translateX(-50%);bottom:22px;width:1040px;background:rgba(17,25,36,.93);color:#fff;border-radius:14px;padding:14px 22px;display:flex;gap:18px;align-items:center;z-index:60}
+  .caption .num{flex:none;width:44px;height:44px;border-radius:12px;background:var(--brand);display:grid;place-items:center;font-weight:800;font-size:18px}
+  .caption .t{font-weight:700;font-size:16px;margin-bottom:2px}
+  .caption .d{color:#c9d3df;font-size:14px;line-height:1.4}
+  .steps{position:absolute;top:66px;right:24px;display:flex;gap:4px;z-index:55}
+  .steps div{font-size:11px;font-weight:700;padding:4px 9px;border-radius:99px;background:#fff;border:1px solid var(--line);color:#9aa4b0}
+  .steps div.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .steps div.done{color:var(--ok);border-color:#bfe5cf;background:var(--ok-soft)}
+  /* title cards */
+  .card-full{position:absolute;inset:0;background:linear-gradient(135deg,#123b7a,#1f5fbf);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 110px}
+  .card-full h2{font-size:46px;margin:0 0 12px;letter-spacing:-.01em}
+  .card-full p{font-size:20px;color:#d6e3f7;margin:0;max-width:820px;line-height:1.5}
+  .card-full .tag{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9fc0ef;margin-bottom:18px}
+  .flow{display:flex;align-items:center;gap:10px;margin-top:34px;flex-wrap:wrap}
+  .flow .n{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px}
+  .flow .n small{display:block;font-weight:500;color:#bcd2f2;font-size:12px;margin-top:2px}
+  .flow .ar{color:#9fc0ef;font-size:22px}
+  /* phone */
+  .phone{width:300px;height:600px;border-radius:38px;background:#111;padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .screen{width:100%;height:100%;border-radius:28px;background:var(--bg);overflow:hidden}
+  .pbar{background:#fff;padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+  .tabs{display:flex;gap:6px;margin-top:10px}
+  .tabs span{flex:1;text-align:center;font-size:12px;font-weight:600;padding:6px;border-radius:8px;background:var(--act);color:var(--muted)}
+  .tabs span.on{background:var(--brand);color:#fff}
+  .li{background:#fff;margin:8px 12px;border-radius:12px;padding:10px 12px;border-left:4px solid var(--brand);font-size:12.5px}
+  .li b{display:block;font-size:13.5px}
+  .li span{color:var(--muted)}
+  /* pdf */
+  .paper{background:#fff;width:560px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:22px 26px;font-family:"DejaVu Serif",serif;font-size:11px}
+  .paper .hd{text-align:center;line-height:1.35}
+  .paper table td,.paper table th{border:1px solid #333;padding:4px 5px;font-size:10.5px;text-align:center;font-family:Inter,sans-serif}
+
+  .tt.compact{border-spacing:3px}
+  .tt.compact td{height:37px}
+  .tt.compact .cell{padding:3px 7px;font-size:11px}
+  .tt.compact .cell b{font-size:11.5px}
+  .tt.compact .cell span{font-size:10.5px}
+  .tt.compact td.time{padding-top:5px;font-size:11px}
+  .tt.compact .cell.act{padding-top:9px;font-size:11px}
+  .cell.plain{background:#fff;border:1px solid var(--line)}
+  .cell.plain.alt{background:#eef1f5}
+  .cell.actv{background:#fff1d6;color:#8a5300;border:1px solid #f1d39b;text-align:center;font-weight:700;padding-top:10px !important}
+  .cell.vac{border:1px dashed #d8dee5;background:transparent;color:#b3bcc6;text-align:center;padding-top:10px !important}
+  .c7{background:#e2f4f6}
+  .tbar{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+  .tlab{font-size:12px;color:var(--muted);font-weight:600}
+  .switch{width:36px;height:20px;border-radius:99px;background:#cfd6de;position:relative;display:inline-block}
+  .switch i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+  .switch.on{background:var(--brand)} .switch.on i{left:18px}
+  .seg{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+  .seg.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .stepcard{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .sn{width:40px;height:40px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:800;font-size:17px}
+  .cnt{margin-left:auto;color:var(--muted);font-size:13px;font-weight:600}
+  .chk{padding:6px 0;font-size:13.5px}
+  tr.newrow td{background:var(--ok-soft)}
+  tr.overrow td{background:var(--bad-soft)}
+  .steps div{padding:4px 8px}
+  .steps{top:15px !important;left:50%;right:auto !important;transform:translateX(-50%)}
+</style></head><body><div id="stage"></div><script>
+/* ================= Sample data (fictional) ================= */
+const DAYS=["Mon","Tue","Wed","Thu","Fri"];
+const ALL_SLOTS=[
+  {id:"s1",label:"7:30 – 8:15"},
+  {id:"s2",label:"8:15 – 9:00"},
+  {id:"s3",label:"9:00 – 9:45"},
+  {id:"r1",label:"9:45 – 10:00",activity:"RECESS"},
+  {id:"s4",label:"10:00 – 10:45"},
+  {id:"s5",label:"10:45 – 11:30"},
+  {id:"r2",label:"11:30 – 1:00",activity:"LUNCH BREAK"},
+  {id:"s6",label:"1:00 – 1:45"},
+  {id:"s7",label:"1:45 – 2:30"},
+  {id:"s8",label:"2:30 – 3:15"},
+];
+const CLASS_SLOTS=["s1","s2","s3","s4","s5","s6","s7"];
+const T={
+  santos:{name:"Ms. Ana Santos",dept:"Math",group:1,load:24},
+  garcia:{name:"Mr. Paolo Garcia",dept:"Math",group:1,load:21},
+  cruz:{name:"Ms. Liza Cruz",dept:"Science",group:1,load:24},
+  bautista:{name:"Ms. Nina Bautista",dept:"Science",group:1,load:18},
+  reyes:{name:"Mr. Jose Reyes",dept:"English",group:2,load:27},
+  dp:{name:"Mr. Mark Dela Peña",dept:"Filipino",group:2,load:33},
+  lim:{name:"Ms. Grace Lim",dept:"Araling Panlipunan",group:2,load:24},
+  torres:{name:"Mr. Ben Torres",dept:"MAPEH",group:2,load:21},
+  mendoza:{name:"Ms. Carla Mendoza",dept:"ESP",group:2,load:15},
+};
+const MAXLOAD=30;
+const SUBJ={MATH:["Math 10","c1","santos"],SCI:["Science 10","c3","cruz"],ENG:["English 10","c2","reyes"],FIL:["Filipino 10","c4","dp"],AP:["AP 10","c5","lim"],MAPEH:["MAPEH 10","c6","torres"],ESP:["ESP 10","c7","mendoza"]};
+const ORDER=["MATH","SCI","ENG","FIL","AP","MAPEH","ESP"];
+const SECTIONS=["Grade 10 – Rizal","Grade 10 – Bonifacio","Grade 10 – Mabini","Grade 10 – Luna"];
+const ROOM={"Grade 10 – Rizal":"Rm 201","Grade 10 – Bonifacio":"Rm 202","Grade 10 – Mabini":"Rm 203","Grade 10 – Luna":"Rm 204"};
+
+/* Latin-square plotting: at any slot, the 4 sections hold different subjects -> no teacher clash */
+const SCHED={};
+SECTIONS.forEach((sec,j)=>{SCHED[sec]={};DAYS.forEach((d,di)=>CLASS_SLOTS.forEach((sl,i)=>{
+  if(d==="Mon"&&sl==="s1")return; // flag ceremony
+  const k=ORDER[(i+j+di)%7]; SCHED[sec][d+"|"+sl]={subj:k,teacher:SUBJ[k][2]};
+}));});
+const FLAG={subj:"_FLAG"};
+function withActivity(){ // Catch-up Friday for all Grade 10 at Fri 8:15
+  const c=JSON.parse(JSON.stringify(SCHED));
+  SECTIONS.forEach(s=>c[s]["Fri|s2"]={activity:"CATCH-UP FRIDAY"});
+  return c;
+}
+
+/* ================= Core logic (same rules the Laravel API would enforce) ================= */
+function checkConflict(sched,section,day,slot,teacher){
+  for(const [sec,s] of Object.entries(sched)){ if(sec===section)continue;
+    const c=s[day+"|"+slot]; if(c&&c.teacher===teacher) return {with:sec,subj:SUBJ[c.subj][0]}; }
+  return null;
+}
+function busy(sched,teacher,day,slot){return Object.values(sched).some(s=>{const c=s[day+"|"+slot];return c&&c.teacher===teacher;});}
+function teacherClasses(sched,teacher,day){
+  const out=[]; for(const sl of CLASS_SLOTS) for(const [sec,s] of Object.entries(sched)){const c=s[day+"|"+sl]; if(c&&c.teacher===teacher) out.push({sl,sec,subj:SUBJ[c.subj][0]});}
+  return out;
+}
+/* Generate Sub: vacant teachers of the SAME GROUP at that slot, max 5 (same idea as the YT tool) */
+function substitutes(sched,absent,day,slot,groupsMode){
+  return Object.keys(T).filter(k=>k!==absent && (groupsMode==="one"||T[k].group===T[absent].group) && !busy(sched,k,day,slot))
+    .sort((a,b)=>T[a].load-T[b].load).slice(0,5);
+}
+
+/* ================= Render helpers ================= */
+function chrome(role,user,ini,menu,active,body){
+  return `<div class="app"><div class="topbar"><div class="logo"><div class="mark">CS</div>ERCIHS Class Scheduling System</div>
+   <div class="user"><span class="role">${role}</span>${user}<div class="avatar">${ini}</div></div></div>
+   <div class="side">${menu.map(m=>m.startsWith("#")?`<div class="sect">${m.slice(1)}</div>`:`<a class="${m===active?'on':''}">${m}</a>`).join("")}</div>
+   <div class="main">${body}</div></div>`;
+}
+const GLC_MENU=["#JHS Scheduler","Home","1. Subjects & Sections","2. Teachers","3. Load Distribution","4. Plot","#Outputs","Class Programs","Generate Substitute"];
+const ADMIN_MENU=["#Admin","Dashboard","Approvals","Generate Substitute","Reports & Export","Terms","Users & Roles"];
+const glc=(a,b)=>chrome("GLC · JHS","Juan Dela Cruz","JD",GLC_MENU,a,b);
+const admin=(a,b)=>chrome("Admin","Maria Ramos","MR",ADMIN_MENU,a,b);
+function cursor(x,y){return `<svg class="cursor" style="left:${x}px;top:${y}px" viewBox="0 0 24 24"><path d="M3 2l7 19 2.6-7.4L20 11z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;}
+const STEPS=["Import","Setup","Load","Plot","Approve","Export","Substitute"];
+function steps(n){return `<div class="steps">${STEPS.map((s,i)=>`<div class="${i+1===n?'on':i+1<n?'done':''}">${s}</div>`).join("")}</div>`;}
+function cap(num,t,d){return `<div class="caption"><div class="num">${num}</div><div><div class="t">${t}</div><div class="d">${d}</div></div></div>`;}
+const toast=t=>`<div class="toast">${t}</div>`;
+
+function grid(sec,sched,{rows=10,color=true,hl={},compact=true}={}){
+  const slots=ALL_SLOTS.slice(0,rows);
+  let h=`<table class="tt ${compact?'compact':''}"><tr><th></th>${DAYS.map(d=>`<th>${d}</th>`).join("")}</tr>`;
+  slots.forEach((sl,ri)=>{
+    h+=`<tr><td class="time">${sl.label}</td>`;
+    if(sl.activity){h+=`<td colspan="5"><div class="cell act">${sl.activity}</div></td></tr>`;return;}
+    DAYS.forEach((d,di)=>{
+      const key=d+"|"+sl.id, c=sched[sec][key], x=hl[key]||"";
+      const alt=!color&&((ri+di)%2)?"alt":"";
+      if(d==="Mon"&&sl.id==="s1"){h+=`<td><div class="cell act ${x}">FLAG CEREMONY</div></td>`;return;}
+      if(c&&c.activity){h+=`<td><div class="cell actv ${x}">${c.activity}</div></td>`;return;}
+      if(c){h+=`<td><div class="cell f ${color?SUBJ[c.subj][1]:'plain '+alt} ${x}"><b>${SUBJ[c.subj][0]}</b><span>${T[c.teacher].name}</span></div></td>`;return;}
+      h+=`<td><div class="cell ${x}"></div></td>`;
+    });
+    h+=`</tr>`;
+  });
+  return h+`</table>`;
+}
+function teacherGrid(sched,teacher){
+  let h=`<table class="tt compact"><tr><th></th>${DAYS.map(d=>`<th>${d}</th>`).join("")}</tr>`;
+  ALL_SLOTS.forEach(sl=>{
+    h+=`<tr><td class="time">${sl.label}</td>`;
+    if(sl.activity){h+=`<td colspan="5"><div class="cell act">${sl.activity}</div></td></tr>`;return;}
+    DAYS.forEach(d=>{
+      if(d==="Mon"&&sl.id==="s1"){h+=`<td><div class="cell act">FLAG CEREMONY</div></td>`;return;}
+      const hit=Object.entries(sched).find(([s,v])=>{const c=v[d+"|"+sl.id];return c&&(c.teacher===teacher||c.activity);});
+      if(hit){const c=hit[1][d+"|"+sl.id];
+        if(c.activity){h+=`<td><div class="cell actv">${c.activity}</div></td>`;return;}
+        h+=`<td><div class="cell f c1"><b>${SUBJ[c.subj][0]}</b><span>${hit[0].replace("Grade 10 – ","G10-")} · ${ROOM[hit[0]]}</span></div></td>`;}
+      else h+=`<td><div class="cell vac">vacant</div></td>`;
+    });
+    h+=`</tr>`;
+  });
+  return h+`</table>`;
+}
+function toolbar(color,rows){
+  return `<div class="tbar"><span class="tlab">Color coding</span><span class="switch ${color?'on':''}"><i></i></span>
+   <span class="tlab" style="margin-left:18px">Time slots</span>${[8,10,14,16].map(n=>`<span class="seg ${n===rows?'on':''}">${n}</span>`).join("")}</div>`;
+}
+
+/* ================= Screens ================= */
+function home(state){
+  const imported=state!=="empty";
+  const c=(n,t,s,cnt)=>`<div class="stepcard"><div class="sn">${n}</div><div><b>${t}</b><div class="sub" style="margin:2px 0 0">${s}</div></div><div class="cnt">${cnt}</div></div>`;
+  return glc("Home",`<h1>Automated Class & Teacher Scheduler</h1><p class="sub">S.Y. 2026–2027 · Term 1 · Junior High School</p>
+   <div class="row"><div style="flex:1;display:grid;gap:10px">
+     ${c(1,"Subjects & Sections","Subjects, activities at sections",imported?"9 subjects · 4 sections":"—")}
+     ${c(2,"Teachers","Teacher data at substitute group",imported?"9 teachers":"—")}
+     ${c(3,"Load Distribution","Ilang load bawat teacher",imported?"1 overload":"—")}
+     ${c(4,"Plot","I-schedule ang bawat section",imported?"Draft":"—")}
+   </div>
+   <div style="width:330px;display:grid;gap:10px;align-content:start">
+     <div class="card"><b>Mabilis na simula</b><div class="sub" style="margin:4px 0 10px">Kopyahin ang data ng nakaraang term</div>
+       <span class="btn primary" style="width:100%;justify-content:center">⤓ Import previous data</span></div>
+     <div class="card"><b>Outputs</b><div style="display:grid;gap:8px;margin-top:10px">
+       <span class="btn ghost">🗓 Teacher class programs</span><span class="btn ghost">🗓 Section class programs</span><span class="btn ghost">⇄ Generate Substitute</span></div></div>
+   </div></div>`);
+}
+function importModal(progress){
+  const items=["Subjects & activities","Sections & rooms","Teachers & groups","Time slots (10 rows)"];
+  return `<div class="modal-bg"><div class="modal"><h3>Import previous data</h3><div class="sub" style="margin:0 0 10px">Pagkunan: S.Y. 2025–2026 · Term 3</div>
+   ${items.map(i=>`<div class="chk">☑ ${i}</div>`).join("")}<div class="chk" style="color:var(--muted)">☐ Plotted schedules (magsisimula sa bagong draft)</div>
+   ${progress?`<div style="margin-top:14px"><div class="bar" style="width:100%"><i style="width:${progress}%"></i></div><div class="sub" style="margin:6px 0 0">Kinokopya… ${progress}%</div></div>`:""}
+   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><span class="btn">Cancel</span><span class="btn primary">Import</span></div></div></div>`;
+}
+function subjectsScreen(){
+  const rows=[["MATH10","Math 10","Subject","4 hrs/wk"],["SCI10","Science 10","Subject","4 hrs/wk"],["ENG10","English 10","Subject","4 hrs/wk"],["FIL10","Filipino 10","Subject","4 hrs/wk"],["AP10","AP 10","Subject","3 hrs/wk"],["FLAG","Flag Ceremony","Activity","Mon 7:30"],["RECESS","Recess","Activity","Daily"],["LUNCH","Lunch Break","Activity","Daily"],["CUF","Catch-up Friday","Activity","Fri · Grade 10"]];
+  return glc("1. Subjects & Sections",`<h1>1. Subjects & Sections</h1><p class="sub">Ang activities ay ine-encode na parang subject, kaya awtomatikong lalabas sa schedules</p>
+   <div class="row"><div class="card" style="flex:1.4"><table><tr><th>Code</th><th>Subject / Activity</th><th>Type</th><th>Time</th></tr>
+   ${rows.map((r,i)=>`<tr class="${i===8?'newrow':''}"><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${r[2]==="Activity"?'<span class="pill p-gray">Activity</span>':'<span class="pill p-blue">Subject</span>'}</td><td>${r[3]}</td></tr>`).join("")}</table></div>
+   <div class="card" style="flex:1"><b>Sections · Grade 10</b><table style="margin-top:6px"><tr><th>Section</th><th>Room</th><th>Adviser</th></tr>
+   ${SECTIONS.map((s,i)=>`<tr><td>${s.replace("Grade 10 – ","")}</td><td>${ROOM[s]}</td><td>${Object.values(T)[i].name.replace(/^(Ms\.|Mr\.) /,"")}</td></tr>`).join("")}</table></div></div>`);
+}
+function teachersScreen(){
+  return glc("2. Teachers",`<h1>2. Teachers</h1><p class="sub">Ang <b>Sub Group</b> ang gagamitin ng Generate Substitute. Maliit na school? Gawing iisang group lahat.</p>
+   <div class="card"><table><tr><th>Teacher</th><th>Department</th><th>Sub Group</th><th>Email (DepEd)</th></tr>
+   ${Object.entries(T).map(([k,t])=>`<tr><td><b>${t.name}</b></td><td>${t.dept}</td><td><span class="pill ${t.group===1?'p-blue':'p-warn'}">Group ${t.group} · ${t.group===1?'Math & Science':'Languages & others'}</span></td><td style="color:var(--muted)">${k}@deped.gov.ph</td></tr>`).join("")}</table></div>`);
+}
+function loadScreen(){
+  return glc("3. Load Distribution",`<h1>3. Load Distribution</h1><p class="sub">Ilang oras bawat linggo ang hawak ng bawat teacher. Naka-highlight ang overload (lampas ${MAXLOAD} hrs).</p>
+   <div class="card"><table><tr><th>Teacher</th><th>Subjects / Sections</th><th>Load (hrs/wk)</th><th>Status</th></tr>
+   ${Object.values(T).map(t=>{const over=t.load>MAXLOAD;return `<tr class="${over?'overrow':''}"><td><b>${t.name}</b></td><td>${t.dept} · ${Math.round(t.load/4)} sections</td>
+   <td><span class="bar"><i class="${over?'over':''}" style="width:${Math.min(100,t.load/MAXLOAD*100)}%"></i></span>${t.load} / ${MAXLOAD}</td>
+   <td>${over?'<span class="pill p-bad">Overload</span>':'<span class="pill p-ok">OK</span>'}</td></tr>`;}).join("")}</table></div>`);
+}
+function plotScreen(sec,sched,opt,extra="",status="Draft"){
+  const st=status==="Draft"?'<span class="pill p-gray">Draft</span>':'<span class="pill p-blue">Submitted</span>';
+  return glc("4. Plot",`<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
+   <div><h1>4. Plot · ${sec}</h1><p class="sub" style="margin:0">${ROOM[sec]} · ${st}</p></div>${toolbar(opt.color!==false,opt.rows||10)}</div>
+   <div class="card" style="padding:4px 8px">${grid(sec,sched,opt)}</div>${extra}`);
+}
+function addModal(title,fields,msg,disabled){
+  return `<div class="modal-bg"><div class="modal"><h3>${title}</h3>
+   ${fields.map(([l,v,s])=>`<div class="field"><label>${l}</label><div class="select ${s||''}">${v}<span>▾</span></div></div>`).join("")}
+   ${msg||""}<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><span class="btn">Cancel</span><span class="btn primary" style="${disabled?'opacity:.45':''}">Save</span></div></div></div>`;
+}
+
+/* ================= Frames ================= */
+const FRAMES=[]; const F=(dur,html)=>FRAMES.push({dur,html});
+const S2=withActivity();
+
+F(5,`<div class="card-full"><div class="tag">Demo · Batay sa "Automated Class & Teacher Scheduler" (YouTube)</div>
+ <h2>Ang Excel tool, ginawang web system</h2>
+ <p>Parehong 4-step na proseso ng tool sa video, plus ang requirements ninyo: online at multi-user, conflict detection, approval ng Admin, PDF/XLSX/CSV export, at responsive sa phone.</p></div>`);
+
+F(5.5,home("empty")+cursor(1080,262)+steps(1)+cap(1,"Homepage: 4 na hakbang, katulad ng tool sa video",
+ "Subjects & Sections → Teachers → Load Distribution → Plot. Imbes na magsimula sa wala, i-import ang data ng nakaraang term."));
+F(4,home("empty")+importModal(0)+steps(1)+cap(1,"Import previous data","Pipiliin kung ano ang kokopyahin. Ang plotted schedules ay magsisimula sa bagong draft."));
+F(3,home("empty")+importModal(70)+steps(1)+cap(1,"Import previous data","Sa Excel, 15–20 seconds itong nagre-recalculate. Sa web system, server ang gumagawa nito."));
+F(4,home("done")+toast("✓ Na-import: 9 subjects, 4 sections, 9 teachers")+steps(1)+cap(1,"Tapos ang import","Puno na ang Steps 1–3. Kaya rin nitong mag-adjust kung bumalik sa 2 terms ang DepEd."));
+
+F(5.5,subjectsScreen()+steps(2)+cap(2,"Step 1 · Subjects & Sections + Activities",
+ "Gaya ng payo sa video: ang Flag Ceremony, Recess, Lunch at Catch-up Friday ay ine-encode bilang Activity."));
+F(5.5,teachersScreen()+steps(2)+cap(2,"Step 2 · Teachers at Sub Group",
+ "Bawat teacher ay may group. Sa parehong group kukunin ang substitute, gaya ng sa video (hal. Group 1 = Math & Science)."));
+F(5,loadScreen()+steps(3)+cap(3,"Step 3 · Load Distribution",
+ "Awtomatikong naka-highlight ang overloaded, gaya ng 33 hrs/week sa video."));
+
+F(4.5,plotScreen("Grade 10 – Rizal",SCHED,{rows:10,color:false})+steps(4)+cap(4,"Step 4 · Plot (classic view)",
+ "Weekly grid ng section. Naka-OFF ang color coding: alternating shading lang, gaya ng classic timetable."));
+F(5,plotScreen("Grade 10 – Rizal",SCHED,{rows:10,color:true})+cursor(940,96)+steps(4)+cap(4,"Color coding at time slots",
+ "I-toggle ang color coding (walang bagal at hindi nawawala ang undo, di gaya sa Excel). Puwedeng 8, 10, 14 o 16 ang time slot rows."));
+F(4,plotScreen("Grade 10 – Rizal",SCHED,{rows:8,color:true})+steps(4)+cap(4,"Time slots: 8 rows",
+ "Kapag hindi kailangan ang hapon, piliin ang 8. Itatago ang sobrang rows sa grid at sa printouts."));
+
+F(4.5,plotScreen("Grade 10 – Rizal",SCHED,{rows:10,hl:{"Fri|s2":"sel"}})+addModal("Fri · 8:15 – 9:00",[["Type","Activity","focus"],["Activity","Catch-up Friday"],["Apply to","Lahat ng Grade 10 sections (4)"]])+steps(4)+cap(4,"Magdagdag ng activity: Catch-up Friday",
+ "Pumili ng Activity sa dropdown, tapos piliin kung saang sections ito ilalapat."));
+F(5,plotScreen("Grade 10 – Rizal",S2,{rows:10,hl:{"Fri|s2":"new"}})+toast("✓ Na-apply sa 4 sections · ang naalis na klase ay nasa 'Unplaced' list")+steps(4)+cap(4,"Awtomatikong lumalabas sa lahat",
+ "Hindi na kailangang i-edit isa-isa. Lalabas din ito sa class program ng bawat teacher."));
+
+const CSL=CLASS_SLOTS.find(sl=>sl!=="s1"&&checkConflict(S2,"Grade 10 – Bonifacio","Mon",sl,"santos"));
+const CLAB=ALL_SLOTS.find(x=>x.id===CSL).label;
+const cf=checkConflict(S2,"Grade 10 – Bonifacio","Mon",CSL,"santos");
+const freeAt=Object.keys(T).filter(k=>!busy(S2,k,"Mon",CSL)&&T[k].dept==="Math").map(k=>T[k].name).join(", ");
+F(6,plotScreen("Grade 10 – Bonifacio",S2,{rows:10,hl:{["Mon|"+CSL]:"bad"}})+addModal("Mon · "+CLAB+" · Grade 10 – Bonifacio",[["Subject","Math 10"],["Teacher","Ms. Ana Santos","err"]],
+ `<div class="alert bad"><b>⚠ Teacher conflict</b><br>May <b>${cf.subj}</b> na si Ms. Santos sa <b>${cf.with}</b> sa oras na ito.</div>
+  <div class="alert ok"><b>Bakanteng Math teacher:</b> ${freeAt}</div>`,true)+steps(4)+cap(4,"Dagdag namin: conflict detection",
+ "Wala ito sa Excel tool. Bago mag-save, tse-tsekan ng server ang teacher (JHS) at room (SHS). Hindi makakalusot ang doble."));
+
+F(5.5,glc("Class Programs",`<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px"><div><h1>Teacher Class Program</h1>
+ <p class="sub" style="margin:0">Ms. Ana Santos · Math · awtomatikong nabuo mula sa plot</p></div><div style="display:flex;gap:8px"><span class="select" style="width:220px">Ms. Ana Santos<span>▾</span></span><span class="btn primary">Submit lahat for approval</span></div></div>
+ <div class="card" style="padding:4px 8px">${teacherGrid(S2,"santos")}</div>`)+steps(4)+cap(4,"Auto-generated na class programs",
+ "Gaya sa video: pumili lang ng teacher o section, at nandiyan na ang class program. Kapag tapos, isa-submit sa Admin."));
+
+function approvalsBody(done){
+  const rows=SECTIONS.map(s=>[s,"JHS · Grade 10","GLC Juan Dela Cruz"]).concat([["Grade 11 – STEM A (AM)","SHS · Grade 11","MT Rosa Villanueva"]]);
+  return `<h1>Approvals</h1><p class="sub">S.Y. 2026–2027 · Term 1</p>
+  <div class="row" style="margin-bottom:12px">${[["Pending",done?1:5,"var(--brand)"],["Approved",done?4:0,"var(--ok)"],["Conflicts",0,"var(--ink)"],["Overload warnings",1,"var(--bad)"]].map(([l,v,c])=>`<div class="card" style="flex:1"><div class="sub" style="margin:0">${l}</div><b style="font-size:22px;color:${c}">${v}</b></div>`).join("")}</div>
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Submitted schedules</b>
+  <div style="display:flex;gap:8px"><span class="btn">Approve per section</span><span class="btn ok">Approve Grade 10 (4)</span><span class="btn">Approve all</span><span class="btn">Return</span></div></div>
+  <table><tr><th>Section</th><th>Level</th><th>Submitted by</th><th>Conflicts</th><th>Status</th></tr>
+  ${rows.map((r,i)=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>0</td><td>${done&&i<4?'<span class="pill p-ok">Approved · Locked</span>':'<span class="pill p-blue">Submitted</span>'}</td></tr>`).join("")}</table></div>`;
+}
+F(5,admin("Approvals",approvalsBody(false))+cursor(985,262)+steps(5)+cap(5,"Dagdag namin: approval sa dashboard ng Admin",
+ "Draft → Submitted → Approved. Puwedeng per section, per grade level, o lahat nang sabay."));
+F(3.5,admin("Approvals",approvalsBody(true))+toast("✓ Grade 10 (4 sections) approved at naka-lock")+steps(5)+cap(5,"Approved at published","Ngayon lang ito makikita ng teachers at students."));
+
+const paper=`<div class="paper"><div class="hd"><b>Republic of the Philippines · Department of Education</b><br>EMMANUEL RESURRECCION CONGRESSIONAL INTEGRATED HIGH SCHOOL<br><b style="font-size:13px">CLASS PROGRAM</b><br>Grade 10 – Rizal · ${ROOM["Grade 10 – Rizal"]} · S.Y. 2026–2027 · Term 1</div>
+ <table style="margin-top:8px"><tr><th>Time</th>${DAYS.map(d=>`<th>${d}</th>`).join("")}</tr>
+ ${ALL_SLOTS.map(sl=>sl.activity?`<tr><td>${sl.label}</td><td colspan="5"><b>${sl.activity}</b></td></tr>`:`<tr><td>${sl.label}</td>${DAYS.map(d=>{if(sl.id==="s1"&&d==="Mon")return"<td>Flag Ceremony</td>";const c=S2["Grade 10 – Rizal"][d+"|"+sl.id];if(!c)return"<td></td>";if(c.activity)return"<td><b>Catch-up Friday</b></td>";return `<td>${SUBJ[c.subj][0]}<br><span style="color:#555">${T[c.teacher].name.replace(/^(Ms\.|Mr\.) /,"")}</span></td>`}).join("")}</tr>`).join("")}
+ </table><div style="display:flex;justify-content:space-between;margin-top:12px;font-family:Inter,sans-serif;font-size:9.5px"><div>Prepared by: <b>JUAN DELA CRUZ</b>, GLC</div><div>Approved: <b>MARIA RAMOS</b>, Admin</div></div></div>`;
+F(5.5,admin("Reports & Export",`<div class="row"><div style="width:290px"><h1>Reports & Export</h1><p class="sub">Approved lang ang puwedeng i-export</p>
+ <div class="card" style="margin-bottom:10px"><b>Grade 10 – Rizal</b><div style="display:grid;gap:8px;margin-top:10px"><span class="btn primary">⬇ PDF (official form)</span><span class="btn ghost">⬇ XLSX (official format)</span><span class="btn ghost">⬇ CSV (raw data)</span></div></div>
+ <div class="card"><b>Printables</b><div class="sub" style="margin:6px 0 0;line-height:1.7">• Lahat ng section class programs<br>• Lahat ng teacher class programs<br>• Teacher load summary</div></div></div>
+ <div style="padding-top:4px">${paper}</div></div>`)+steps(6)+cap(6,"Export: PDF, XLSX at CSV",
+ "May school name at header ang printouts, gaya ng 'encode schools' sa video. PDF/XLSX para sa official form, CSV para sa raw data."));
+
+const day="Mon", cls=teacherClasses(S2,"santos",day);
+const subRows=cls.map(c=>{const subs=substitutes(S2,"santos",day,c.sl,"groups");const lab=ALL_SLOTS.find(s=>s.id===c.sl).label;
+ return `<tr><td>${lab}</td><td><b>${c.subj}</b><br><span style="color:var(--muted);font-size:12px">${c.sec}</span></td>
+ <td>${subs.map((k,i)=>`<span class="pill ${i===0?'p-ok':'p-gray'}" style="margin:2px 3px 2px 0">${i===0?'★ ':''}${T[k].name.replace(/^(Ms\.|Mr\.) /,"")}</span>`).join("")||'<span class="pill p-bad">Walang bakante</span>'}</td>
+ <td><span class="btn" style="padding:4px 10px">Assign</span></td></tr>`;}).join("");
+F(7,admin("Generate Substitute",`<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><h1>Generate Substitute</h1><p class="sub">Batay sa Region XI class substitution policy · Group mode</p></div>
+ <div style="display:flex;gap:8px;margin-bottom:16px"><span class="select" style="width:200px">Ms. Ana Santos<span>▾</span></span><span class="select" style="width:160px">Mon, Nov 9<span>▾</span></span><span class="btn primary">⇄ Generate Sub</span></div></div>
+ <div class="row"><div class="card" style="flex:1"><table><tr><th>Oras</th><th>Klase ni Ms. Santos</th><th>Puwedeng sub (Group 1, bakante, max 5)</th><th></th></tr>${subRows}</table></div>
+ <div class="card" style="width:250px"><b>Paano pumipili?</b><div class="sub" style="margin:6px 0 0;line-height:1.6">1. Parehong <b>Sub Group</b> ng absent na teacher<br>2. <b>Bakante</b> sa oras na iyon (walang klase)<br>3. Maximum na 5, ang ★ ang may pinakamababang load<br><br>Maliit na school? Gawing iisang group lahat.</div></div></div>`)+steps(7)+cap(7,"Generate Substitute (mula sa video)",
+ "Kapag may absent, lalabas ang bakanteng teachers sa parehong group para sa bawat klase niya. Para tuloy-tuloy ang klase ng learners."));
+
+const SUBK=substitutes(S2,"santos","Mon",cls[0].sl,"groups")[0];
+F(5.5,`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:70px;background:#e9edf2;padding-bottom:90px">
+ <div class="phone"><div class="screen"><div class="pbar"><b>My Schedule</b><div style="color:var(--muted);font-size:12px">${T[SUBK].name} · Monday</div>
+  <div class="tabs"><span>Weekly</span><span class="on">List</span></div></div>
+  <div class="li"><b>${T[SUBK].dept} 9 · Grade 9 – Sampaguita</b><span>7:30 – 8:15 · Rm 105</span></div><div class="li"><b>${T[SUBK].dept} 9 · Grade 9 – Rosal</b><span>9:00 – 9:45 · Rm 106</span></div>
+  <div class="li" style="border-color:#9aa4b0"><b>Recess</b><span>9:45 – 10:00</span></div>
+  <div class="li" style="border-color:var(--warn);background:var(--warn-soft)"><b>Substitute: ${cls[0].subj}</b><span>${ALL_SLOTS.find(s=>s.id===cls[0].sl).label} · ${cls[0].sec} · para kay Ms. Santos</span></div>
+  <div class="li" style="border-color:#9aa4b0"><b>Lunch Break</b><span>11:30 – 1:00</span></div></div></div>
+ <div style="max-width:430px"><div style="font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--brand);text-transform:uppercase">Online · multi-user · responsive</div>
+  <div style="font-size:30px;font-weight:800;margin:8px 0 12px;line-height:1.2">Makikita agad ng substitute sa phone niya</div>
+  <div style="color:var(--muted);font-size:16px;line-height:1.55">Iisang database lang ang gamit ng lahat. Walang pinapasahang Excel file at walang luma o dobleng kopya.</div></div></div>`
+ +cap("✓","Teachers at students: view-only, kahit anong device","Weekly grid sa computer, List View sa phone, portrait man o landscape."));
+
+F(6.5,`<div class="card-full"><div class="tag">Buod · YT tool + requirements ninyo</div><h2 style="font-size:36px">Parehong proseso, mas ligtas at online</h2>
+ <div class="flow">
+  <div class="n">Import<small>nakaraang term</small></div><div class="ar">→</div>
+  <div class="n">1 · Subjects & Sections<small>+ activities</small></div><div class="ar">→</div>
+  <div class="n">2 · Teachers<small>+ sub group</small></div><div class="ar">→</div>
+  <div class="n">3 · Load<small>overload check</small></div><div class="ar">→</div>
+  <div class="n">4 · Plot<small>color · time slots</small></div>
+ </div>
+ <div class="flow" style="margin-top:12px">
+  <div class="n" style="background:rgba(255,255,255,.24)">Conflict check<small>dagdag namin</small></div><div class="ar">→</div>
+  <div class="n" style="background:rgba(255,255,255,.24)">Admin approval<small>dagdag namin</small></div><div class="ar">→</div>
+  <div class="n">Export<small>PDF · XLSX · CSV</small></div><div class="ar">→</div>
+  <div class="n">Generate Substitute<small>kapag may absent</small></div>
+ </div></div>`);
+
+window.FRAMES=FRAMES;
+window.show=i=>{document.getElementById("stage").innerHTML=FRAMES[i].html;};
+show(Number(new URLSearchParams(location.search).get("f")||0));
+
+</script></body></html>

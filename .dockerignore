@@ -1,0 +1,29 @@
+# Secrets and real personnel names must never enter an image.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.neon
+docs
+
+# Rebuilt inside the image.
+.git
+.github
+.vscode
+node_modules
+**/node_modules
+frontend/dist
+backend/vendor
+backend/public/assets
+backend/public/index.html
+
+# Local leftovers.
+backend/storage/logs/*
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/app/private/*
+backend/bootstrap/cache/*.php
+backend/tests

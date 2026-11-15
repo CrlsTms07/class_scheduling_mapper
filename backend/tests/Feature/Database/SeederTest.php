@@ -40,7 +40,7 @@ it('creates the JHS Monday to Thursday and Friday bell schedules from the offici
         ->and((int) $minutesFor('Friday')->class_total)->toBe(560);
 });
 
-it('has exactly one active term and a loaded sample section', function () {
+it('has exactly one active term and loaded sample sections', function () {
     expect(DB::table('school_terms')->where('is_active', true)->count())->toBe(1)
-        ->and(DB::table('section_subjects')->count())->toBe(11);
+        ->and(DB::table('section_subjects')->count())->toBe(22);
 });

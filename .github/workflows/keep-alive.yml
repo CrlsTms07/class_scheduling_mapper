@@ -1,0 +1,37 @@
+# Opens the live system once a day, so the hosted database never sits idle long enough to be
+# paused (Supabase's free plan pauses a project after 7 days without use) and Render wakes up.
+# Set the live address once: GitHub → Settings → Secrets and variables → Actions → Variables →
+# New repository variable, name LIVE_URL, value like https://ercihs-scheduling.onrender.com
+# See docs/deployment.md, "Keep the live system awake".
+name: Keep the live system awake
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # every day at 8:00 AM Philippine time (00:00 UTC)
+  workflow_dispatch: # also a "Run workflow" button on the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Open a page that reads the database
+        env:
+          LIVE_URL: ${{ vars.LIVE_URL }}
+        run: |
+          if [ -z "$LIVE_URL" ]; then
+            echo "LIVE_URL is not set yet, so there is nothing to open."
+            exit 0
+          fi
+          # A sleeping free Render service takes about a minute to wake, so wait and try again.
+          for try in 1 2 3; do
+            code=$(curl --silent --output /dev/null --write-out "%{http_code}" --max-time 120 "${LIVE_URL%/}/api/active-term" || true)
+            if [ "$code" = "200" ]; then
+              echo "The live system answered (try $try)."
+              exit 0
+            fi
+            echo "Try $try answered $code."
+            if [ "$try" -lt 3 ]; then sleep 30; fi
+          done
+          echo "The live system did not answer. Check Render and the database (a paused Supabase project needs Restore)."
+          exit 1

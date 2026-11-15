@@ -37,6 +37,11 @@ return [
 
     'mailers' => [
 
+        // The school's Gmail over HTTPS, for hosts that block the SMTP ports (Render's free plan).
+        'gmail-api' => [
+            'transport' => 'gmail-api',
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
