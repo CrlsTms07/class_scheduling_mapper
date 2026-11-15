@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ManagedBuilding } from "@/types/api";
@@ -15,6 +15,13 @@ const BUILDINGS: ManagedBuilding[] = [
     ],
   },
   { id: 2, name: "Annex", rooms: [] },
+  {
+    id: 3,
+    name: "Gym",
+    department: null,
+    can_edit: false,
+    rooms: [{ id: 30, room_number: "G1", room_name: null, capacity: null, is_active: true, cannot_delete_reason: null }],
+  },
 ];
 
 type Call = { url: string; method: string; body: Record<string, unknown> };
@@ -191,5 +198,20 @@ describe("deleting from the list", () => {
 
     await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
     expect(calls[0].url).toMatch(/\/buildings\/2$/);
+  });
+});
+
+describe("departments", () => {
+  it("names who uses each building, and leaves a shared one to the Admin", () => {
+    openPage();
+
+    const gym = within(screen.getByRole("region", { name: "Gym" }));
+    expect(gym.getByText("Shared")).toBeInTheDocument();
+    expect(gym.getByText("Shared: changed by the Admin")).toBeInTheDocument();
+    expect(gym.queryByRole("button", { name: /Edit building Gym/ })).not.toBeInTheDocument();
+    expect(gym.queryByRole("button", { name: /Add room to Gym/ })).not.toBeInTheDocument();
+    expect(gym.queryByRole("button", { name: /Edit room G1/ })).not.toBeInTheDocument();
+
+    expect(within(screen.getByRole("region", { name: "Main" })).getByRole("button", { name: "Edit building Main" })).toBeInTheDocument();
   });
 });

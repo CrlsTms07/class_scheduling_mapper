@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ChevronRight, Info, LayoutGrid, Mail, MoreHorizontal, Pencil, SearchIcon, Trash2, UserRound } from "lucide-react";
 import { useTeacherSchedule } from "@/api/scheduleBuilder";
 import { useTeachers } from "@/api/teachers";
@@ -79,7 +79,8 @@ const TeacherDetailPage = () => {
   const [search, setSearch] = React.useState("");
   const [opened, setOpened] = React.useState<TeacherClass | null>(null);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [params] = useSearchParams();
+  const [isEditing, setIsEditing] = React.useState(params.get("edit") === "1");
   const [isDeleting, setIsDeleting] = React.useState(false);
   const teacher = teachers?.find(({ id }) => id === teacherId);
   const crumbs = [{ label: "Home", to: "/dashboard" }, { label: "Teachers", to: "/teachers" }, { label: teacher?.printed_name ?? "Teacher" }];
@@ -221,7 +222,7 @@ const TeacherDetailPage = () => {
       </div>
 
       {opened && <ClassDetailSheet item={opened} onClose={() => setOpened(null)} />}
-      {isEditing && <TeacherSheet term={term} teacher={teacher} onClose={() => setIsEditing(false)} />}
+      {isEditing && canEdit && <TeacherSheet term={term} teacher={teacher} onClose={() => setIsEditing(false)} />}
       {isDeleting && (
         <TeacherDeleteDialog teacher={teacher} onClose={() => setIsDeleting(false)} onDeleted={() => navigate("/teachers")} />
       )}

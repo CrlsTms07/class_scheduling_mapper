@@ -19,7 +19,7 @@ Read these first:
 | Layer     | Tech |
 |-----------|------|
 | Front-end | React + TypeScript + Vite + Tailwind CSS, React Router, TanStack Query, TanStack Table, react-hook-form + zod, dnd-kit |
-| Back-end  | PHP + Laravel (REST API only), Laravel Sanctum (SPA cookie auth), spatie/laravel-permission, Laravel Excel (XLSX), barryvdh/laravel-dompdf (PDF) |
+| Back-end  | PHP + Laravel (REST API only), Laravel Sanctum (SPA cookie auth), Laravel Socialite (Google sign-in, approved Nov 13, 2026), spatie/laravel-permission, Laravel Excel (XLSX), barryvdh/laravel-dompdf (PDF) |
 | Database  | PostgreSQL (with `btree_gist` extension) |
 | Testing   | Pest (back-end), Vitest (front-end) |
 | Tools     | Git + GitHub, VS Code |
@@ -53,7 +53,7 @@ npm run test
 npm run build
 ```
 
-## Current status (Nov 12, 2026)
+## Current status (Nov 13, 2026)
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
@@ -97,6 +97,12 @@ npm run build
   maximum load of 5 subjects, Admin reset password with a required change, Gmail email (SMTP or Gmail API),
   `php artisan app:backup`, the Class Program PDF matching the official form, logo placement, the Adviser
   Summary report, room "in charge" and the building floor plan.
+- **Working, guidance and accounts (team decisions, Nov 13, 2026, see `docs/client-notes.md`):** "How to make a
+  schedule" guide (`/guide`, button on the Schedule page), setup steps from rooms to plotting, flags and overloads that say
+  how to fix them, next steps after an import, bulk "Activate selected as Teacher", auto-activation of sign-ups on
+  the teachers list, deleting a time slot with its draft classes, and "Continue with Google" (Laravel Socialite,
+  @deped.gov.ph only), and Junior High and Senior High keeping their own buildings, rooms and activities
+  (`buildings.department`, `activities.department`; NULL = shared, Admin only; see `App\Support\DepartmentScope`).
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
 - **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
   the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.

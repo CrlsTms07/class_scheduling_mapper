@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
-import { ArrowUpRightIcon, Building2, CalendarPlus, Copy, DoorClosed, FileUp, Plus, SearchIcon, TableProperties } from "lucide-react";
+import { ArrowUpRightIcon, BookOpen, Building2, CalendarPlus, Copy, DoorClosed, FileUp, Plus, SearchIcon, TableProperties } from "lucide-react";
 import { useScheduleMap, useSections } from "@/api/schedule";
 import { useSelectedTerm } from "@/context/selectedTerm";
 import { STATUS_COLORS, STATUS_LABELS, termWord } from "@/lib/schedule";
@@ -272,12 +272,22 @@ const Schedule = () => {
         title="Schedule Configuration"
         description={`Build the weekly timetable of each section: subjects, teachers, rooms and times, in one place. ${term ? `${term.name}, SY ${term.school_year.name}.` : ""}`}
         actions={
-          term && (
-            <Button type="button" className="h-11" onClick={() => setIsNewOpen(true)}>
-              <CalendarPlus />
-              New schedule
-            </Button>
-          )
+          <>
+            <Link
+              to="/guide"
+              title="Step-by-step guide, from the start to the end"
+              className={buttonVariants({ variant: "outline", className: "h-11" })}
+            >
+              <BookOpen />
+              How to make a schedule
+            </Link>
+            {term && (
+              <Button type="button" className="h-11" onClick={() => setIsNewOpen(true)}>
+                <CalendarPlus />
+                New schedule
+              </Button>
+            )}
+          </>
         }
       />
 

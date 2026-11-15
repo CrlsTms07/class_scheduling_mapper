@@ -36,6 +36,7 @@ const ReportsIndex = lazy(() => import("./features/reports/ReportsIndex"));
 const SubjectsIndex = lazy(() => import("./features/subjects/SubjectsIndex"));
 const TeacherLoadingIndex = lazy(() => import("./features/teacher-loading/TeacherLoadingIndex"));
 const ReportSettingsIndex = lazy(() => import("./features/report-settings/ReportSettingsIndex"));
+const ScheduleGuidePage = lazy(() => import("./features/guide/ScheduleGuidePage"));
 
 const PageLoading = () => (
   <div className="flex min-h-dvh items-center justify-center text-sm text-neutral-600">
@@ -81,6 +82,7 @@ function App() {
 
               <Route path="teacher-loading" element={<TeacherLoadingIndex />} />
               <Route path="sections" element={<SectionsIndex />} />
+              <Route path="guide" element={<ScheduleGuidePage />} />
 
             <Route element={<RequireRole roles={ROLES.ADMIN} />}>
               <Route path="approvals" element={<ApprovalsIndex />} />

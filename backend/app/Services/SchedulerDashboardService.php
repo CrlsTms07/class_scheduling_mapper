@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Activity;
+use App\Models\Building;
 use App\Models\DayPattern;
+use App\Models\Room;
 use App\Models\SchoolTerm;
 use App\Models\Section;
 use App\Models\Subject;
@@ -55,20 +57,20 @@ class SchedulerDashboardService
                 'sections' => $sections->filter(fn (array $section) => $section['flags'] !== [])->count(),
             ],
             'next_steps' => $this->nextSteps($term, $sections, $loadedSectionIds),
-            'steps' => $this->steps($term, $scope, $sections),
+            'steps' => $this->steps($term, $scope, $sections, $user),
             'progress' => $this->dashboard->progress($sections),
             'overloaded_teachers' => $this->dashboard->overloadedTeachers($term, $teacherIds),
         ];
     }
 
     /**
-     * The four steps of making a schedule, each with how far along it is:
-     * 1 Subjects and sections, 2 Teachers, 3 Load Distribution, 4 Plot.
+     * The steps of making a schedule, from the start, each with how far along it is:
+     * 1 Rooms, 2 Bell schedule, 3 Subjects and sections, 4 Teachers, 5 Load Distribution, 6 Plot.
      *
      * @param  array<int, int>  $scope
      * @return array<int, array{key: string, done: bool, counts: array<string, int>}>
      */
-    private function steps(SchoolTerm $term, array $scope, $sections): array
+    private function steps(SchoolTerm $term, array $scope, $sections, User $user): array
     {
         $models = Section::whereIn('id', $sections->pluck('id'))->get();
 
@@ -108,13 +110,31 @@ class SchedulerDashboardService
         $started = $sections->where('status', '<>', 'not_started')->count();
         $submitted = $sections->whereIn('status', ['pending', 'approved'])->count();
 
+        // The bell schedules of the departments in the user's scope (JHS, SHS), with their periods.
+        $levels = DB::table('grade_levels')->whereIn('id', $scope)->distinct()->pluck('level');
+        $patterns = DayPattern::where('school_year_id', $term->school_year_id)->whereIn('level', $levels)->withCount('timeSlots')->get();
+        $bellLevels = $patterns->where('time_slots_count', '>', 0)->pluck('level')->unique();
+
         return [
+            [
+                'key' => 'rooms',
+                'done' => Room::where('is_active', true)->visibleTo($user)->exists(),
+                'counts' => [
+                    'rooms' => Room::where('is_active', true)->visibleTo($user)->count(),
+                    'buildings' => Building::visibleTo($user)->count(),
+                ],
+            ],
+            [
+                'key' => 'bell',
+                'done' => $levels->isNotEmpty() && $levels->diff($bellLevels)->isEmpty(),
+                'counts' => ['patterns' => $patterns->count(), 'departments' => $levels->count(), 'ready' => $bellLevels->count()],
+            ],
             [
                 'key' => 'subjects',
                 'done' => $subjects->isNotEmpty() && $models->isNotEmpty(),
                 'counts' => [
                     'subjects' => $subjects->count(),
-                    'activities' => Activity::where('school_year_id', $term->school_year_id)->count(),
+                    'activities' => Activity::where('school_year_id', $term->school_year_id)->visibleTo($user)->count(),
                     'sections' => $models->count(),
                 ],
             ],

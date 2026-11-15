@@ -66,3 +66,29 @@ it('sends reset links only to official DepEd emails', function () {
         ->assertJsonValidationErrors(['email' => 'DepEd']);
     $this->postJson('/api/forgot-password', ['email' => 'juan.delacruz@deped.gov.ph'])->assertOk();
 });
+
+describe('limits that fit a school Wi-Fi', function () {
+    it('lets a whole class open the public schedules from one address', function () {
+        foreach (range(1, 100) as $visit) {
+            $this->getJson('/api/guest/sections')->assertOk();
+        }
+    });
+
+    it('lets many teachers sign up from one address, but not one email over and over', function () {
+        foreach (range(1, 12) as $teacher) {
+            $this->postJson('/api/forgot-password', ['email' => "teacher{$teacher}@deped.gov.ph"])->assertOk();
+        }
+
+        foreach (range(1, 5) as $try) {
+            $this->postJson('/api/forgot-password', ['email' => 'same@deped.gov.ph'])->assertOk();
+        }
+        $this->postJson('/api/forgot-password', ['email' => 'same@deped.gov.ph'])->assertTooManyRequests();
+    });
+
+    it('still stops one address after 30 tries a minute', function () {
+        foreach (range(1, 30) as $try) {
+            $this->postJson('/api/forgot-password', ['email' => "someone{$try}@deped.gov.ph"])->assertOk();
+        }
+        $this->postJson('/api/forgot-password', ['email' => 'another@deped.gov.ph'])->assertTooManyRequests();
+    });
+});

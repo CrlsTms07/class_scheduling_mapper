@@ -73,6 +73,12 @@ describe('the list of activities', function () {
     it('will not delete an activity that is on a schedule', function () {
         placeActivity($this, $this->sectionA, $this->friday, $this->catchUp, 'section', [5])->assertOk();
 
+        // School-wide activities are the Admin's to change.
+        $this->deleteJson("/api/activities/{$this->flag->id}")->assertForbidden();
+
+        $this->flushSession();
+        $this->app['auth']->forgetGuards();
+        $this->actingAs(User::factory()->create()->assignRole('super_admin'));
         $this->deleteJson("/api/activities/{$this->catchUp->id}")->assertUnprocessable();
         $this->deleteJson("/api/activities/{$this->flag->id}")->assertOk();
     });

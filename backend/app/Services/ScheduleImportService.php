@@ -267,7 +267,7 @@ class ScheduleImportService
         $status = DB::table('section_term_status')->where('term_id', $term->id)->pluck('status', 'section_id');
 
         $teachers = $this->teacherKeys();
-        $rooms = $this->roomKeys();
+        $rooms = $this->roomKeys($user);
 
         return [
             'grades' => GradeLevel::whereIn('id', $user->gradeLevelIdsInScope())->pluck('grade')->map(fn ($grade) => (int) $grade)->all(),
@@ -276,7 +276,7 @@ class ScheduleImportService
             'status' => $status,
             'periods' => $sections->map(fn (Section $section) => $this->periodsOf($section)),
             'subjects' => Subject::where('school_year_id', $term->school_year_id)->where('is_active', true)->get(),
-            'activities' => Activity::where('school_year_id', $term->school_year_id)->get()->keyBy(fn (Activity $activity) => $this->normal($activity->name)),
+            'activities' => Activity::where('school_year_id', $term->school_year_id)->visibleTo($user)->get()->keyBy(fn (Activity $activity) => $this->normal($activity->name)),
             'loadings' => SectionSubject::where('term_id', $term->id)->get()->keyBy(fn (SectionSubject $row) => "{$row->section_id}|{$row->subject_id}"),
             'teachers' => $teachers,
             'rooms' => $rooms,
@@ -420,6 +420,20 @@ class ScheduleImportService
             && ($subject->track_id === null || $subject->track_id === $section->track_id));
     }
 
+    /**
+     * The minutes most sections have, so one section with an extra or doubled row does not set
+     * the subject's time for all. On a tie, the larger one.
+     *
+     * @param  array<string, int>  $perSection
+     */
+    private function commonMinutes(array $perSection): int
+    {
+        $counts = array_count_values(array_map('intval', $perSection));
+        uksort($counts, fn ($a, $b) => [$counts[$b], $b] <=> [$counts[$a], $a]);
+
+        return (int) array_key_first($counts);
+    }
+
     /** @param  array<string, array{0: string, 1: string}>  $times */
     private function hasOverlap(array $times): bool
     {
@@ -559,17 +573,17 @@ class ScheduleImportService
     }
 
     /** @return array<string, int> each way a room may be written, to the room. "Building C" rooms also match "C 401". */
-    private function roomKeys(): array
+    private function roomKeys(User $user): array
     {
         $rooms = [];
-        foreach (Room::with('building')->where('is_active', true)->orderBy('id')->get() as $room) {
+        foreach (Room::with('building')->where('is_active', true)->visibleTo($user)->orderBy('id')->get() as $room) {
             $rooms[$this->loose($room->label())] ??= $room->id;
             if (preg_match('/^Building ([A-Z]{1,2})$/i', $room->building->name, $match)) {
                 $rooms[$this->loose($match[1].' '.$room->room_number)] ??= $room->id;
             }
             $rooms[$this->loose($room->building->name.' '.$room->room_number)] ??= $room->id;
         }
-        foreach (Room::where('is_active', true)->orderBy('id')->get() as $room) {
+        foreach (Room::where('is_active', true)->visibleTo($user)->orderBy('id')->get() as $room) {
             $rooms[$this->loose($room->room_number)] ??= $room->id;
         }
 
@@ -693,7 +707,7 @@ class ScheduleImportService
             }
         }
 
-        $activities = Activity::where('school_year_id', $yearId)->get()->map(fn (Activity $activity) => $this->loose($activity->name))->all();
+        $activities = Activity::where('school_year_id', $yearId)->visibleTo($user)->get()->map(fn (Activity $activity) => $this->loose($activity->name))->all();
         $subjects = Subject::where('school_year_id', $yearId)->get();
         foreach ($subjectNames as $subjectKey => [$level, $name]) {
             $termNo = $level->level === 'SHS' ? $term->term_no : null;
@@ -703,7 +717,7 @@ class ScheduleImportService
             if ($exists || in_array($this->loose($name), $activities, true)) {
                 continue;
             }
-            Subject::create(['school_year_id' => $yearId, 'grade_level_id' => $level->id, 'term_no' => $termNo, 'name' => mb_substr($name, 0, 100), 'minutes_per_week' => min(3000, max($minutes[$subjectKey]))]);
+            Subject::create(['school_year_id' => $yearId, 'grade_level_id' => $level->id, 'term_no' => $termNo, 'name' => mb_substr($name, 0, 100), 'minutes_per_week' => min(3000, $this->commonMinutes($minutes[$subjectKey]))]);
             $created['subjects'][] = "{$name} (Grade {$level->grade})";
         }
 
@@ -723,17 +737,18 @@ class ScheduleImportService
             $created['teachers'][] = $name;
         }
 
-        $rooms = $this->roomKeys();
+        $rooms = $this->roomKeys($user);
+        $department = \App\Support\DepartmentScope::forNew($user, null);
         foreach ($roomTexts as $text) {
             if ($this->roomFor($rooms, $text)) {
                 continue;
             }
             if (preg_match('/^([A-Z]{1,2})\s*-?\s*(\d{2,4})\s*(.*)$/i', $text, $match)) {
-                $building = Building::firstOrCreate(['name' => 'Building '.strtoupper($match[1])]);
+                $building = Building::firstOrCreate(['name' => 'Building '.strtoupper($match[1])], ['department' => $department]);
                 $room = Room::firstOrCreate(['building_id' => $building->id, 'room_number' => $match[2]], ['room_name' => $match[3] !== '' ? mb_substr(mb_convert_case($match[3], MB_CASE_TITLE), 0, 80) : null]);
                 $rooms[$this->loose($match[1].' '.$match[2])] = $room->id;
             } else {
-                $building = Building::firstOrCreate(['name' => 'Other rooms']);
+                $building = Building::firstOrCreate(['name' => 'Other rooms'.($department ? ' ('.\App\Support\DepartmentScope::label($department).')' : '')], ['department' => $department]);
                 $room = Room::firstOrCreate(['building_id' => $building->id, 'room_number' => mb_substr($text, 0, 20)]);
             }
             $rooms[$this->loose($text)] = $room->id;

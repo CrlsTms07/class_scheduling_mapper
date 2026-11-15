@@ -90,8 +90,13 @@ class TimeSlotController extends Controller
     {
         Gate::authorize('manage', [DayPattern::class, $timeSlot->dayPattern->level]);
 
-        $service->deleteSlot($timeSlot, $request->user());
+        $removed = $service->deleteSlot($timeSlot, $request->user(), $request->boolean('with_classes'));
 
-        return response()->json(['message' => 'The time slot was deleted.']);
+        return response()->json([
+            'message' => $removed > 0
+                ? "The time slot and its {$removed} ".($removed === 1 ? 'class were' : 'classes were').' deleted. Their subjects can be placed again.'
+                : 'The time slot was deleted.',
+            'classes_removed' => $removed,
+        ]);
     }
 }

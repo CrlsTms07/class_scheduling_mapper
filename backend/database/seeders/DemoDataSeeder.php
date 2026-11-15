@@ -169,7 +169,14 @@ class DemoDataSeeder extends Seeder
     private function seedGradeSeven(int $schoolYearId, int $termId): void
     {
         $gradeId = DB::table('grade_levels')->where('grade', 7)->value('id');
+        // Shared by both departments, like most school buildings in the demo.
         $buildingId = DB::table('buildings')->insertGetId(['name' => 'Sample Building']);
+
+        // A Senior High building, so the Master Teacher has rooms of their own to manage.
+        $seniorId = DB::table('buildings')->insertGetId(['name' => 'Senior High Building', 'department' => 'SHS']);
+        foreach (['501', '502'] as $roomNumber) {
+            DB::table('rooms')->insert(['building_id' => $seniorId, 'room_number' => $roomNumber, 'capacity' => 40]);
+        }
 
         $roomIds = [];
         foreach (['101', '102', '103'] as $roomNumber) {

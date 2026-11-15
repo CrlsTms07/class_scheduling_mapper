@@ -2,7 +2,10 @@ import React from "react";
 import { Pencil, Plus } from "lucide-react";
 import { useActivities, useCreateActivity, useDeleteActivity, useUpdateActivity } from "@/api/subjects";
 import { apiErrorMessage } from "@/lib/forms";
+import { useMe } from "@/api/auth";
+import { departmentBadge, departmentLabel } from "@/lib/departments";
 import type { Activity } from "@/types/api";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import ConfirmDelete from "@/components/global-component/ConfirmDelete";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +64,8 @@ const ActivitiesSection = ({ yearId, canManage }: ActivitiesSectionProp) => {
           <li key={activity.id} className="flex min-h-11 items-center gap-2 rounded-md border bg-slate-100 pl-3 pr-1 text-sm">
             <span className="font-medium text-slate-900">{activity.name}</span>
             {activity.code && <Badge variant="secondary">{activity.code}</Badge>}
-            {canManage && (
+            <Badge className={departmentBadge(activity.department)}>{departmentLabel(activity.department, "School-wide")}</Badge>
+            {canManage && activity.can_edit !== false && (
               <Button
                 type="button"
                 variant="ghost"
@@ -92,6 +96,9 @@ const ActivityEditor = ({ yearId, activity, onDone }: ActivityEditorProp) => {
   const remove = useDeleteActivity(activity?.id ?? 0);
   const [name, setName] = React.useState(activity?.name ?? "");
   const [code, setCode] = React.useState(activity?.code ?? "");
+  const { data: me } = useMe();
+  const isAdmin = me?.role === "super_admin";
+  const [department, setDepartment] = React.useState<string>(activity?.department ?? "");
   const [error, setError] = React.useState<string | null>(null);
   const save = activity ? update : create;
 
@@ -105,7 +112,11 @@ const ActivityEditor = ({ yearId, activity, onDone }: ActivityEditorProp) => {
     }
 
     save.mutate(
-      { name: name.trim(), code: code.trim() || null },
+      {
+        name: name.trim(),
+        code: code.trim() || null,
+        ...(isAdmin ? { department: (department || null) as "JHS" | "SHS" | null } : {}),
+      },
       { onSuccess: onDone, onError: (problem) => setError(apiErrorMessage(problem)) },
     );
   };
@@ -133,6 +144,23 @@ const ActivityEditor = ({ yearId, activity, onDone }: ActivityEditorProp) => {
           <Input id="activity-code" className="h-11" value={code} onChange={(event) => setCode(event.target.value)} />
         </div>
       </div>
+      {isAdmin && (
+        <div className="space-y-1 sm:w-72">
+          <label htmlFor="activity-department" className="text-sm text-neutral-800">
+            For
+          </label>
+          <NativeSelect
+            id="activity-department"
+            className="w-full [&_select]:h-11"
+            value={department}
+            onChange={(event) => setDepartment(event.target.value)}
+          >
+            <NativeSelectOption value="">The whole school</NativeSelectOption>
+            <NativeSelectOption value="JHS">Junior High only</NativeSelectOption>
+            <NativeSelectOption value="SHS">Senior High only</NativeSelectOption>
+          </NativeSelect>
+        </div>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" className="h-11" disabled={save.isPending}>
           {save.isPending ? "Saving..." : activity ? "Save changes" : "Add activity"}

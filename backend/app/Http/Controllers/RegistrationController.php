@@ -10,10 +10,13 @@ class RegistrationController extends Controller
 {
     public function store(RegisterRequest $request, AccountService $accounts): JsonResponse
     {
-        $accounts->register($request->validated());
+        $user = $accounts->register($request->validated());
 
         return response()->json([
-            'message' => 'Your account was created. You can sign in after the Admin activates it.',
+            'message' => $user->status === 'active'
+                ? 'Your account is ready, since your name is on the school\'s list of teachers. You can sign in now.'
+                : 'Your account was created. You can sign in after the Admin activates it.',
+            'status' => $user->status,
         ], 201);
     }
 }

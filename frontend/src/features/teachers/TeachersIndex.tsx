@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Eye, Pencil, Plus, SearchIcon, SlidersHorizontal, Trash2, UsersRound } from "lucide-react";
 import { usePersonnelOptions, useTeachers } from "@/api/teachers";
 import { useSelectedTerm } from "@/context/selectedTerm";
-import { filterTeachers, isOverLimit, PERSONNEL_TYPE_LABELS } from "@/lib/teachers";
+import { filterTeachers, isOverLimit, PERSONNEL_TYPE_LABELS, matchesLevel, type TeacherLevelTab } from "@/lib/teachers";
 import { SHIFT_LABELS } from "@/lib/timeSlots";
 import type { ManagedTeacher } from "@/types/api";
 import { Crumbs } from "@/components/global-component/ScheduleUi";
@@ -152,12 +152,22 @@ const TeachersIndex = () => {
   const [search, setSearch] = React.useState("");
   const [type, setType] = React.useState("");
   const [status, setStatus] = React.useState("");
+  const [level, setLevel] = React.useState<TeacherLevelTab>("");
+  const [department, setDepartment] = React.useState("");
   const [areFiltersOpen, setAreFiltersOpen] = React.useState(false);
   // undefined = closed, null = adding a new record
   const [selected, setSelected] = React.useState<ManagedTeacher | null | undefined>(undefined);
   const [deleting, setDeleting] = React.useState<ManagedTeacher | null>(null);
 
-  const shown = filterTeachers(teachers ?? [], search, type, status);
+  const shown = filterTeachers(teachers ?? [], search, type, status, level, department);
+  const subjectDepartments = [...new Set((teachers ?? []).map((teacher) => teacher.department).filter((name): name is string => !!name))].sort();
+  const levelCount = (tab: TeacherLevelTab) => (teachers ?? []).filter((teacher) => matchesLevel(teacher, tab)).length;
+  const LEVEL_TABS: { value: TeacherLevelTab; label: string }[] = [
+    { value: "", label: "All" },
+    { value: "JHS", label: "Junior High" },
+    { value: "SHS", label: "Senior High" },
+    { value: "none", label: "No classes yet" },
+  ];
 
   if (!term) {
     return <p className="p-6 text-sm text-neutral-700">{isTermPending ? "Loading..." : "A school year has to be started first."}</p>;
@@ -201,8 +211,41 @@ const TeachersIndex = () => {
           </div>
         </div>
 
+        <div role="tablist" aria-label="Teachers of" className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:flex">
+          {LEVEL_TABS.map((tab) => (
+            <button
+              key={tab.value || "all"}
+              type="button"
+              role="tab"
+              aria-selected={level === tab.value}
+              onClick={() => setLevel(tab.value)}
+              className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-medium transition-colors ${
+                level === tab.value ? "bg-background text-neutral-900 shadow-sm" : "text-neutral-600 hover:text-neutral-900"
+              }`}
+            >
+              {tab.label} <span className="text-xs text-neutral-500">({levelCount(tab.value)})</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-neutral-600">
+          Junior High and Senior High come from each teacher's classes and advisory in {term.name}. A teacher in both appears in both.
+        </p>
+
         {areFiltersOpen && (
-          <div className="grid gap-3 rounded-lg bg-neutral-50 p-3 sm:grid-cols-[12rem_12rem_minmax(0,1fr)]">
+          <div className="grid gap-3 rounded-lg bg-neutral-50 p-3 sm:grid-cols-[12rem_12rem_12rem_minmax(0,1fr)]">
+            <div className="space-y-1">
+              <label htmlFor="department-filter" className="text-sm text-neutral-800">
+                Subject department
+              </label>
+              <NativeSelect id="department-filter" className="w-full [&_select]:h-11" value={department} onChange={(event) => setDepartment(event.target.value)}>
+                <NativeSelectOption value="">All departments</NativeSelectOption>
+                {subjectDepartments.map((name) => (
+                  <NativeSelectOption key={name} value={name}>
+                    {name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </div>
             <div className="space-y-1">
               <label htmlFor="type-filter" className="text-sm text-neutral-800">
                 Type

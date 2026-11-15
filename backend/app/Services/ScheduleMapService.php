@@ -56,6 +56,7 @@ class ScheduleMapService
         ];
 
         $buildings = Building::with(['rooms' => fn ($query) => $query->orderBy('room_number')])
+            ->visibleTo($user)
             ->orderBy('name')
             ->get()
             ->map(fn (Building $building) => [

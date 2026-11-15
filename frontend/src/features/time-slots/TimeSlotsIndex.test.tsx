@@ -27,7 +27,7 @@ const PATTERN: ManagedPattern = {
   slots: [
     { id: 50, period_no: 1, label: null, start_time: "07:00", end_time: "07:45", minutes: 45, is_break: false, locked_reason: null },
     { id: 51, period_no: null, label: "Recess", start_time: "07:45", end_time: "08:05", minutes: 20, is_break: true, locked_reason: null },
-    { id: 52, period_no: 2, label: null, start_time: "08:05", end_time: "09:25", minutes: 80, is_break: false, locked_reason: "These sections have schedules on it: Grade 7 Honesty." },
+    { id: 52, period_no: 2, label: null, start_time: "08:05", end_time: "09:25", minutes: 80, is_break: false, locked_reason: "These sections have schedules on it: Grade 7 Honesty.", in_use: { classes: 4, sections: 1 }, delete_blocked_reason: null },
   ],
 };
 
@@ -233,7 +233,27 @@ describe("periods and breaks", () => {
     expect(screen.getByLabelText("Ends")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Break" })).toBeDisabled();
     expect(screen.getByLabelText("Name (optional)")).toBeEnabled();
+  });
+
+  it("deletes a slot with classes after saying how many go with it", async () => {
+    const calls = openPage();
+
+    await click("Edit Period 2, 8:05 AM – 9:25 AM");
+    await click("Delete this period");
+    expect(screen.getByText(/This also deletes its 4 classes in 1 section/)).toBeInTheDocument();
+    await click("Yes, delete with its classes");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/time-slots\/52\?with_classes=1$/);
+  });
+
+  it("explains why a slot of an approved section cannot be deleted", async () => {
+    const blocked = { ...PATTERN.slots[2], delete_blocked_reason: "These sections are waiting for approval or approved: Grade 7 Honesty. The Admin has to reopen them first." };
+    openPage([{ ...PATTERN, slots: [PATTERN.slots[0], PATTERN.slots[1], blocked] }]);
+
+    await click("Edit Period 2, 8:05 AM – 9:25 AM");
     expect(screen.queryByRole("button", { name: "Delete this period" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Cannot be deleted. These sections are waiting for approval/)).toBeInTheDocument();
   });
 
   it("deletes a free slot after asking", async () => {
@@ -245,7 +265,7 @@ describe("periods and breaks", () => {
     await click("Yes, delete");
 
     await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
-    expect(calls[0].url).toMatch(/\/time-slots\/50$/);
+    expect(calls[0].url).toMatch(/\/time-slots\/50\?with_classes=1$/);
   });
 });
 

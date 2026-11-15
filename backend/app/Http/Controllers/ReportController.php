@@ -63,6 +63,8 @@ class ReportController extends Controller
     {
         Gate::authorize('view-school-records');
 
+        $this->authorizeRoom($room);
+
         return response()->json(['data' => $this->gridOnly($reports->roomSchedule($term, $room))]);
     }
 
@@ -70,12 +72,16 @@ class ReportController extends Controller
     {
         Gate::authorize('view-school-records');
 
+        $this->authorizeRoom($room);
+
         return $this->pdf($reports->gridPdf($reports->roomSchedule($term, $room)), $this->roomFile($term, $room));
     }
 
     public function roomScheduleXlsx(SchoolTerm $term, Room $room, ScheduleReportService $reports): Response
     {
         Gate::authorize('view-school-records');
+
+        $this->authorizeRoom($room);
 
         return $this->xlsx($reports->gridSheet($reports->roomSchedule($term, $room), 'Room Schedule'), $this->roomFile($term, $room));
     }
@@ -213,6 +219,12 @@ class ReportController extends Controller
     private function teacherFile(SchoolTerm $term, Teacher $teacher): string
     {
         return "teacher-program-{$teacher->printedName()}-{$term->name}";
+    }
+
+    /** Another department's room is not listed for this user, so its schedule is not either. */
+    private function authorizeRoom(Room $room): void
+    {
+        abort_unless(Room::whereKey($room->id)->visibleTo(request()->user())->exists(), 404);
     }
 
     private function roomFile(SchoolTerm $term, Room $room): string

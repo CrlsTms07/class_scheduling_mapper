@@ -8,9 +8,12 @@ beforeEach(function () {
     $this->withHeader('Referer', 'http://localhost:5173');
     $this->seed(ReferenceDataSeeder::class);
 
-    $this->actingAs(User::factory()->create()->assignRole('glc'));
+    // A Chairperson of Grade 7, working on a Junior High building.
+    $glc = User::factory()->create()->assignRole('glc');
+    $glc->gradeLevels()->attach(DB::table('grade_levels')->where('grade', 7)->value('id'));
+    $this->actingAs($glc);
 
-    $this->buildingId = DB::table('buildings')->insertGetId(['name' => 'Main']);
+    $this->buildingId = DB::table('buildings')->insertGetId(['name' => 'Main', 'department' => 'JHS']);
     $this->roomId = DB::table('rooms')->insertGetId(['building_id' => $this->buildingId, 'room_number' => '101']);
 });
 
@@ -20,7 +23,9 @@ function roomBody(array $overrides = []): array
 }
 
 it('lets a Master Teacher manage too', function () {
-    $this->actingAs(User::factory()->create()->assignRole('master_teacher'));
+    $master = User::factory()->create()->assignRole('master_teacher');
+    $master->gradeLevels()->attach(DB::table('grade_levels')->where('grade', 11)->value('id'));
+    $this->actingAs($master);
 
     $this->postJson('/api/buildings', ['name' => 'Annex'])->assertCreated();
 });
@@ -102,7 +107,7 @@ it('rejects bad rooms', function (array $overrides, string $field) {
 ]);
 
 it('allows the same room number in another building', function () {
-    $other = DB::table('buildings')->insertGetId(['name' => 'Annex']);
+    $other = DB::table('buildings')->insertGetId(['name' => 'Annex', 'department' => 'JHS']);
 
     $this->postJson("/api/buildings/{$other}/rooms", roomBody(['room_number' => '101']))->assertCreated();
 });

@@ -43,6 +43,8 @@ Route::get('/active-term', [ActiveTermController::class, 'show']);
 // Who is signed in, or null for a visitor. Open to all, so a visitor gets no error.
 Route::get('/me', [AuthController::class, 'me']);
 Route::get('/public/school', [PublicSchoolController::class, 'show']);
+// Which sign-in buttons to show: "Continue with Google" only once the school has set it up.
+Route::get('/auth/providers', fn () => response()->json(['data' => ['google' => \App\Http\Controllers\GoogleAuthController::isConfigured()]]));
 Route::get('/public/school/photo', [PublicSchoolController::class, 'photo']);
 
 Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login'])->name('login');
@@ -64,12 +66,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/me/preferences', [AuthController::class, 'updatePreferences']);
     Route::post('/me/accept-terms', [AuthController::class, 'acceptTerms']);
     // Limited like sign-in, so a session left open cannot be used to guess the current password.
-    Route::put('/me/password', [AuthController::class, 'changePassword'])->middleware('throttle:account');
+    Route::put('/me/password', [AuthController::class, 'changePassword'])->middleware('throttle:password-change');
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/notifications', [NotificationController::class, 'index']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/access-options', [UserController::class, 'accessOptions']);
+    Route::post('/users/activate-teachers', [UserActivationController::class, 'activateTeachers']);
     Route::put('/users/{user}/activation', [UserActivationController::class, 'update']);
     Route::put('/users/{user}/status', [UserActivationController::class, 'changeStatus']);
     Route::delete('/users/{user}', [UserActivationController::class, 'destroy']);

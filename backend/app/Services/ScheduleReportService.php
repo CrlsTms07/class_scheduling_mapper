@@ -67,6 +67,7 @@ class ScheduleReportService
 
         $rooms = Room::with('building')
             ->where('is_active', true)
+            ->visibleTo($user)
             ->orderBy('building_id')
             ->orderBy('room_number')
             ->get()
@@ -196,6 +197,7 @@ class ScheduleReportService
             ->keyBy('id');
 
         $rooms = Room::with('building')
+            ->when(auth()->user(), fn ($query, $user) => $query->visibleTo($user))
             ->when($buildingId, fn ($query) => $query->where('building_id', $buildingId))
             ->orderBy('building_id')
             ->orderBy('room_number')

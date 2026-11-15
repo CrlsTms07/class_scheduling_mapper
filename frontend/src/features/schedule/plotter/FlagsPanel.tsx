@@ -1,5 +1,42 @@
 import { TriangleAlert } from "lucide-react";
+import { Link } from "react-router";
 import type { ScheduleFlag } from "@/types/api";
+
+/** How to fix each kind of flag, and where, when it is not on this page. */
+export const FLAG_FIXES: Record<string, { text: string; to?: string; label?: string }> = {
+  minutes_under: { text: "Place this subject in one more free period." },
+  minutes_over: { text: "Remove a period of this subject, or check its minutes per week.", to: "/subjects", label: "Subjects" },
+  no_adviser: { text: "Choose an adviser for this section.", to: "/sections", label: "Sections" },
+  open_slots: { text: "Choose a subject for each open slot, or clear the slot." },
+  no_room: { text: "Give the section its home room; its classes take it.", to: "/sections", label: "Sections" },
+  overlaps_break: { text: "Move the class out of the break, to a period of the bell schedule." },
+  outside_shift: { text: "Move the class to a period inside the section's shift." },
+  teacher_shift: { text: "Move the class inside the teacher's shift, or choose another teacher." },
+  teacher_overloaded: {
+    text: "Give one of the teacher's subjects to someone else, or raise the limit.",
+    to: "/teacher-loading?view=teachers",
+    label: "Load Distribution",
+  },
+};
+
+const FlagFix = ({ type }: { type: string }) => {
+  const fix = FLAG_FIXES[type];
+  if (!fix) return null;
+
+  return (
+    <span className="mt-0.5 block text-[11px] text-neutral-700">
+      How to fix: {fix.text}
+      {fix.to && (
+        <>
+          {" "}
+          <Link to={fix.to} className="inline-flex min-h-11 items-center font-medium text-branding underline underline-offset-2 md:min-h-0">
+            Open {fix.label}
+          </Link>
+        </>
+      )}
+    </span>
+  );
+};
 
 const FlagsPanel = ({ flags }: { flags: ScheduleFlag[] }) => {
   if (flags.length === 0) {
@@ -37,6 +74,7 @@ const FlagsPanel = ({ flags }: { flags: ScheduleFlag[] }) => {
           >
             {flag.message}
             {flag.acknowledged && " (acknowledged)"}
+            <FlagFix type={flag.type} />
           </li>
         ))}
       </ul>

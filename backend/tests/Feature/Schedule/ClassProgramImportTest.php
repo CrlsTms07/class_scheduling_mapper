@@ -264,3 +264,12 @@ it('sets up "Monday – Thursday" and "Friday" bell schedules, and keeps classes
     expect((clone $classes)->whereNull('room_id')->count())->toBe(0)
         ->and(collect(app(\App\Services\FlagService::class)->forSection($tinio->fresh(), $term->id))->firstWhere('type', 'no_room'))->toBeNull();
 });
+
+it('gives a new subject the minutes most sections have, not the largest', function () {
+    $common = fn (array $values) => (new ReflectionMethod(\App\Services\ScheduleImportService::class, 'commonMinutes'))
+        ->invoke(app(\App\Services\ScheduleImportService::class), $values);
+
+    expect($common(['a' => 220, 'b' => 220, 'c' => 620, 'd' => 260]))->toBe(220)
+        ->and($common(['a' => 220, 'b' => 260]))->toBe(260)
+        ->and($common(['a' => 180]))->toBe(180);
+});

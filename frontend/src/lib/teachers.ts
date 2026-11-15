@@ -101,16 +101,26 @@ export function toTeacherInput(values: TeacherFormValues): TeacherInput {
   };
 }
 
+/** The directory tabs: everyone, those who teach in each department, and those with no classes yet. */
+export type TeacherLevelTab = "" | "JHS" | "SHS" | "none";
+
+export const matchesLevel = (teacher: ManagedTeacher, level: TeacherLevelTab) =>
+  level === "" || (level === "none" ? (teacher.levels ?? []).length === 0 : (teacher.levels ?? []).includes(level));
+
 export function filterTeachers(
   teachers: ManagedTeacher[],
   search: string,
   type: string,
   status: string,
+  level: TeacherLevelTab = "",
+  department = "",
 ): ManagedTeacher[] {
   const words = search.trim().toLowerCase();
 
   return teachers.filter(
     (teacher) =>
+      matchesLevel(teacher, level) &&
+      (department === "" || teacher.department === department) &&
       (type === "" || teacher.personnel_type === type) &&
       (status === "" || (status === "active") === teacher.is_active) &&
       `${teacher.first_name} ${teacher.last_name} ${teacher.printed_name} ${teacher.department ?? ""} ${teacher.designation ?? ""}`

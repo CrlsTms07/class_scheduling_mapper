@@ -220,16 +220,48 @@ describe('once a section has schedules on it', function () {
             ->assertJsonPath('data.0.slots.1.locked_reason', null);
     });
 
-    it('blocks deleting the bell schedule or slot', function () {
+    it('blocks deleting the bell schedule, and asks before deleting a slot with its classes', function () {
         $this->deleteJson("/api/day-patterns/{$this->patternId}")
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['pattern' => 'Grade 7 Honesty']);
         $this->deleteJson("/api/time-slots/{$this->firstSlotId}")
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['slot' => 'Grade 7 Honesty']);
+            ->assertJsonValidationErrors(['slot' => 'This period has 1 classes. Confirm']);
 
-        expect(DB::table('time_slots')->count())->toBe(1);
+        expect(DB::table('time_slots')->count())->toBe(1)
+            ->and(DB::table('schedule_entries')->count())->toBe(1);
     });
+
+    it('says what deleting a slot takes with it', function () {
+        $this->getJson("/api/school-years/{$this->yearId}/day-patterns")
+            ->assertJsonPath('data.0.slots.0.in_use', ['classes' => 1, 'sections' => 1])
+            ->assertJsonPath('data.0.slots.0.delete_blocked_reason', null);
+    });
+
+    it('deletes a slot with its draft classes once confirmed', function () {
+        $this->deleteJson("/api/time-slots/{$this->firstSlotId}?with_classes=1")
+            ->assertOk()
+            ->assertJsonPath('classes_removed', 1)
+            ->assertJsonPath('message', fn (string $message) => str_contains($message, 'placed again'));
+
+        expect(DB::table('time_slots')->count())->toBe(0)
+            ->and(DB::table('schedule_entries')->count())->toBe(0)
+            ->and(DB::table('section_subjects')->count())->toBe(1);
+    });
+
+    it('keeps a slot whose section is waiting for approval or approved', function (string $status) {
+        // A class waiting for approval or approved is complete: it has its room.
+        $roomId = DB::table('rooms')->insertGetId(['building_id' => DB::table('buildings')->insertGetId(['name' => 'Main']), 'room_number' => '101']);
+        DB::table('schedule_entries')->update(['status' => $status, 'room_id' => $roomId]);
+
+        $this->getJson("/api/school-years/{$this->yearId}/day-patterns")
+            ->assertJsonPath('data.0.slots.0.delete_blocked_reason', fn (string $reason) => str_contains($reason, 'Grade 7 Honesty'));
+        $this->deleteJson("/api/time-slots/{$this->firstSlotId}?with_classes=1")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['slot' => 'reopen']);
+
+        expect(DB::table('schedule_entries')->count())->toBe(1);
+    })->with(['pending', 'approved']);
 
     it('blocks changing the times or type of the slot', function () {
         $this->putJson("/api/time-slots/{$this->firstSlotId}", period(['start_time' => '07:10', 'end_time' => '07:45']))

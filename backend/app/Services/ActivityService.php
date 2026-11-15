@@ -28,17 +28,20 @@ class ActivityService
     /**
      * @return array<int, array{id: int, code: ?string, name: string, in_use: bool}>
      */
-    public function listFor(SchoolYear $year): array
+    public function listFor(SchoolYear $year, User $user): array
     {
         $used = ScheduleEntry::whereNotNull('activity_id')->distinct()->pluck('activity_id')->flip();
 
         return Activity::where('school_year_id', $year->id)
+            ->visibleTo($user)
             ->orderBy('name')
             ->get()
             ->map(fn (Activity $activity) => [
                 'id' => $activity->id,
                 'code' => $activity->code,
                 'name' => $activity->name,
+                'department' => $activity->department,
+                'can_edit' => $activity->isEditableBy($user),
                 'in_use' => $used->has($activity->id),
             ])
             ->all();
@@ -49,7 +52,12 @@ class ActivityService
      */
     public function create(SchoolYear $year, array $data, User $user): Activity
     {
-        $activity = Activity::create(['school_year_id' => $year->id, 'code' => $data['code'] ?? null, 'name' => $data['name']]);
+        $activity = Activity::create([
+            'school_year_id' => $year->id,
+            'code' => $data['code'] ?? null,
+            'name' => $data['name'],
+            'department' => \App\Support\DepartmentScope::forNew($user, $data['department'] ?? null),
+        ]);
         $this->audit->log($user, 'create', 'activities', $activity->id, null, $activity->toArray());
 
         return $activity;
@@ -60,13 +68,29 @@ class ActivityService
      */
     public function update(Activity $activity, array $data, User $user): void
     {
+        $this->stopUnlessEditable($activity, $user);
         $old = $activity->toArray();
-        $activity->update(['code' => $data['code'] ?? null, 'name' => $data['name']]);
+        $activity->update([
+            'code' => $data['code'] ?? null,
+            'name' => $data['name'],
+            ...($user->hasRole(User::ROLE_ADMIN) && array_key_exists('department', $data) ? ['department' => $data['department'] ?: null] : []),
+        ]);
         $this->audit->log($user, 'update', 'activities', $activity->id, $old, $activity->toArray());
+    }
+
+    private function stopUnlessEditable(Activity $activity, User $user): void
+    {
+        if (! $activity->isEditableBy($user)) {
+            abort(403, $activity->department === null
+                ? 'School-wide activities are changed by the Admin.'
+                : 'This activity belongs to '.\App\Support\DepartmentScope::label($activity->department).'.');
+        }
     }
 
     public function delete(Activity $activity, User $user): void
     {
+        $this->stopUnlessEditable($activity, $user);
+
         $uses = ScheduleEntry::where('activity_id', $activity->id)->count();
 
         if ($uses > 0) {

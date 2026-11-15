@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Building;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\DepartmentScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,14 +16,17 @@ class BuildingService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function all(): array
+    public function all(User $user): array
     {
         return Building::with(['rooms' => fn ($query) => $query->orderBy('room_number')])
+            ->visibleTo($user)
             ->orderBy('name')
             ->get()
             ->map(fn (Building $building) => [
                 'id' => $building->id,
                 'name' => $building->name,
+                'department' => $building->department,
+                'can_edit' => $building->isEditableBy($user),
                 'rooms' => $building->rooms->map(fn (Room $room) => [
                     'id' => $room->id,
                     'room_number' => $room->room_number,
@@ -36,29 +40,37 @@ class BuildingService
             ->all();
     }
 
-    public function createBuilding(string $name, User $user): Building
+    public function createBuilding(string $name, User $user, ?string $department = null): Building
     {
-        return DB::transaction(function () use ($name, $user) {
-            $building = Building::create(['name' => trim($name)]);
+        return DB::transaction(function () use ($name, $user, $department) {
+            $building = Building::create(['name' => trim($name), 'department' => DepartmentScope::forNew($user, $department)]);
 
-            $this->audit->log($user, 'create', 'buildings', $building->id, null, ['name' => $building->name]);
+            $this->audit->log($user, 'create', 'buildings', $building->id, null, $building->only(['name', 'department']));
 
             return $building;
         });
     }
 
-    public function renameBuilding(Building $building, string $name, User $user): void
+    /** Only the Admin moves a building to another department or makes it shared. */
+    public function renameBuilding(Building $building, string $name, User $user, ?string $department = null, bool $changeDepartment = false): void
     {
-        DB::transaction(function () use ($building, $name, $user) {
-            $before = $building->name;
-            $building->update(['name' => trim($name)]);
+        $this->stopUnlessEditable($building, $user);
 
-            $this->audit->log($user, 'update', 'buildings', $building->id, ['name' => $before], ['name' => $building->name]);
+        DB::transaction(function () use ($building, $name, $user, $department, $changeDepartment) {
+            $before = $building->only(['name', 'department']);
+            $building->update([
+                'name' => trim($name),
+                ...($changeDepartment && $user->hasRole(User::ROLE_ADMIN) ? ['department' => $department ?: null] : []),
+            ]);
+
+            $this->audit->log($user, 'update', 'buildings', $building->id, $before, $building->only(['name', 'department']));
         });
     }
 
     public function deleteBuilding(Building $building, User $user): void
     {
+        $this->stopUnlessEditable($building, $user);
+
         if ($building->rooms()->exists()) {
             throw ValidationException::withMessages(['building' => 'Remove the rooms of this building first.']);
         }
@@ -76,6 +88,8 @@ class BuildingService
      */
     public function addRoom(Building $building, array $data, User $user): Room
     {
+        $this->stopUnlessEditable($building, $user);
+
         return DB::transaction(function () use ($building, $data, $user) {
             $room = $building->rooms()->create([...$data, 'room_number' => trim($data['room_number'])]);
 
@@ -90,6 +104,8 @@ class BuildingService
      */
     public function updateRoom(Room $room, array $data, User $user): void
     {
+        $this->stopUnlessEditable($room->building, $user);
+
         DB::transaction(function () use ($room, $data, $user) {
             $before = $room->only(array_keys($data));
             $room->update([...$data, 'room_number' => trim($data['room_number'])]);
@@ -100,6 +116,8 @@ class BuildingService
 
     public function deleteRoom(Room $room, User $user): void
     {
+        $this->stopUnlessEditable($room->building, $user);
+
         $reason = $this->whyRoomCannotBeDeleted($room);
         if ($reason !== null) {
             throw ValidationException::withMessages(['room' => $reason]);
@@ -111,6 +129,16 @@ class BuildingService
 
             $this->audit->log($user, 'delete', 'rooms', $room->id, $before);
         });
+    }
+
+    /** A shared building, or the other department's, is not this user's to change. */
+    private function stopUnlessEditable(Building $building, User $user): void
+    {
+        if (! $building->isEditableBy($user)) {
+            abort(403, $building->department === null
+                ? 'Shared buildings are changed by the Admin.'
+                : 'This building belongs to '.DepartmentScope::label($building->department).'.');
+        }
     }
 
     /**

@@ -70,10 +70,23 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinutes(15, 20)->by('account:'.strtolower((string) $request->input('email'))),
         ]);
 
-        // The public schedule pages are open to everyone, so one device cannot overload them.
-        RateLimiter::for('guest', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+        // A whole school shares one internet address on its Wi-Fi, so the limits per address are roomy
+        // (team decision, Nov 13, 2026); the tighter limits are per email or per account.
 
-        RateLimiter::for('account', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        // The public schedule pages: a class of students opening them together still gets through.
+        RateLimiter::for('guest', fn (Request $request) => Limit::perMinute(300)->by($request->ip()));
+
+        // Sign-up, forgot and reset password, Google sign-in: the faculty can sign up together, but one
+        // email cannot be tried over and over.
+        RateLimiter::for('account', fn (Request $request) => array_filter([
+            Limit::perMinute(30)->by('ip:'.$request->ip()),
+            filled($request->input('email'))
+                ? Limit::perMinute(5)->by('email:'.strtolower((string) $request->input('email')))
+                : null,
+        ]));
+
+        // Changing the password from an open session: per account, so a shared address does not matter.
+        RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(10)->by('user:'.($request->user()?->id ?? $request->ip())));
 
         // The reset link in the email opens the React page, not a Laravel page.
         // Links the system makes (like the reset link) always use HTTPS on the live server.

@@ -35,6 +35,13 @@ class AssignSlotRequest extends FormRequest
         return [
             fn (Validator $validator) => $this->validateSlotAndDays($validator),
             function (Validator $validator) {
+                $section = $this->route('section');
+                if (! $validator->errors()->has('room_id')
+                    && ! \App\Models\Room::whereKey($this->integer('room_id'))->forLevel($section->gradeLevel->level)->exists()) {
+                    $validator->errors()->add('room_id', 'Choose a room of this department or a shared one.');
+                }
+            },
+            function (Validator $validator) {
                 if (! $validator->errors()->has('section_subject_id') && ! $this->loading()) {
                     $validator->errors()->add('section_subject_id', 'This subject is not loaded on this section.');
                 }

@@ -47,5 +47,9 @@ describe("Load Distribution", () => {
     expect(meters[1]).toHaveAccessibleName("Ana Reyes: 13.3 of 30 hours a week");
     expect(screen.getAllByText("Overload").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "Grade 7 – Hope" })[0]).toHaveAttribute("href", "/teacher-loading?section=4");
+    // How to fix, only for the overloaded teacher: raising the limit opens the teacher's form.
+    expect(screen.getAllByText("How to fix").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "raise Mark Dela Peña's limit" })[0]).toHaveAttribute("href", "/teachers/2?edit=1");
+    expect(screen.queryByRole("link", { name: "raise Ana Reyes's limit" })).not.toBeInTheDocument();
   });
 });

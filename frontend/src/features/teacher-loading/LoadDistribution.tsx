@@ -44,6 +44,31 @@ const Status = ({ teacher }: { teacher: TeacherRow }) => (
   </div>
 );
 
+/** What to do about an overload, with a way to each fix. */
+const FixHint = ({ teacher }: { teacher: TeacherRow }) => {
+  if (!teacher.is_over_hours && !teacher.is_overloaded) return null;
+
+  return (
+    <div className="mt-2 space-y-1 rounded-md border border-red-200 bg-background p-2 text-xs text-neutral-800">
+      <p className="font-medium text-red-800">How to fix</p>
+      <ul className="list-disc space-y-0.5 pl-4">
+        <li>Give one of these subjects to another teacher: open its section and choose another teacher.</li>
+        <li>
+          Or, if the load is right,{" "}
+          <Link
+            to={`/teachers/${teacher.id}?edit=1`}
+            className="inline-flex min-h-11 items-center font-medium text-branding underline underline-offset-2 md:min-h-0"
+          >
+            raise {teacher.name}'s limit
+          </Link>
+          .
+        </li>
+        <li>If the hours look too high for everyone, check the subject's minutes per week on the Subjects page.</li>
+      </ul>
+    </div>
+  );
+};
+
 const Loads = ({ teacher }: { teacher: TeacherRow }) => (
   <ul className="space-y-0.5 text-xs text-neutral-800">
     {teacher.loads.map((load) => (
@@ -109,6 +134,7 @@ const LoadDistribution = ({ termId }: { termId: number }) => {
                 </td>
                 <td className="p-3">
                   <Status teacher={teacher} />
+                  <FixHint teacher={teacher} />
                 </td>
               </tr>
             ))}
@@ -129,6 +155,7 @@ const LoadDistribution = ({ termId }: { termId: number }) => {
               </div>
               <HoursBar teacher={teacher} />
               <Loads teacher={teacher} />
+              <FixHint teacher={teacher} />
             </CardContent>
           </Card>
         ))}

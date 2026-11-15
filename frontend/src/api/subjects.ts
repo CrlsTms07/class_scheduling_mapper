@@ -58,13 +58,15 @@ export function useActivities(yearId: number | undefined) {
   });
 }
 
+export type ActivityInput = { code: string | null; name: string; department?: "JHS" | "SHS" | null };
+
 export const useCreateActivity = (yearId: number) =>
-  useSubjectChange((body: { code: string | null; name: string }) =>
+  useSubjectChange((body: ActivityInput) =>
     api(`/school-years/${yearId}/activities`, { method: "POST", body }),
   );
 
 export const useUpdateActivity = (activityId: number) =>
-  useSubjectChange((body: { code: string | null; name: string }) =>
+  useSubjectChange((body: ActivityInput) =>
     api(`/activities/${activityId}`, { method: "PUT", body }),
   );
 

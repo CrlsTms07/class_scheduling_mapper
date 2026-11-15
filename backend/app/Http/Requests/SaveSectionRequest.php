@@ -47,10 +47,23 @@ class SaveSectionRequest extends FormRequest
     {
         return [
             fn (Validator $validator) => $this->validateUniqueName($validator),
+            fn (Validator $validator) => $this->validateHomeRoom($validator),
             fn (Validator $validator) => $this->validateDepartmentFields($validator),
             fn (Validator $validator) => $this->validateAdviser($validator),
             fn (Validator $validator) => $this->validateCoAdviser($validator),
         ];
+    }
+
+    private function validateHomeRoom(Validator $validator): void
+    {
+        if (! $this->filled('home_room_id') || $validator->errors()->hasAny(['home_room_id', 'grade_level_id'])) {
+            return;
+        }
+
+        $level = \App\Models\GradeLevel::whereKey($this->integer('grade_level_id'))->value('level');
+        if ($level && ! \App\Models\Room::whereKey($this->integer('home_room_id'))->forLevel($level)->exists()) {
+            $validator->errors()->add('home_room_id', 'Choose a room of this department or a shared one.');
+        }
     }
 
     private function yearId(): int

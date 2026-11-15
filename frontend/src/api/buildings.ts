@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DataResponse, ManagedBuilding, RoomInput } from "@/types/api";
+import type { DataResponse, ManagedBuilding, RoomInput, SchoolLevel } from "@/types/api";
 import { api } from "./client";
 
 export function useBuildings() {
@@ -23,12 +23,15 @@ function useBuildingChange<Input>(send: (input: Input) => Promise<unknown>) {
   });
 }
 
+/** The department is sent only by the Admin; a scheduler's building is their own department's. */
+export type BuildingInput = { name: string; department?: SchoolLevel | null };
+
 export const useCreateBuilding = () =>
-  useBuildingChange((name: string) => api("/buildings", { method: "POST", body: { name } }));
+  useBuildingChange((body: BuildingInput) => api("/buildings", { method: "POST", body }));
 
 export const useRenameBuilding = (buildingId: number) =>
-  useBuildingChange((name: string) =>
-    api(`/buildings/${buildingId}`, { method: "PUT", body: { name } }),
+  useBuildingChange((body: BuildingInput) =>
+    api(`/buildings/${buildingId}`, { method: "PUT", body }),
   );
 
 export const useDeleteBuilding = (buildingId: number) =>

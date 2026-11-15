@@ -1,5 +1,6 @@
 import React from "react";
-import { CircleAlert, CircleCheck, FileUp, Sparkles } from "lucide-react";
+import { Link } from "react-router";
+import { ArrowRight, CircleAlert, CircleCheck, Download, FileUp, Sparkles } from "lucide-react";
 import { useImportSchedule } from "@/api/schedule";
 import { apiErrorMessage } from "@/lib/forms";
 import type { ImportMissingKind, ScheduleImportResult, Term } from "@/types/api";
@@ -27,6 +28,71 @@ const missingKinds = (result: ScheduleImportResult) =>
   (Object.keys(MISSING_LABELS) as ImportMissingKind[]).filter((kind) => (result.missing?.[kind].count ?? 0) > 0);
 
 const plural = (count: number, [one, many]: [string, string]) => `${count} ${count === 1 ? one : many}`;
+
+/** The rows left out, as a CSV the user can open in Excel and fix. */
+function downloadLeftOut(result: ScheduleImportResult) {
+  const cell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+  const lines = [
+    ["Row", "Section", "Day", "Time", "Subject", "Teacher", "Room", "Why it was left out"].map(cell).join(","),
+    ...result.rows
+      .filter(({ status }) => status === "error")
+      .map((row) => [row.row, row.section, row.day, row.time, row.subject, row.teacher, row.room, row.message ?? ""].map(cell).join(",")),
+  ];
+  const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: "rows-left-out.csv" });
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/** What to do after an import, in order, each with a link to where it is done. */
+const NextSteps = ({ result, onClose }: { result: ScheduleImportResult; onClose: () => void }) => {
+  const noRoom = new Set(result.rows.filter(({ status, message }) => status === "ok" && message?.includes("No room yet")).map(({ section }) => section));
+  const steps: { text: string; to: string; label: string }[] = [];
+
+  if (noRoom.size > 0) {
+    steps.push({
+      text: `${noRoom.size} ${noRoom.size === 1 ? "section has" : "sections have"} classes without a room. Give each section its home room; its classes take it.`,
+      to: "/sections",
+      label: "Set home rooms",
+    });
+  }
+  if (result.set_up && (result.missing?.subjects.count ?? 0) > 0) {
+    steps.push({ text: "Check the minutes per week of the new subjects.", to: "/subjects", label: "Check subjects" });
+  }
+  if (result.set_up && (result.missing?.teachers.count ?? 0) > 0) {
+    steps.push({ text: "Complete the new teachers' details, like their full names and shift.", to: "/teachers", label: "Check teachers" });
+  }
+  steps.push({ text: "See if any teacher carries too much.", to: "/teacher-loading?view=teachers", label: "Check the teachers' loads" });
+
+  return (
+    <div className="space-y-2 rounded-xl border p-3">
+      <p className="text-sm font-medium text-neutral-900">Next steps</p>
+      <ol className="space-y-2">
+        {steps.map((step, index) => (
+          <li key={step.to} className="flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-800">
+            <span className="min-w-0 flex-1">
+              {index + 1}. {step.text}
+            </span>
+            <Link
+              to={step.to}
+              onClick={onClose}
+              className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 font-medium text-branding hover:bg-[#790D16]/5"
+            >
+              {step.label}
+              <ArrowRight className="size-4" />
+            </Link>
+          </li>
+        ))}
+      </ol>
+      {result.errors > 0 && (
+        <Button type="button" variant="outline" className="h-11 w-full" onClick={() => downloadLeftOut(result)}>
+          <Download />
+          {result.errors === 1 ? "Download the row left out (CSV)" : `Download the ${result.errors} rows left out (CSV)`}
+        </Button>
+      )}
+    </div>
+  );
+};
 
 /** What the file names but the system does not have yet, a few names each. */
 const MissingList = ({ result }: { result: ScheduleImportResult }) => (
@@ -210,6 +276,7 @@ const ImportScheduleSheet = ({ term, onClose }: ImportScheduleSheetProp) => {
               <p className="text-xs text-neutral-700">
                 The classes are now in the schedule. Open a section to edit or change any class, then submit it for approval.
               </p>
+              <NextSteps result={done} onClose={onClose} />
               {done.errors > 0 && <ResultRows result={done} />}
             </section>
           )}

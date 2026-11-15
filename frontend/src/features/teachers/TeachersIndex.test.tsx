@@ -142,6 +142,31 @@ describe("teachers page", () => {
     expect(screen.getByText("No one matches your search.")).toBeInTheDocument();
   });
 
+  it("shows Junior High, Senior High or teachers with no classes yet, with how many in each", async () => {
+    const shs = { ...ANA, id: 3, first_name: "Carla", last_name: "Santos", printed_name: "Carla Santos", department: "Science", levels: ["SHS" as const] };
+    const both = { ...ANA, id: 4, first_name: "Dina", last_name: "Lopez", printed_name: "Dina Lopez", levels: ["JHS" as const, "SHS" as const] };
+    openPage(undefined, 200, [{ ...ANA, levels: ["JHS"] }, { ...BEN, levels: [] }, shs, both]);
+
+    expect(screen.getByRole("tab", { name: "All (4)" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Junior High (2)" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Senior High (2)" }));
+    expect(table().getByText("Carla Santos")).toBeInTheDocument();
+    expect(table().getByText("Dina Lopez")).toBeInTheDocument();
+    expect(table().queryByText("Ana Reyes")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "No classes yet (1)" }));
+    expect(table().getByText("Ben Cruz")).toBeInTheDocument();
+    expect(table().queryByText("Dina Lopez")).not.toBeInTheDocument();
+
+    // And by subject department.
+    await userEvent.click(screen.getByRole("tab", { name: "All (4)" }));
+    await click("Filters");
+    await userEvent.selectOptions(screen.getByLabelText("Subject department"), "Science");
+    expect(table().getByText("Carla Santos")).toBeInTheDocument();
+    expect(table().queryByText("Ana Reyes")).not.toBeInTheDocument();
+  });
+
   it("adds a record with the defaults filled in", async () => {
     const calls = openPage();
 

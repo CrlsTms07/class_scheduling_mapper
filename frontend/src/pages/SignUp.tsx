@@ -9,6 +9,7 @@ import { Link } from "react-router";
 import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
 import Container from "@/components/global-component/Container";
 import FormAlert from "@/components/global-component/FormAlert";
+import GoogleButton from "@/components/global-component/GoogleButton";
 import PasswordInput from "@/components/global-component/PasswordInput";
 import TermsDialog from "@/components/global-component/TermsDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -80,6 +81,10 @@ const SignUp = () => {
               <BackToSignin />
             </div>
           ) : (
+            <>
+            <div className="mb-6">
+              <GoogleButton />
+            </div>
             <form onSubmit={form.handleSubmit(handleSignUp)} noValidate>
               <div className="space-y-5">
                 {formError && <FormAlert>{formError}</FormAlert>}
@@ -201,7 +206,7 @@ const SignUp = () => {
                           I have read and agree to the{" "}
                           <button
                             type="button"
-                            className="font-medium text-branding underline underline-offset-2"
+                            className="inline-flex min-h-11 items-center align-middle font-medium text-branding underline underline-offset-2"
                             onClick={() => setIsTermsOpen(true)}
                           >
                             Terms and Conditions
@@ -228,6 +233,7 @@ const SignUp = () => {
                 {signUp.isPending ? "Creating account..." : "Create account"}
               </Button>
             </form>
+            </>
           )}
         </AuthenticationLayout>
       </Container>

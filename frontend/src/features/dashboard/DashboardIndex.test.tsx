@@ -124,6 +124,12 @@ describe("admin dashboard", () => {
     expect(tile("Active term")).toHaveAttribute("href", "/school-years");
   });
 
+  it("says when sign-ups are waiting", () => {
+    openPage("super_admin");
+
+    expect(screen.getByRole("link", { name: /1 sign-up is waiting for activation/ })).toHaveAttribute("href", "/users");
+  });
+
   it("shows the setup checklist with what is left and where to do it", () => {
     openPage("super_admin");
 
@@ -233,7 +239,7 @@ describe("Chairperson and Master Teacher dashboard", () => {
   });
 });
 
-describe("the four steps", () => {
+describe("the steps", () => {
   const EARLIER: Term = { ...TERM, id: 1, name: "Third Term", start_date: "2026-01-05", is_active: false, school_year: { ...TERM.school_year, id: 0, name: "2025-2026" } };
 
   function openWithEarlier() {

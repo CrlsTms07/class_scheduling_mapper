@@ -272,7 +272,9 @@ const SectionSheet = ({ yearId, yearName, section, onClose }: SectionSheetProp) 
               label={level === "SHS" ? "Usual room (optional)" : "Home room (optional)"}
             >
               <NativeSelectOption value="">None yet</NativeSelectOption>
-              {options?.rooms.map(({ id, label }) => (
+              {options?.rooms
+                .filter((room) => !level || !room.department || room.department === level || String(room.id) === String(roomId))
+                .map(({ id, label }) => (
                 <NativeSelectOption key={id} value={String(id)}>
                   {label}
                 </NativeSelectOption>

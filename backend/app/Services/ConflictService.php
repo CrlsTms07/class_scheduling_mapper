@@ -191,6 +191,7 @@ class ConflictService
 
         $rooms = Room::with('building')
             ->where('is_active', true)
+            ->forLevel($section->gradeLevel->level)
             ->whereNotIn('id', $usedRoomIds)
             ->orderBy('room_number')
             ->limit(5)

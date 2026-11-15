@@ -51,12 +51,32 @@ class TeacherService
             ->get()
             ->keyBy('adviser_id');
 
+        // Junior High, Senior High or both: from this term's classes and this year's advisories.
+        $levels = DB::table('section_subjects')
+            ->join('sections', 'sections.id', '=', 'section_subjects.section_id')
+            ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
+            ->where('section_subjects.term_id', $term->id)
+            ->select('section_subjects.teacher_id', 'grade_levels.level')
+            ->get()
+            ->concat(DB::table('sections')
+                ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
+                ->where('sections.school_year_id', $term->school_year_id)
+                ->get(['sections.adviser_id', 'sections.co_adviser_id', 'grade_levels.level'])
+                ->flatMap(fn ($row) => [
+                    (object) ['teacher_id' => $row->adviser_id, 'level' => $row->level],
+                    (object) ['teacher_id' => $row->co_adviser_id, 'level' => $row->level],
+                ]))
+            ->filter(fn ($row) => $row->teacher_id !== null)
+            ->groupBy('teacher_id')
+            ->map(fn ($rows) => $rows->pluck('level')->unique()->sort()->values()->all());
+
         return Teacher::orderBy('last_name')
             ->orderBy('first_name')
             ->get()
             ->map(fn (Teacher $teacher) => [
                 'id' => $teacher->id,
                 'personnel_type' => $teacher->personnel_type,
+                'levels' => $levels->get($teacher->id, []),
                 'first_name' => $teacher->first_name,
                 'middle_name' => $teacher->middle_name,
                 'last_name' => $teacher->last_name,

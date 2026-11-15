@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import type { ScheduleImportResult, Term } from "@/types/api";
 import ImportScheduleSheet from "./ImportScheduleSheet";
@@ -34,7 +35,9 @@ describe("import from a file", () => {
 
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <ImportScheduleSheet term={TERM} onClose={() => {}} />
+        <MemoryRouter>
+          <ImportScheduleSheet term={TERM} onClose={() => {}} />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -52,6 +55,10 @@ describe("import from a file", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Use this schedule (1 class)" }));
     expect(await screen.findByText(/Imported 1 class as drafts/)).toBeInTheDocument();
+    // What to do next, and the rows left out as a file to fix.
+    expect(screen.getByText("Next steps")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Check the teachers' loads/ })).toHaveAttribute("href", "/teacher-loading?view=teachers");
+    expect(screen.getByRole("button", { name: "Download the row left out (CSV)" })).toBeInTheDocument();
 
     await waitFor(() => expect(sent.map(({ preview }) => preview)).toEqual(["1", "0"]));
     expect(sent[0].url).toContain("/terms/2/schedule-import");
@@ -82,7 +89,9 @@ describe("setting up what the file names but the system lacks", () => {
 
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <ImportScheduleSheet term={TERM} onClose={() => {}} />
+        <MemoryRouter>
+          <ImportScheduleSheet term={TERM} onClose={() => {}} />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -99,11 +108,41 @@ describe("setting up what the file names but the system lacks", () => {
     await userEvent.click(screen.getByRole("button", { name: "Use this schedule (2 classes)" }));
 
     expect(await screen.findByText(/Also set up: 2 sections, 1 bell schedule, 9 teachers/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Check teachers/ })).toHaveAttribute("href", "/teachers");
     expect(screen.getByRole("button", { name: "Go to the schedules" })).toBeInTheDocument();
     expect(sent).toEqual([
       { preview: "1", setUp: "0" },
       { preview: "1", setUp: "1" },
       { preview: "0", setUp: "1" },
     ]);
+  });
+});
+
+describe("classes imported without a room", () => {
+  it("leads to the Sections page to set home rooms", async () => {
+    const done = {
+      ...RESULT,
+      errors: 0,
+      rows: [{ ...RESULT.rows[0], message: "Adds teacher loading · No room yet" }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => (url.includes("csrf-cookie") ? new Response(null, { status: 204 }) : new Response(JSON.stringify({ data: done })))),
+    );
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ImportScheduleSheet term={TERM} onClose={() => {}} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await userEvent.upload(screen.getByLabelText("Schedule file"), new File(["x"], "g9.xlsx"));
+    await userEvent.click(screen.getByRole("button", { name: "Review" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Use this schedule (1 class)" }));
+
+    expect(await screen.findByText(/1 section has classes without a room/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Set home rooms/ })).toHaveAttribute("href", "/sections");
   });
 });

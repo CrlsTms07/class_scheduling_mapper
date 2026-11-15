@@ -17,19 +17,19 @@ class BuildingController extends Controller
     {
         Gate::authorize('view-school-records');
 
-        return response()->json(['data' => $service->all()]);
+        return response()->json(['data' => $service->all(request()->user())]);
     }
 
     public function store(SaveBuildingRequest $request, BuildingService $service): JsonResponse
     {
-        $building = $service->createBuilding($request->input('name'), $request->user());
+        $building = $service->createBuilding($request->input('name'), $request->user(), $request->input('department'));
 
         return response()->json(['data' => ['id' => $building->id, 'name' => $building->name]], 201);
     }
 
     public function update(SaveBuildingRequest $request, Building $building, BuildingService $service): JsonResponse
     {
-        $service->renameBuilding($building, $request->input('name'), $request->user());
+        $service->renameBuilding($building, $request->input('name'), $request->user(), $request->input('department'), $request->has('department'));
 
         return response()->json(['data' => ['id' => $building->id, 'name' => $building->name]]);
     }

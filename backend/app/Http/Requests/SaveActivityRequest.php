@@ -26,6 +26,8 @@ class SaveActivityRequest extends FormRequest
 
         return [
             'code' => ['nullable', 'string', 'max:20'],
+            // Junior High, Senior High, or empty for school-wide (the Admin's choice).
+            'department' => ['nullable', \Illuminate\Validation\Rule::in(['JHS', 'SHS'])],
             'name' => [
                 'required', 'string', 'max:100',
                 Rule::unique('activities', 'name')->where('school_year_id', $yearId)->ignore($activity?->id),
@@ -35,6 +37,6 @@ class SaveActivityRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['name.unique' => 'This school year already has an activity with this name.'];
+        return ['name.unique' => 'This school year already has an activity with this name. If both departments use it, ask the Admin to make it school-wide.'];
     }
 }

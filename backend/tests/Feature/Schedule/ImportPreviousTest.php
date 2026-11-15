@@ -111,10 +111,10 @@ it('stays inside the grade levels of the user', function () {
     importFrom($this, $this->third, $this->active)->assertOk()->assertJsonPath('data.copied', 0);
 });
 
-it('shows the four steps on the dashboard, with their progress', function () {
+it('shows the steps on the dashboard, with their progress', function () {
     $steps = collect($this->getJson("/api/terms/{$this->active->id}/my-dashboard")->assertOk()->json('data.steps'))->keyBy('key');
 
-    expect($steps->keys()->all())->toBe(['subjects', 'teachers', 'loading', 'plot'])
+    expect($steps->keys()->all())->toBe(['rooms', 'bell', 'subjects', 'teachers', 'loading', 'plot'])
         ->and($steps['subjects']['done'])->toBeTrue()
         ->and($steps['subjects']['counts'])->toMatchArray(['sections' => 2, 'activities' => 2])
         ->and($steps['loading']['done'])->toBeTrue()

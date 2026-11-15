@@ -18,7 +18,9 @@ beforeEach(function () {
 describe('a section in a room', function () {
     it('puts a section in a room from the room card, and takes it out', function () {
         $this->actingAs($this->glc);
-        $room = DB::table('rooms')->where('id', '<>', $this->sectionA->home_room_id)->value('id');
+        // Another room of the same building: a Junior High section may not take a Senior High room.
+        $building = DB::table('rooms')->where('id', $this->sectionA->home_room_id)->value('building_id');
+        $room = DB::table('rooms')->where('building_id', $building)->where('id', '<>', $this->sectionA->home_room_id)->value('id');
 
         $this->putJson("/api/sections/{$this->sectionA->id}/room", ['room_id' => $room])->assertOk()->assertJsonPath('message', fn ($text) => str_contains($text, 'now uses'));
         expect($this->sectionA->fresh()->home_room_id)->toBe($room);

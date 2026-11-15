@@ -131,6 +131,34 @@ describe("users page", () => {
   });
 });
 
+describe("sign-ups waiting", () => {
+  it("are listed with checkboxes and activated together as Teacher", async () => {
+    const calls = openPage();
+    const panel = within(screen.getByRole("region", { name: "Sign-ups waiting" }));
+
+    expect(panel.getByText("1 sign-up is waiting")).toBeInTheDocument();
+    expect(panel.getByText("Not on the teachers list")).toBeInTheDocument();
+    expect(panel.getByRole("button", { name: "Activate selected as Teacher" })).toBeDisabled();
+
+    await userEvent.click(panel.getByRole("checkbox", { name: "Choose Pending Reyes" }));
+    await userEvent.click(panel.getByRole("button", { name: "Activate 1 selected as Teacher" }));
+
+    await waitFor(() => expect(calls.find(({ url }) => url.endsWith("/users/activate-teachers"))?.body).toEqual({ user_ids: [2] }));
+  });
+
+  it("can all be approved at once after one question, and each keeps its own Manage", async () => {
+    const calls = openPage();
+    const panel = within(screen.getByRole("region", { name: "Sign-ups waiting" }));
+
+    expect(panel.getByRole("button", { name: "Manage" })).toBeInTheDocument();
+    await userEvent.click(panel.getByRole("button", { name: "Approve all (1) as Teacher" }));
+    expect(calls.find(({ url }) => url.endsWith("/users/activate-teachers"))).toBeUndefined();
+    await userEvent.click(panel.getByRole("button", { name: "Yes, approve all 1" }));
+
+    await waitFor(() => expect(calls.find(({ url }) => url.endsWith("/users/activate-teachers"))?.body).toEqual({ user_ids: [2] }));
+  });
+});
+
 describe("a pending account", () => {
   it("is activated with a role and grade levels", async () => {
     const calls = openPage();

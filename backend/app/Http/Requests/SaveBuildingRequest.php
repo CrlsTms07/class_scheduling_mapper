@@ -19,6 +19,8 @@ class SaveBuildingRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:80', Rule::unique('buildings', 'name')->ignore($this->route('building'))],
+            // Junior High, Senior High, or empty for shared (the Admin's choice).
+            'department' => ['nullable', Rule::in(['JHS', 'SHS'])],
         ];
     }
 
@@ -27,6 +29,7 @@ class SaveBuildingRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['name.unique' => 'There is already a building with this name.'];
+        // A building of the other department is not listed for this user, so say where it is.
+        return ['name.unique' => 'There is already a building with this name. If both departments use it, ask the Admin to make it shared.'];
     }
 }

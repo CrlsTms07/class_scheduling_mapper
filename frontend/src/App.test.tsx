@@ -137,7 +137,8 @@ describe("login page", () => {
     expect(
       await screen.findByText("Use your official DepEd email (@deped.gov.ph)"),
     ).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Only the question of which sign-in buttons to show; no sign-in is sent.
+    expect(fetchMock.mock.calls.filter(([url]) => !String(url).includes("/auth/providers"))).toHaveLength(0);
   });
 
   it("explains that a pending account is waiting for the Admin", async () => {

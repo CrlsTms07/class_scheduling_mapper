@@ -1,4 +1,5 @@
 import React from "react";
+import { departmentBadge, departmentLabel } from "@/lib/departments";
 import { Building as BuildingIcon, DoorClosed, DoorOpen, Pencil, Plus, SearchIcon, Trash2, UsersRound } from "lucide-react";
 import { useBuildings } from "@/api/buildings";
 import { filterBuildings } from "@/lib/buildings";
@@ -120,9 +121,15 @@ const BuildingsIndex = () => {
                   </div>
                   <div className="min-w-0">
                     <h2 className="truncate font-semibold text-neutral-900">{building.name}</h2>
-                    <p className="text-xs text-neutral-600">{`${count} ${count === 1 ? "room" : "rooms"}`}</p>
+                    <p className="flex flex-wrap items-center gap-1 text-xs text-neutral-600">
+                      {`${count} ${count === 1 ? "room" : "rooms"}`}
+                      <Badge className={departmentBadge(building.department)}>{departmentLabel(building.department)}</Badge>
+                    </p>
                   </div>
                 </div>
+                {building.can_edit === false ? (
+                  <p className="max-w-40 text-right text-xs text-neutral-600">Shared: changed by the Admin</p>
+                ) : (
                 <div className="flex shrink-0 gap-2">
                   <Button
                     type="button"
@@ -145,6 +152,7 @@ const BuildingsIndex = () => {
                     <span className="max-sm:sr-only">Delete</span>
                   </Button>
                 </div>
+                )}
               </div>
 
               <div className="space-y-3 p-3 sm:p-4">
@@ -172,6 +180,7 @@ const BuildingsIndex = () => {
                           {!room.is_active && <Badge variant="secondary">Not in use</Badge>}
                         </span>
                       </span>
+                      {building.can_edit !== false && (
                       <span className="flex shrink-0">
                         <Button
                           type="button"
@@ -196,8 +205,10 @@ const BuildingsIndex = () => {
                           <Trash2 />
                         </Button>
                       </span>
+                      )}
                     </li>
                   ))}
+                  {building.can_edit !== false && (
                   <li>
                     <button
                       type="button"
@@ -209,6 +220,7 @@ const BuildingsIndex = () => {
                       Add room
                     </button>
                   </li>
+                  )}
                 </ul>
               </div>
             </section>

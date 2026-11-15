@@ -24,7 +24,7 @@ class ActivityController extends Controller
         // Whoever may see subjects may see activities.
         Gate::authorize('viewAny', Subject::class);
 
-        return response()->json(['data' => $activities->listFor($schoolYear)]);
+        return response()->json(['data' => $activities->listFor($schoolYear, request()->user())]);
     }
 
     public function store(SaveActivityRequest $request, SchoolYear $schoolYear, ActivityService $activities): JsonResponse

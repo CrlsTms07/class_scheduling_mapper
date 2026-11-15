@@ -174,13 +174,15 @@ class AutoFillService
         });
 
         $periods = $editable->mapWithKeys(fn (Section $section) => [$section->id => $this->periodsOf($section)]);
-        $rooms = Room::where('is_active', true)->orderBy('room_number')->orderBy('id')->get(['id', 'room_number']);
+        // Each department's rooms and the shared ones, kept apart for the sections of each.
+        $rooms = Room::with('building:id,department')->where('is_active', true)->orderBy('room_number')->orderBy('id')->get(['id', 'room_number', 'building_id']);
 
         $placements = [];
         $unplaced = [];
 
         foreach ($this->tasks($term, $editable) as $task) {
-            $result = $this->placeTask($task, $periods[$task['section']->id], $rooms);
+            $level = $task['section']->gradeLevel->level;
+            $result = $this->placeTask($task, $periods[$task['section']->id], $rooms->filter(fn (Room $room) => in_array($room->building->department, [null, $level], true))->values());
             array_push($placements, ...$result['placements']);
 
             if ($result['left'] > 0) {

@@ -53,12 +53,14 @@ class PlotterService
             'entries' => $this->entries($section, $termId, $status),
             'rooms' => Room::with('building')
                 ->where('is_active', true)
+                ->forLevel($section->gradeLevel->level)
                 ->orderBy('room_number')
                 ->get()
                 ->map(fn (Room $room) => ['id' => $room->id, 'label' => $room->label()])
                 ->values(),
             'flags' => $this->flags->forSection($section, $termId),
             'activities' => Activity::where('school_year_id', $section->school_year_id)
+                ->forLevel($section->gradeLevel->level)
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->toArray(),

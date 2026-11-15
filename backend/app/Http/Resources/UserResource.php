@@ -30,6 +30,12 @@ class UserResource extends JsonResource
                 // Subjects in color on the schedule. On unless the user turned it off.
                 'color_coding' => (bool) ($this->preferences['color_coding'] ?? true),
             ],
+            // A waiting sign-up whose name is on the Teachers page: activating links them.
+            'matching_personnel' => $this->when($this->status === 'pending', function () {
+                $teacher = app(AccountService::class)->matchingTeacher($this->resource);
+
+                return $teacher ? ['id' => $teacher->id, 'name' => trim("{$teacher->first_name} {$teacher->last_name}")] : null;
+            }),
             'personnel' => $this->teacher
                 ? ['id' => $this->teacher->id, 'name' => $this->teacher->printedName()]
                 : null,

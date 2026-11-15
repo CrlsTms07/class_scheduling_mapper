@@ -20,6 +20,24 @@ class UserActivationController extends Controller
         return new UserResource($user->fresh()->load('gradeLevels'));
     }
 
+    /** "Activate selected as Teacher" on the Users page. */
+    public function activateTeachers(Request $request, AccountService $accounts): JsonResponse
+    {
+        abort_unless($request->user()->hasRole(User::ROLE_ADMIN), 403);
+        $data = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ]);
+
+        $result = $accounts->activateTeachers($data['user_ids'], $request->user());
+
+        return response()->json([
+            'message' => "{$result['activated']} ".($result['activated'] === 1 ? 'account' : 'accounts').' activated as Teacher'
+                .($result['linked'] > 0 ? ", {$result['linked']} linked to their personnel record." : '.'),
+            'data' => $result,
+        ]);
+    }
+
     public function changeStatus(ChangeUserStatusRequest $request, User $user, AccountService $accounts): UserResource
     {
         $accounts->changeStatus($user, $request->user(), $request->input('status'));

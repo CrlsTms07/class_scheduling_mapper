@@ -142,6 +142,40 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
 - **Room in charge:** each room can name who looks after it. The building view shows the rooms floor by floor
   (the floor comes from the room number: 101 is the 1st floor), with a list view as well.
 
+## Team decisions on guidance and accounts (Nov 13, 2026)
+
+- **Subject minutes from an import:** a new subject takes the minutes most sections have in the file (for example
+  220), not the largest. One section with an extra row no longer makes every teacher look overloaded.
+- **Overload help:** each overload in Load Distribution says how to fix it (give a subject to another teacher, or
+  raise the limit) with a link to the teacher's form.
+- **Sign-ups:** the Admin still verifies accounts, since any DepEd employee has a @deped.gov.ph email. To keep it
+  fast: "Activate selected as Teacher" for many at once, a banner on the Admin dashboard, and a sign-up whose name
+  matches exactly one teaching personnel record becomes an active Teacher right away (read-only). Turn this off
+  with `SCHOOL_AUTO_ACTIVATE_TEACHERS=false`. Chairpersons, Master Teachers and Admins are always set by the Admin.
+- **Setup steps on the dashboard:** Rooms & Buildings → Bell schedule → Subjects & Sections → Teachers → Load
+  Distribution → Plot, each with a check mark and a link.
+- **After an import:** next steps (set home rooms, check subjects and teachers, check loads) and the rows left out
+  as a CSV file to fix.
+- **Flags say how to fix them**, for example "Science needs 40 more minutes a week".
+- **"How to make a schedule"** guide for the Admin, Chairperson and Master Teacher, from the dashboard: every step
+  from the school year to the printed forms, who does it and where. It can be printed.
+- **Later (after the evaluation):** a shorter menu with a "Setup" group, so the layout does not change during testing.
+- **Time Slots delete:** a period with classes can be deleted after a warning that names how many classes go with it
+  (drafts only; their subjects can be placed again). Blocked while a section in it is pending or approved.
+- **Continue with Google** on Sign in and Sign up, for @deped.gov.ph Google accounts only (Laravel Socialite). It
+  proves the person owns the DepEd email. Email and password still work. Hidden until the Google client is set up.
+- **Limits for a school Wi-Fi** (everyone shares one internet address): public schedule pages 300 a minute per
+  address; sign-up, forgot and reset password 30 a minute per address and 5 per email; change password 10 a minute per
+  account; sign-in stays 5 a minute per email and address, and 20 every 15 minutes per account.
+- **Junior High and Senior High kept apart:** buildings (and their rooms) and activities belong to Junior High,
+  Senior High or both (Shared / School-wide). A Chairperson sees and changes Junior High ones, a Master Teacher Senior
+  High ones; both see and use the shared ones, which only the Admin changes. A section is offered only rooms of its
+  department and shared ones. Room conflicts are still checked across the school, naming the other department only.
+  Teachers stay shared. Existing buildings and activities were sorted by who uses them.
+- **Database:** Neon for now; the steps to move to Supabase are ready in `docs/deployment.md` (Nov 15, 2026), with a
+  daily keep-alive ping (`.github/workflows/keep-alive.yml`) so a free Supabase project is never paused. Earlier note: Supabase was considered: it would need no code change, but its free plan pauses a
+  project after 7 days without use, and Render needs its Session pooler (IPv4).
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade

@@ -104,6 +104,24 @@ const AdminDashboardPanel = () => {
         Showing <span className="font-medium">{term.name}, SY {term.school_year.name}</span>.
       </p>
 
+      {(data.pending_accounts > 0 || (data.auto_activated_accounts ?? 0) > 0) && (
+        <Link
+          to="/users"
+          className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 hover:bg-amber-100"
+        >
+          <span>
+            {data.pending_accounts > 0 && (
+              <span className="font-medium">
+                {data.pending_accounts} {data.pending_accounts === 1 ? "sign-up is" : "sign-ups are"} waiting for activation.{" "}
+              </span>
+            )}
+            {(data.auto_activated_accounts ?? 0) > 0 &&
+              `${data.auto_activated_accounts} ${data.auto_activated_accounts === 1 ? "teacher" : "teachers"} on the teachers list signed up and can already sign in (last 7 days).`}
+          </span>
+          <span className="font-medium text-branding">Review accounts →</span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatTile
           label={`Active ${termWord(activeTerm ?? term)}`}

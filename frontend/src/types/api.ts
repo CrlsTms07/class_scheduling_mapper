@@ -24,6 +24,8 @@ export type User = {
   must_change_password?: boolean;
   role: RoleName | null;
   personnel: { id: number; name: string } | null;
+  /** A waiting sign-up whose name is on the Teachers page. */
+  matching_personnel?: { id: number; name: string } | null;
   /** Screen choices kept on the account, so they follow the user to any device. */
   preferences?: { color_coding: boolean };
   /** Sent on the Users page only. */
@@ -261,7 +263,13 @@ export type SchoolLevel = "JHS" | "SHS";
 export type Shift = "AM" | "PM" | "WHOLE_DAY";
 
 /** A period or break on the Time Slots page. */
-export type ManagedSlot = TimeSlot & { locked_reason: string | null };
+export type ManagedSlot = TimeSlot & {
+  locked_reason: string | null;
+  /** Draft classes in this slot, removed with it. */
+  in_use?: { classes: number; sections: number };
+  /** Sections waiting for approval or approved: the slot cannot be deleted until they are reopened. */
+  delete_blocked_reason?: string | null;
+};
 
 /** A bell schedule on the Time Slots page. */
 export type ManagedPattern = {
@@ -331,7 +339,7 @@ export type SectionOptions = {
     advises_section_id: number | null;
     advises: string | null;
   }[];
-  rooms: { id: number; label: string }[];
+  rooms: { id: number; label: string; department?: SchoolLevel | null }[];
 };
 
 export type ReportType = "class_program" | "teacher_program" | "room_schedule";
@@ -402,6 +410,8 @@ export type ChecklistKey =
 export type AdminDashboard = {
   pending_sections: number;
   pending_accounts: number;
+  /** Sign-ups that became Teachers on their own in the last 7 days. */
+  auto_activated_accounts?: number;
   flags: { total: number; urgent: number; sections: number };
   progress: {
     grade: number;
@@ -428,7 +438,15 @@ export type ManagedRoom = {
   cannot_delete_reason: string | null;
 };
 
-export type ManagedBuilding = { id: number; name: string; rooms: ManagedRoom[] };
+export type ManagedBuilding = {
+  id: number;
+  name: string;
+  /** JHS or SHS; null is shared by both, changed by the Admin. */
+  department?: SchoolLevel | null;
+  /** Whether this user may change it: their own department's, or any for the Admin. */
+  can_edit?: boolean;
+  rooms: ManagedRoom[];
+};
 
 export type RoomInput = Omit<ManagedRoom, "id" | "cannot_delete_reason">;
 
@@ -461,6 +479,8 @@ export type ManagedTeacher = {
   is_active: boolean;
   account_email: string | null;
   advisory: string | null;
+  /** Where they teach this term (classes and advisories): JHS, SHS, both, or none yet. */
+  levels?: SchoolLevel[];
   assigned: number;
   task_ids: number[];
   qualifications: Qualification[];
@@ -726,8 +746,10 @@ export type SchedulerDashboard = {
   steps: SchedulerStep[];
 };
 
-/** The four steps of making a schedule, in order, with how far along each is. */
+/** The steps of making a schedule, in order, with how far along each is. */
 export type SchedulerStep =
+  | { key: "rooms"; done: boolean; counts: { rooms: number; buildings: number } }
+  | { key: "bell"; done: boolean; counts: { patterns: number; departments: number; ready: number } }
   | { key: "subjects"; done: boolean; counts: { subjects: number; activities: number; sections: number } }
   | { key: "teachers"; done: boolean; counts: { teachers: number } }
   | { key: "loading"; done: boolean; counts: { loaded: number; needed: number; over_hours: number } }
@@ -864,7 +886,15 @@ export type ActivityPlacement = {
   unplaced_classes: number;
 };
 
-export type Activity = { id: number; code: string | null; name: string; in_use: boolean };
+export type Activity = {
+  id: number;
+  code: string | null;
+  name: string;
+  in_use: boolean;
+  /** JHS or SHS; null is school-wide, changed by the Admin. */
+  department?: SchoolLevel | null;
+  can_edit?: boolean;
+};
 
 export type AutoFillPlan = {
   /** Sent back with Confirm, so nothing is saved if the schedules changed since. */

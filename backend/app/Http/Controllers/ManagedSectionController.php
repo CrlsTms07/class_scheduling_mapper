@@ -68,10 +68,12 @@ class ManagedSectionController extends Controller
 
         $rooms = Room::with('building')
             ->where('is_active', true)
+            ->visibleTo($request->user())
             ->orderBy('building_id')
             ->orderBy('room_number')
             ->get()
-            ->map(fn (Room $room) => ['id' => $room->id, 'label' => $room->label()]);
+            // The form offers only the rooms of the chosen grade's department and the shared ones.
+            ->map(fn (Room $room) => ['id' => $room->id, 'label' => $room->label(), 'department' => $room->building->department]);
 
         return response()->json(['data' => [
             'grade_levels' => DB::table('grade_levels')

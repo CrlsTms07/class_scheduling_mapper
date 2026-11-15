@@ -149,9 +149,16 @@ const SlotSheet = ({ action, onClose }: { action: SlotAction; onClose: () => voi
             </Button>
           </div>
 
-          {action.mode === "edit" && !lockedReason && (
+          {action.mode === "edit" && (
             <ConfirmDelete
               label={`Delete ${isBreak ? "this break" : "this period"}`}
+              blockedReason={action.slot.delete_blocked_reason}
+              warning={
+                (action.slot.in_use?.classes ?? 0) > 0
+                  ? `This also deletes its ${action.slot.in_use!.classes} ${action.slot.in_use!.classes === 1 ? "class" : "classes"} in ${action.slot.in_use!.sections} ${action.slot.in_use!.sections === 1 ? "section" : "sections"}. Their subjects go back to the list, to be placed again. This cannot be undone. Are you sure?`
+                  : undefined
+              }
+              confirmLabel={(action.slot.in_use?.classes ?? 0) > 0 ? "Yes, delete with its classes" : undefined}
               isPending={remove.isPending}
               onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
             />

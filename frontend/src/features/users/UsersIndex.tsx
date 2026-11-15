@@ -35,6 +35,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import ActivationSheet from "./ActivationSheet";
+import PendingSignUps from "./PendingSignUps";
 
 const HOW_IT_WORKS = [
   "People sign up with their DepEd email. Their account waits here until you activate it or decline it.",
@@ -309,6 +310,8 @@ const UsersIndex = () => {
 
       {isPending && <p className="text-sm text-neutral-600">Loading...</p>}
       {isError && <p className="text-sm text-destructive">Could not load the accounts.</p>}
+
+      <PendingSignUps users={(users ?? []).filter((user) => user.status === "pending" && user.id !== me?.id)} onManage={setSelected} />
       {users && shown.length === 0 && (
         <p className="text-sm text-neutral-700">No account matches your search.</p>
       )}

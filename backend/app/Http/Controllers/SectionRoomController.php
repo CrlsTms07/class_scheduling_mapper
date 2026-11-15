@@ -25,6 +25,10 @@ class SectionRoomController extends Controller
             'room_id' => ['nullable', 'integer', Rule::exists('rooms', 'id')->where('is_active', true)],
         ], ['room_id.exists' => 'Choose a room that is in use.']);
 
+        if (! empty($data['room_id']) && ! Room::whereKey($data['room_id'])->forLevel($section->gradeLevel->level)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['room_id' => 'Choose a room of this department or a shared one.']);
+        }
+
         $before = $section->home_room_id;
         $section->update(['home_room_id' => $data['room_id'] ?? null]);
         $audit->log($request->user(), 'update', 'sections', $section->id, ['home_room_id' => $before], ['home_room_id' => $section->home_room_id]);

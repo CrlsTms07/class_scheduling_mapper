@@ -45,8 +45,11 @@ class PlaceActivityRequest extends FormRequest
 
     public function activity(): ?Activity
     {
+        $section = $this->route('section');
+
         return Activity::where('id', $this->input('activity_id'))
-            ->where('school_year_id', $this->route('section')->school_year_id)
+            ->where('school_year_id', $section->school_year_id)
+            ->forLevel($section->gradeLevel->level)
             ->first();
     }
 }

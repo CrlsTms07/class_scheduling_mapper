@@ -22,6 +22,8 @@ class ScheduleMapController extends Controller
     {
         Gate::authorize('view-school-records');
 
+        abort_unless(Room::whereKey($room->id)->visibleTo($request->user())->exists(), 404);
+
         return response()->json(['data' => $map->roomSchedule($term, $room, $request->user())]);
     }
 }

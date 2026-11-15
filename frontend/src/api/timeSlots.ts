@@ -59,5 +59,6 @@ export const usePresetSlots = (patternId: number) =>
 export const useUpdateSlot = (slotId: number) =>
   useTimeSlotChange((body: SlotInput) => api(`/time-slots/${slotId}`, { method: "PUT", body }));
 
+/** The confirmation names the classes that go with the slot, so they are deleted too. */
 export const useDeleteSlot = (slotId: number) =>
-  useTimeSlotChange(() => api(`/time-slots/${slotId}`, { method: "DELETE" }));
+  useTimeSlotChange(() => api(`/time-slots/${slotId}?with_classes=1`, { method: "DELETE" }));

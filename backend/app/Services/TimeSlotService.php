@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DayPattern;
 use App\Models\SchoolYear;
+use App\Models\ScheduleEntry;
 use App\Models\TimeSlot;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -168,18 +169,84 @@ class TimeSlotService
         });
     }
 
-    public function deleteSlot(TimeSlot $slot, User $admin): void
+    /**
+     * Deletes a period or break. Its draft classes go with it, but only when $withClasses says the
+     * user saw how many; a section waiting for approval or approved must be reopened first.
+     *
+     * @return int the classes removed
+     */
+    public function deleteSlot(TimeSlot $slot, User $admin, bool $withClasses = false): int
     {
-        DB::transaction(function () use ($slot, $admin) {
-            $this->stopIfUsed($slot, 'slot');
+        return DB::transaction(function () use ($slot, $admin, $withClasses) {
+            $blocked = $this->whySlotCannotBeDeleted($slot);
+            if ($blocked !== null) {
+                throw ValidationException::withMessages(['slot' => $blocked]);
+            }
+
+            $classIds = $this->entriesInSlot($slot)->pluck('schedule_entries.id');
+            if ($classIds->isNotEmpty() && ! $withClasses) {
+                throw ValidationException::withMessages(['slot' => "This period has {$classIds->count()} classes. Confirm to delete them too."]);
+            }
+
+            ScheduleEntry::whereIn('id', $classIds)->delete();
 
             $pattern = $slot->dayPattern;
             $before = $slot->only(['label', 'start_time', 'end_time', 'is_break']);
             $slot->delete();
             $this->renumberPeriods($pattern);
 
-            $this->audit->log($admin, 'delete', 'time_slots', $slot->id, $before);
+            $this->audit->log($admin, 'delete', 'time_slots', $slot->id, [...$before, 'classes_removed' => $classIds->count()]);
+
+            return $classIds->count();
         });
+    }
+
+    /**
+     * How many classes deleting this period would remove, and in how many sections.
+     *
+     * @return array{classes: int, sections: int}
+     */
+    public function classesInSlot(TimeSlot $slot): array
+    {
+        $entries = $this->entriesInSlot($slot)->get(['schedule_entries.id', 'schedule_entries.section_id']);
+
+        return ['classes' => $entries->count(), 'sections' => $entries->pluck('section_id')->unique()->count()];
+    }
+
+    /**
+     * Why a period cannot be deleted even with its classes: sections waiting for approval or approved.
+     */
+    public function whySlotCannotBeDeleted(TimeSlot $slot): ?string
+    {
+        $locked = $this->entriesInSlot($slot, ['pending', 'approved'])
+            ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
+            ->selectRaw("DISTINCT 'Grade ' || grade_levels.grade || ' ' || sections.name AS label, grade_levels.grade, sections.name")
+            ->orderBy('grade_levels.grade')
+            ->orderBy('sections.name')
+            ->pluck('label');
+
+        return $locked->isEmpty()
+            ? null
+            : "These sections are waiting for approval or approved: {$locked->join(', ')}. The Admin has to reopen them first.";
+    }
+
+    /** The classes of this school year, level and shift that fall in the slot's time on its days. */
+    private function entriesInSlot(TimeSlot $slot, array $statuses = ['draft', 'rejected']): \Illuminate\Database\Query\Builder
+    {
+        $pattern = $slot->dayPattern;
+
+        return DB::table('schedule_entries')
+            ->join('school_terms', 'school_terms.id', '=', 'schedule_entries.term_id')
+            ->join('sections', 'sections.id', '=', 'schedule_entries.section_id')
+            ->where('school_terms.school_year_id', $pattern->school_year_id)
+            ->whereExists(fn ($query) => $query->selectRaw('1')->from('grade_levels')
+                ->whereColumn('grade_levels.id', 'sections.grade_level_id')
+                ->where('grade_levels.level', $pattern->level))
+            ->where('sections.shift', $pattern->shift)
+            ->whereIn('schedule_entries.day_of_week', $pattern->day_numbers)
+            ->whereIn('schedule_entries.status', $statuses)
+            ->where('schedule_entries.start_time', '<', $slot->end_time)
+            ->where('schedule_entries.end_time', '>', $slot->start_time);
     }
 
     /**

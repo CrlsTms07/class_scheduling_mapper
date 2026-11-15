@@ -142,7 +142,15 @@ it('gives the Admin the same steps, for every grade level', function () {
     $this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)
         ->assertOk()
         ->assertJsonPath('data.has_scope', true)
-        ->assertJsonCount(4, 'data.steps');
+        ->assertJsonCount(6, 'data.steps');
+});
+
+it('starts the steps with rooms and the bell schedule of the department', function () {
+    $steps = collect($this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)->json('data.steps'));
+
+    expect($steps->pluck('key')->all())->toBe(['rooms', 'bell', 'subjects', 'teachers', 'loading', 'plot'])
+        ->and($steps[0]['counts'])->toHaveKeys(['rooms', 'buildings'])
+        ->and($steps[1]['counts'])->toHaveKeys(['patterns', 'departments', 'ready']);
 });
 
 it('needs a sign-in', function () {

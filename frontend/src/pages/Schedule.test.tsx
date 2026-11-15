@@ -185,6 +185,12 @@ describe("schedule page", () => {
     expect(screen.getByRole("button", { name: "New schedule" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Add section" })).toHaveAttribute("href", "/sections?add=1");
   });
+
+  it("offers the step-by-step guide", () => {
+    openPage("/schedule");
+
+    expect(screen.getByRole("link", { name: "How to make a schedule" })).toHaveAttribute("href", "/guide");
+  });
 });
 
 describe("room schedule page", () => {

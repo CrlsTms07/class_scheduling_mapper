@@ -4,7 +4,8 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SigninSchema } from "@/types/FieldSchema";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import GoogleButton, { GOOGLE_MESSAGES } from "@/components/global-component/GoogleButton";
 import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
 import Container from "@/components/global-component/Container";
 import FormAlert from "@/components/global-component/FormAlert";
@@ -21,6 +22,9 @@ const Login = () => {
   const [isTermsOpen, setIsTermsOpen] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
+  // Back from Google without signing in: say why.
+  const googleMessage = GOOGLE_MESSAGES[params.get("google") ?? ""];
   const login = useLogin();
   const form = useForm<z.infer<typeof SigninSchema>>({
     resolver: zodResolver(SigninSchema),
@@ -49,6 +53,15 @@ const Login = () => {
           title="Sign in to your account"
           description="Enter your DepEd email below to access your account"
         >
+          <>
+          {googleMessage && (
+            <div className="mb-4">
+              <FormAlert variant={googleMessage.isError ? undefined : "success"}>{googleMessage.text}</FormAlert>
+            </div>
+          )}
+          <div className="mb-6">
+            <GoogleButton />
+          </div>
           <form onSubmit={form.handleSubmit(handleSignin)} noValidate>
             <div className="space-y-6">
               {formError && <FormAlert>{formError}</FormAlert>}
@@ -155,6 +168,7 @@ const Login = () => {
             </div>
             <TermsDialog open={isTermsOpen} onOpenChange={setIsTermsOpen} />
           </form>
+          </>
         </AuthenticationLayout>
       </Container>
     </>

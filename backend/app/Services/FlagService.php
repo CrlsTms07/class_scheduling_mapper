@@ -77,7 +77,10 @@ class FlagService
             'key' => "minutes:{$row->section_subject_id}:{$row->scheduled_minutes}",
             'type' => $row->scheduled_minutes > $row->required_minutes ? 'minutes_over' : 'minutes_under',
             'severity' => $row->scheduled_minutes > $row->required_minutes ? 'red' : 'amber',
-            'message' => "{$row->subject}: {$row->scheduled_minutes} of {$row->required_minutes} minutes scheduled.",
+            // Said as what to do: how many minutes to add or take away.
+            'message' => $row->scheduled_minutes < $row->required_minutes
+                ? "{$row->subject} needs ".($row->required_minutes - $row->scheduled_minutes)." more minutes a week ({$row->scheduled_minutes} of {$row->required_minutes} scheduled)."
+                : "{$row->subject} has ".($row->scheduled_minutes - $row->required_minutes)." minutes too many a week ({$row->scheduled_minutes} of {$row->required_minutes} scheduled).",
             'section_subject_id' => $row->section_subject_id,
         ])->all();
     }

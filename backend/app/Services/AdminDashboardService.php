@@ -29,6 +29,7 @@ class AdminDashboardService
         return [
             'pending_sections' => $sections->where('status', 'pending')->count(),
             'pending_accounts' => User::where('status', 'pending')->count(),
+            'auto_activated_accounts' => DB::table('audit_logs')->where('action', 'auto_activate')->where('created_at', '>=', now()->subDays(7))->count(),
             'flags' => [
                 'total' => $flags->count(),
                 'urgent' => $flags->where('severity', 'red')->count(),

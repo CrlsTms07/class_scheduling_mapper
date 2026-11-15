@@ -21,6 +21,23 @@ const plural = (count: number, word: string, many = `${word}s`) => `${count} ${c
 /** What each step is, where it is done, and how far along it is, in words. */
 function describe(step: SchedulerStep): { title: string; detail: string; to: string; status: string } {
   switch (step.key) {
+    case "rooms":
+      return {
+        title: "Rooms & Buildings",
+        detail: "The buildings and rooms classes are held in.",
+        to: "/buildings",
+        status: `${plural(step.counts.buildings, "building")} · ${plural(step.counts.rooms, "room")} in use`,
+      };
+    case "bell":
+      return {
+        title: "Bell schedule",
+        detail: "The periods and breaks of your department, like Monday – Thursday and Friday.",
+        to: "/time-slots",
+        status:
+          step.counts.ready === step.counts.departments && step.counts.departments > 0
+            ? plural(step.counts.patterns, "bell schedule")
+            : "Not set up yet",
+      };
     case "subjects":
       return {
         title: "Subjects & Sections",
@@ -60,7 +77,7 @@ type SchedulerStepsProp = {
   terms: Term[];
 };
 
-/** The four steps of making a schedule, with a quick start from an earlier term. */
+/** The steps of making a schedule from the start, with a quick start from an earlier term. */
 const SchedulerSteps = ({ steps, term, terms }: SchedulerStepsProp) => {
   const [isImporting, setIsImporting] = React.useState(false);
   const earlier = terms

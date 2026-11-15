@@ -34,6 +34,23 @@ export function useChangeUserStatus(userId: number) {
   });
 }
 
+/** "Activate selected as Teacher": many waiting sign-ups at once. */
+export function useActivateTeachers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userIds: number[]) =>
+      api<{ message: string; data: { activated: number; linked: number } }>("/users/activate-teachers", {
+        method: "POST",
+        body: { user_ids: userIds },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["terms"] });
+    },
+  });
+}
+
 /** A temporary password for someone whose reset email did not arrive. */
 export function useResetUserPassword(userId: number) {
   return useMutation({
