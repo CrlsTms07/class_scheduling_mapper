@@ -51,7 +51,10 @@ Remove-Item Env:DB_URL, Env:DB_CONNECTION
   a minute. Open the system before a demonstration.
 - **Disk:** the free service erases its disk on restart. Anything lasting belongs in the database.
 - **Email:** `MAIL_MAILER=log` sends no real email. Set up Gmail as described in "Email" below.
-- **Updates:** Render deploys again on each push to the chosen branch.
+- **Updates:** the live system runs the `main` branch, deployed by hand. Work on a branch, open a pull
+  request, merge it into `main`, back up the database (`php artisan app:backup --url="..."`) when the
+  change has a migration, then **Manual Deploy → Deploy latest commit** at a quiet time. If something
+  breaks, **Deploys → Rollback** on the last good deploy.
 - **Temporary passwords:** if a reset email does not arrive, the Admin opens the user on the Users page
   and presses "Reset password". The person signs in with the temporary password and must choose a new one.
 
