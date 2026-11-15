@@ -49,10 +49,10 @@ class AccountService
      */
     public function register(array $data): User
     {
-        unset($data['accept_terms']);
+        unset($data['accept_terms'], $data['accept_privacy']);
 
         $user = User::create([...$data, 'status' => 'pending']);
-        $user->forceFill(['terms_accepted_at' => now()])->save();
+        $user->forceFill(['terms_accepted_at' => now(), 'privacy_accepted_at' => now()])->save();
 
         // Someone already encoded on the Teachers page signs in as a Teacher right away (read-only:
         // their own schedule and profile). Every other sign-up waits for the Admin.

@@ -398,7 +398,12 @@ const StartYearWizard = ({ years, activeTermName, onClose }: StartYearWizardProp
                   {step === 0 ? "Cancel" : "Back"}
                 </Button>
                 {step < STEPS.length - 1 ? (
-                  <Button type="button" className="h-11" onClick={goNext}>
+                  <Button
+                    type="button"
+                    className="h-11"
+                    disabled={step === 0 && (!values.start_date || !values.end_date)}
+                    onClick={goNext}
+                  >
                     Next
                   </Button>
                 ) : (

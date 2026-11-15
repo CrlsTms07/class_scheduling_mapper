@@ -14,7 +14,7 @@ const Index = () => {
             <AppHeader />
           </div>
           <div>
-            <aside className="hidden lg:block fixed w-64 h-[calc(100dvh-5rem)] overflow-y-auto border-e">
+            <aside className="hidden lg:flex lg:flex-col fixed w-64 h-[calc(100dvh-5rem)] overflow-y-auto border-e">
               <AppSideBar />
             </aside>
             <main className="lg:ml-64 min-w-0">

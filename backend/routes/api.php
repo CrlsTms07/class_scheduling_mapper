@@ -48,6 +48,11 @@ Route::get('/auth/providers', fn () => response()->json(['data' => ['google' => 
 Route::get('/public/school/photo', [PublicSchoolController::class, 'photo']);
 
 Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login'])->name('login');
+// The second step of signing in: the code sent to the DepEd email.
+Route::middleware('throttle:login-code')->group(function () {
+    Route::post('/login/code', [AuthController::class, 'verifyCode']);
+    Route::post('/login/code/resend', [AuthController::class, 'resendCode']);
+});
 
 Route::middleware('throttle:guest')->prefix('/guest')->group(function () {
     Route::get('/sections', [GuestController::class, 'sections']);

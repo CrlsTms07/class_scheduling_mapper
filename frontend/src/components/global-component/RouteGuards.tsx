@@ -39,7 +39,7 @@ export const RequireAuth = () => {
   }
 
   // An account that has not accepted the Terms and Conditions sees them before anything else.
-  if (user.terms_accepted_at === null) return <TermsGate />;
+  if (user.terms_accepted_at === null || user.privacy_accepted_at === null) return <TermsGate />;
   // After the Admin gave a temporary password, a new one comes next.
   if (user.must_change_password) return <ChangePasswordGate />;
 

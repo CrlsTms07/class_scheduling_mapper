@@ -105,7 +105,7 @@ The same Gmail account, sent through Google's web API, which Render does not blo
 6. In Render → the service → **Environment**, set:
 
 ```
-MAIL_MAILER=gmail-api
+MAIL_MAILER=gmail
 GMAIL_CLIENT_ID=...
 GMAIL_CLIENT_SECRET=...
 GMAIL_REFRESH_TOKEN=...
@@ -113,8 +113,17 @@ MAIL_FROM_ADDRESS=the.school.account@gmail.com
 MAIL_FROM_NAME="ERCIHS Scheduling System"
 ```
 
-Check it with `php artisan app:test-mail you@example.com` (from the Render shell, or on your computer
+Check it with `php artisan mail:test you@example.com` (from the Render shell, or on your computer
 with the same variables). Keep these values out of Git: they are as secret as the Gmail password.
+
+## Sign-in code by email
+
+After the password, the system emails a 6-digit code to the DepEd address. It needs working email
+(the "Email" section above). With `SCHOOL_LOGIN_CODE=auto` (the default) it turns on by itself once
+`MAIL_MAILER` is a real mailer (`smtp` or `gmail`), and stays off while it is `log`, so no one is
+locked out. Set `SCHOOL_LOGIN_CODE=false` on Render to turn it off, or `true` to force it.
+
+Before turning on real email, send yourself a test: `php artisan mail:test you@deped.gov.ph`.
 
 ## Google sign-in ("Continue with Google")
 

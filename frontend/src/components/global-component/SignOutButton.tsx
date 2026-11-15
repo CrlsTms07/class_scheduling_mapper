@@ -13,15 +13,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-/** Asks once before signing out, so a stray tap never ends someone's work. The guards then go home. */
+/**
+ * Asks once before signing out, so a stray tap never ends someone's work. The guards then go home.
+ * Shown as a full row at the bottom of the menu, on the sidebar and in the phone drawer.
+ */
 const SignOutButton = () => {
   const [isAsking, setIsAsking] = React.useState(false);
   const logout = useLogout();
 
   return (
     <>
-      <Button variant="ghost" size="icon" aria-label="Sign out" className="size-11" onClick={() => setIsAsking(true)}>
+      <Button
+        type="button"
+        variant="ghost"
+        aria-label="Sign out"
+        className="h-11 w-full justify-start gap-3 rounded-lg px-3 text-sm text-neutral-700 hover:bg-[#790D16]/5"
+        onClick={() => setIsAsking(true)}
+      >
         <LogOut className="text-[#790D16]" />
+        Sign out
       </Button>
 
       <Dialog open={isAsking} onOpenChange={setIsAsking}>

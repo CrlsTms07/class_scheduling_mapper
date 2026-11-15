@@ -53,7 +53,7 @@ npm run test
 npm run build
 ```
 
-## Current status (Nov 13, 2026)
+## Current status (Nov 16, 2026)
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
@@ -103,6 +103,10 @@ npm run build
   the teachers list, deleting a time slot with its draft classes, and "Continue with Google" (Laravel Socialite,
   @deped.gov.ph only), and Junior High and Senior High keeping their own buildings, rooms and activities
   (`buildings.department`, `activities.department`; NULL = shared, Admin only; see `App\Support\DepartmentScope`).
+- **Working, sign-in and privacy (team decisions, Nov 16, 2026, see `docs/client-notes.md`):** 6-digit sign-in code
+  to the DepEd email with "Remember this device for 30 days" (`LoginCodeService`, `SCHOOL_LOGIN_CODE=auto`), a
+  separate Data Privacy Notice (RA 10173) with its own checkbox, notifications under the bell, Sign out at the
+  bottom of the menu, empty dd/mm/yyyy school year dates, and deploys from `main`.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
 - **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
   the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.

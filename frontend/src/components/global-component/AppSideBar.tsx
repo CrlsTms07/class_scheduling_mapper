@@ -1,6 +1,7 @@
 import { NavLink } from "react-router";
 import { useMe } from "@/api/auth";
 import { navigationFor } from "@/lib/navigation";
+import SignOutButton from "./SignOutButton";
 
 /**
  * The menu of the signed-in user's role. Used by the desktop sidebar
@@ -10,7 +11,8 @@ const AppSideBar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { data: user } = useMe();
 
   return (
-    <nav aria-label="Main menu">
+    <div className="flex min-h-full flex-col">
+    <nav aria-label="Main menu" className="flex-1">
       {navigationFor(user?.role ?? null, Boolean(user?.personnel)).map((group) => (
         <div key={group.label} className="p-5 space-y-2">
           <p className="text-neutral-600 text-sm pl-3">{group.label}</p>
@@ -41,6 +43,11 @@ const AppSideBar = ({ onNavigate }: { onNavigate?: () => void }) => {
         </div>
       ))}
     </nav>
+    {/* At the bottom of the menu, where people look for it last. */}
+    <div className="border-t p-5">
+      <SignOutButton />
+    </div>
+    </div>
   );
 };
 

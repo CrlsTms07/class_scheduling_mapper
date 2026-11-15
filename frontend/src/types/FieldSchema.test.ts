@@ -10,6 +10,7 @@ const signUp = {
   password: "Password123!",
   confirmPassword: "Password123!",
   accept_terms: true,
+  accept_privacy: true,
 };
 
 describe("SigninSchema", () => {
@@ -81,5 +82,13 @@ describe("ForgotPasswordSchema", () => {
     const gmail = ForgotPasswordSchema.safeParse({ email: "juan@gmail.com" });
     expect(gmail.success).toBe(false);
     expect(gmail.error?.issues[0].message).toBe("Use your official DepEd email (@deped.gov.ph)");
+  });
+});
+
+describe("SignUpSchema privacy", () => {
+  it("needs the Data Privacy Notice agreed to, on its own", () => {
+    const result = SignUpSchema.safeParse({ ...signUp, accept_privacy: false });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Please read and agree to the Data Privacy Notice.");
   });
 });

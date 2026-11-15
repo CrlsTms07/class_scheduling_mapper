@@ -62,6 +62,13 @@ function openPage(years: SchoolYear[] = [YEAR], reply: unknown = { data: YEAR, c
 
 const click = (name: string) => userEvent.click(screen.getByRole("button", { name }));
 
+/** Opens the wizard and sets the year's dates, which start empty. */
+async function openWizard() {
+  await click("Start New School Year");
+  await userEvent.type(screen.getByLabelText("First day"), "2027-06-01");
+  await userEvent.type(screen.getByLabelText("Last day"), "2028-03-31");
+}
+
 describe("school years page", () => {
   it("shows each year with its terms and which one is active", () => {
     openPage();
@@ -102,7 +109,7 @@ describe("start new school year wizard", () => {
       copied: { subjects: 12, subjects_skipped: 2, day_patterns: 2, time_slots: 20, signatories: 4 },
     }, 201);
 
-    await click("Start New School Year");
+    await openWizard();
 
     expect(screen.getByText(/Step 1 of 4/)).toBeInTheDocument();
     expect(screen.getByLabelText("School year")).toHaveValue("2027-2028");
@@ -149,7 +156,7 @@ describe("start new school year wizard", () => {
   it("stops on the first step when the name is wrong", async () => {
     openPage();
 
-    await click("Start New School Year");
+    await openWizard();
     await userEvent.clear(screen.getByLabelText("School year"));
     await userEvent.type(screen.getByLabelText("School year"), "2027");
     await click("Next");
@@ -161,7 +168,7 @@ describe("start new school year wizard", () => {
   it("stops on the terms step when the dates do not fit", async () => {
     openPage();
 
-    await click("Start New School Year");
+    await openWizard();
     await click("Next");
     await screen.findByText(/Step 2 of 4/);
     await userEvent.clear(screen.getByLabelText("Part 1 name"));
@@ -174,7 +181,7 @@ describe("start new school year wizard", () => {
   it("only lets Custom add or remove terms", async () => {
     openPage();
 
-    await click("Start New School Year");
+    await openWizard();
     await click("Next");
     await screen.findByText(/Step 2 of 4/);
 
@@ -185,6 +192,21 @@ describe("start new school year wizard", () => {
 
     expect(screen.getByLabelText("Part 4 name")).toHaveValue("Fourth Term");
     expect(screen.getByRole("button", { name: "Add a part" })).toBeDisabled();
+  });
+
+  it("starts with empty dates, shows them as day/month/year, and waits for them", async () => {
+    openPage();
+
+    await click("Start New School Year");
+    expect(screen.getByLabelText("First day")).toHaveValue("");
+    expect(screen.getAllByText("Not set yet (dd/mm/yyyy)")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("First day"), "2027-06-08");
+    await userEvent.type(screen.getByLabelText("Last day"), "2028-04-12");
+    expect(screen.getByText("08/06/2027 · Tuesday")).toBeInTheDocument();
+    expect(screen.getByText("12/04/2028 · Wednesday")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
   it("has nothing to copy for the very first year", async () => {
@@ -206,7 +228,7 @@ describe("start new school year wizard", () => {
       errors: { start_date: ["These dates overlap school year 2026-2027."] },
     }, 422);
 
-    await click("Start New School Year");
+    await openWizard();
     await click("Next");
     await screen.findByText(/Step 2 of 4/);
     await click("Next");

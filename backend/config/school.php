@@ -20,6 +20,10 @@ return [
     // Teacher right away (team decision, Nov 13, 2026). Other roles always wait for the Admin.
     'auto_activate_teachers' => (bool) env('SCHOOL_AUTO_ACTIVATE_TEACHERS', true),
 
+    // Signing in asks for a 6-digit code sent to the DepEd email (team decision, Nov 16, 2026).
+    // "auto" turns it on once a real mailer is set (not "log"), so no one is locked out before then.
+    'login_code' => env('SCHOOL_LOGIN_CODE', 'auto'),
+
     // Every teacher carries at most this many subjects, the same for all (team decision, Nov 12, 2026).
     'max_subjects' => (int) env('SCHOOL_MAX_SUBJECTS', 5),
 ];

@@ -176,6 +176,22 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
   daily keep-alive ping (`.github/workflows/keep-alive.yml`) so a free Supabase project is never paused. Earlier note: Supabase was considered: it would need no code change, but its free plan pauses a
   project after 7 days without use, and Render needs its Session pooler (IPv4).
 
+## Team decisions on sign-in, privacy and layout (Nov 16, 2026)
+
+- **Sign-in code:** after the password, a 6-digit code is sent to the DepEd email (valid 10 minutes, 5 tries, a new
+  code once a minute). "Remember this device for 30 days" skips it on that browser. "Continue with Google" needs no
+  code. It turns on by itself once real emails are sent (`SCHOOL_LOGIN_CODE=auto`), so no one is locked out before
+  Gmail is set up; `true` or `false` forces it.
+- **Data Privacy Notice (RA 10173):** its own notice and checkbox at sign-up and at the first sign-in, apart from the
+  Terms and Conditions (`users.privacy_accepted_at`). Existing accounts are asked once.
+- **Notifications** drop down from the bell at the top, on phones and computers.
+- **Sign out** is at the bottom of the menu (sidebar and phone drawer), no longer in the header.
+- **Start New School Year:** the dates start empty, each date is shown as dd/mm/yyyy with its weekday, and Next waits
+  until both are set. The date fields use the device's calendar.
+- **Teacher record on Users** (was "Personnel record"): links an account to its teacher record so My Schedule and My
+  Profile work. Hidden for an Admin who has none; explains when no record is free.
+- **Deploys** come from `main`: branch, pull request, merge, then Manual Deploy.
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade

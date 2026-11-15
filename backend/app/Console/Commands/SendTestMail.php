@@ -11,13 +11,16 @@ use Illuminate\Support\Facades\Mail;
  */
 class SendTestMail extends Command
 {
-    protected $signature = 'app:test-mail {to : The address to send the test email to}';
+    protected $signature = 'mail:test {email : The address to send the test email to}';
 
-    protected $description = 'Send a test email with the current mail settings';
+    protected $description = 'Send a real test email with the current mail settings (for example the Gmail API)';
+
+    /** The name used before Nov 16, 2026, so older notes still work. */
+    protected $aliases = ['app:test-mail'];
 
     public function handle(): int
     {
-        $to = (string) $this->argument('to');
+        $to = (string) $this->argument('email');
         $mailer = (string) config('mail.default');
 
         try {

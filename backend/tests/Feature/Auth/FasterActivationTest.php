@@ -15,7 +15,7 @@ function signUpBody(array $overrides = []): array
     return [
         'first_name' => 'Ana', 'middle_name' => '', 'last_name' => 'Reyes', 'suffix' => '',
         'email' => 'ana.reyes@deped.gov.ph', 'password' => 'Password123!', 'password_confirmation' => 'Password123!',
-        'accept_terms' => true, ...$overrides,
+        'accept_terms' => true, 'accept_privacy' => true, ...$overrides,
     ];
 }
 

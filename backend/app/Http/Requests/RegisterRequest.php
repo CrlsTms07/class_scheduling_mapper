@@ -26,6 +26,7 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'email', 'max:150', new DepEdEmail, 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'accept_terms' => ['accepted'],
+            'accept_privacy' => ['accepted'],
         ];
     }
 
@@ -34,6 +35,9 @@ class RegisterRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['accept_terms.accepted' => 'Please read and accept the Terms and Conditions.'];
+        return [
+            'accept_terms.accepted' => 'Please read and accept the Terms and Conditions.',
+            'accept_privacy.accepted' => 'Please read and agree to the Data Privacy Notice.',
+        ];
     }
 }

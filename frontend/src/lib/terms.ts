@@ -24,12 +24,9 @@ export const TERMS: { title: string; points: string[] }[] = [
     ],
   },
   {
-    title: "4. Data privacy (Republic Act No. 10173)",
+    title: "4. Data privacy",
     points: [
-      "The system keeps your name, DepEd email, role, and teaching information such as subjects, loading and schedules.",
-      "This information is used only for class scheduling and the school's reports, and is seen only by those whose role needs it.",
-      "Student names are not kept. The public schedule shows only the section, its adviser and co-adviser.",
-      "You may ask the Admin to correct your information, or to remove your account when you leave the school.",
+      "How your personal information is collected, used, kept and protected is explained in the separate Data Privacy Notice (Republic Act No. 10173), which you agree to on its own.",
     ],
   },
   {

@@ -37,7 +37,12 @@ return [
 
     'mailers' => [
 
-        // The school's Gmail over HTTPS, for hosts that block the SMTP ports (Render's free plan).
+        // The school's Gmail over HTTPS (the Gmail API, not SMTP), for hosts that block the SMTP
+        // ports (Render's free plan). "gmail" and "gmail-api" are the same mailer.
+        'gmail' => [
+            'transport' => 'gmail',
+        ],
+
         'gmail-api' => [
             'transport' => 'gmail-api',
         ],

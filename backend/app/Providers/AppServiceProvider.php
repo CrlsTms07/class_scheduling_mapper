@@ -70,6 +70,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinutes(15, 20)->by('account:'.strtolower((string) $request->input('email'))),
         ]);
 
+        // Trying sign-in codes: a few a minute per browser session, so 6 digits cannot be guessed.
+        RateLimiter::for('login-code', fn (Request $request) => Limit::perMinute(10)->by('code:'.($request->hasSession() ? $request->session()->getId() : $request->ip())));
+
         // A whole school shares one internet address on its Wi-Fi, so the limits per address are roomy
         // (team decision, Nov 13, 2026); the tighter limits are per email or per account.
 
@@ -126,11 +129,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Gmail over HTTPS: the same Gmail account, where the SMTP ports are blocked.
-        Mail::extend('gmail-api', fn () => new GmailApiTransport(
+        // MAIL_MAILER=gmail (or the older name gmail-api). Settings come from config/services.php.
+        $gmail = fn () => new GmailApiTransport(
             (string) config('services.gmail.client_id'),
             (string) config('services.gmail.client_secret'),
             (string) config('services.gmail.refresh_token'),
-        ));
+        );
+        Mail::extend('gmail', $gmail);
+        Mail::extend('gmail-api', $gmail);
 
         // The system signs in with session cookies only. API tokens are not used.
         Sanctum::getAccessTokenFromRequestUsing(fn () => null);
