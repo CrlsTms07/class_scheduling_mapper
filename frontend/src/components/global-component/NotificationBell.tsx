@@ -29,17 +29,26 @@ const NotificationBell = () => {
   const { data: user } = useMe();
   const { data: items = [] } = useNotifications();
   const [isOpen, setIsOpen] = React.useState(false);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
   const key = seenKey(user?.id);
   const [seenAt, setSeenAt] = React.useState(() => readSeen(key));
 
   const unread = unreadCount(items, seenAt);
 
-  // Escape closes the panel, like a dialog.
+  // Escape, or a tap or click anywhere outside the bell and its panel, closes it. (A full-screen
+  // overlay would not work here: the header's blur keeps fixed children inside the header.)
   React.useEffect(() => {
     if (!isOpen) return;
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && setIsOpen(false);
+    const onPointer = (event: PointerEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
   }, [isOpen]);
 
   const open = () => {
@@ -54,7 +63,7 @@ const NotificationBell = () => {
   };
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative">
       <Button
         variant="ghost"
         size="icon"
@@ -74,8 +83,6 @@ const NotificationBell = () => {
 
       {isOpen && (
         <>
-          {/* A tap outside closes it. */}
-          <button type="button" aria-label="Close notifications" tabIndex={-1} className="fixed inset-0 z-40 cursor-default" onClick={() => setIsOpen(false)} />
           {/* Under the bell: across the screen on phones, a panel on the right on computers. */}
           <div
             role="dialog"

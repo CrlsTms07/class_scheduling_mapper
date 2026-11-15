@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -84,6 +84,24 @@ describe("notifications", () => {
     expect(screen.getByText(/Too many Math periods/)).toBeInTheDocument();
     // The open list hides the page behind it from screen readers, so look past that.
     expect(screen.getByRole("button", { name: "Notifications", hidden: true })).toBeInTheDocument();
+  });
+
+  it("closes on a tap outside, but not on a tap inside the panel", async () => {
+    open(
+      <div>
+        <p>Page content</p>
+        <NotificationBell />
+      </div>,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
+    const panel = screen.getByRole("dialog", { name: "Notifications" });
+
+    await userEvent.click(within(panel).getByText(/What needs your attention/));
+    expect(screen.getByRole("dialog", { name: "Notifications" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Page content"));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Notifications" })).not.toBeInTheDocument());
   });
 
   it("says when there is nothing", async () => {

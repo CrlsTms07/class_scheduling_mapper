@@ -197,8 +197,9 @@ class AccountService
             // A password they chose themselves: no temporary password is left to change.
             $user->forceFill(['password' => $password, 'remember_token' => Str::random(60), 'must_change_password' => false])->save();
 
-            // Sign out every device that used the old password.
+            // Sign out every device that used the old password, and forget remembered ones.
             DB::table('sessions')->where('user_id', $user->id)->delete();
+            $this->forgetDevices($user);
 
             event(new PasswordReset($user));
         });
@@ -225,6 +226,7 @@ class AccountService
         DB::transaction(function () use ($user, $admin, $temporary) {
             $user->forceFill(['password' => $temporary, 'must_change_password' => true, 'remember_token' => Str::random(60)])->save();
             DB::table('sessions')->where('user_id', $user->id)->delete();
+            $this->forgetDevices($user);
             $this->audit->log($admin, 'reset_password', 'users', $user->id, null, ['must_change_password' => true]);
         });
 
@@ -235,7 +237,17 @@ class AccountService
     public function changePassword(User $user, string $password): void
     {
         $user->forceFill(['password' => $password, 'must_change_password' => false])->save();
+        $this->forgetDevices($user);
         $this->audit->log($user, 'change_password', 'users', $user->id);
+    }
+
+    /**
+     * A new password, or an account switched off, means every remembered device asks for the
+     * sign-in code again.
+     */
+    private function forgetDevices(User $user): void
+    {
+        DB::table('trusted_devices')->where('user_id', $user->id)->delete();
     }
 
     public function activate(User $user, User $admin, array $data): void
@@ -269,6 +281,7 @@ class AccountService
 
             if ($status === 'inactive') {
                 DB::table('sessions')->where('user_id', $user->id)->delete();
+                $this->forgetDevices($user);
             }
 
             $this->audit->log(

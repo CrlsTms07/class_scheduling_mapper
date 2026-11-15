@@ -113,7 +113,7 @@ class ActivityService
      */
     public function place(SchoolTerm $term, Section $from, TimeSlot $slot, Activity $activity, array $days, string $scope, User $user, bool $isPreview): array
     {
-        $plans = $this->targets($term, $from, $scope, $user)
+        $plans = $this->targets($term, $from, $scope, $user, $activity)
             ->map(fn (Section $section) => $this->planFor($term, $section, $slot, $days))
             ->values();
 
@@ -165,7 +165,7 @@ class ActivityService
     /**
      * @return Collection<int, Section>
      */
-    private function targets(SchoolTerm $term, Section $from, string $scope, User $user): Collection
+    private function targets(SchoolTerm $term, Section $from, string $scope, User $user, Activity $activity): Collection
     {
         if ($scope === 'section') {
             return collect([$from->loadMissing('gradeLevel')]);
@@ -176,6 +176,8 @@ class ActivityService
             ->where('school_year_id', $term->school_year_id)
             ->when($scope === 'grade', fn ($query) => $query->where('grade_level_id', $from->grade_level_id))
             ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
+            // A Junior High or Senior High activity goes only to that department's sections.
+            ->when($activity->department, fn ($query, string $level) => $query->where('grade_levels.level', $level))
             ->orderBy('grade_levels.grade')
             ->orderBy('sections.name')
             ->select('sections.*')

@@ -4,7 +4,10 @@ import { useMe } from "@/api/auth";
 import { Crumbs } from "@/components/global-component/ScheduleUi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SCHEDULE_GUIDE } from "./scheduleGuide";
+import { SCHEDULE_GUIDE, type GuideStep } from "./scheduleGuide";
+
+/** Each step's number across all parts (1, 2, 3...), counted once. */
+const STEP_NUMBERS = new Map<GuideStep, number>(SCHEDULE_GUIDE.flatMap(({ steps }) => steps).map((step, index) => [step, index + 1]));
 
 /**
  * "How to make a schedule": every step from the start of the school year to the printed forms,
@@ -12,7 +15,6 @@ import { SCHEDULE_GUIDE } from "./scheduleGuide";
  */
 const ScheduleGuidePage = () => {
   const { data: user } = useMe();
-  let number = 0;
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
@@ -44,7 +46,7 @@ const ScheduleGuidePage = () => {
           </div>
           <ol className="space-y-3">
             {part.steps.map((step) => {
-              number += 1;
+              const number = STEP_NUMBERS.get(step) ?? 0;
               const isMine = !!user?.role && step.roles.includes(user.role);
 
               return (
