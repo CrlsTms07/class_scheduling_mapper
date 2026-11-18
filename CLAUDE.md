@@ -114,7 +114,7 @@ npm run test:e2e                  # Playwright; only against a throwaway databas
   shared components (centered dialog, searchable select, 12-hour time picker, toasts, skeleton loaders), every
   dashboard, the Schedule module and plotter (only free periods that fit the subject's remaining minutes are
   offered), Teacher Loading, Approvals, Reports (PDF and CSV), every setup and Admin page, My Schedule, My
-  Profile, the guide and the Guest view with QR codes. Tests: 89 Vitest and 41 Playwright (sizes 360×640,
+  Profile, the guide and the Guest view with QR codes. Tests: 90 Vitest and 44 Playwright (sizes 360×640,
   844×390, 1366×768). It was built as `frontend-v2/`; on Nov 18, 2026 the React app was removed (still in the
   Git history, commit `51a4cca`) and the folder was renamed `frontend/`.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.

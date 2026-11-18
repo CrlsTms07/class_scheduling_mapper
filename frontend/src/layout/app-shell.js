@@ -203,10 +203,12 @@ export function authShell(content) {
     ),
     h(
       "aside",
-      { class: "relative hidden flex-col items-center justify-center gap-4 overflow-hidden bg-surface-muted p-10 text-center lg:flex", "aria-label": "About the system" },
+      // Stays in view while a long form (Sign up) scrolls, so the picture is never cut off.
+      { class: "relative hidden flex-col items-center justify-center gap-4 overflow-hidden bg-surface-muted p-10 text-center lg:sticky lg:top-0 lg:flex lg:h-dvh", "aria-label": "About the system" },
       h("h2", { class: "text-4xl font-bold text-brand" }, "ERCIHS Scheduling System"),
       h("p", { class: "max-w-lg text-lg text-muted-foreground" }, "Plan classes, assign teachers and rooms, and keep everyone on the same timetable."),
-      h("img", { src: "/login-illustration.svg", alt: "", class: "mt-6 w-full max-w-md dark:rounded-3xl dark:bg-white/90 dark:p-6" }),
+      // The same box in both modes (only its background changes), so the picture never changes size.
+      h("img", { src: "/login-illustration.svg", alt: "", class: "mt-6 max-h-[55dvh] w-full max-w-md rounded-3xl object-contain p-6 dark:bg-white/90" }),
     ),
   );
 }
