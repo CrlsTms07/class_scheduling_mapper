@@ -38,10 +38,11 @@ CREATE TABLE users (
     middle_name     VARCHAR(60),
     last_name       VARCHAR(60)  NOT NULL,
     suffix          VARCHAR(10),
-    phone_number    VARCHAR(20),
     status          account_status NOT NULL DEFAULT 'pending',
     preferences     JSONB NOT NULL DEFAULT '{}',          -- e.g. {"color_coding": false}
     terms_accepted_at TIMESTAMPTZ,                        -- Terms and Conditions accepted at sign-up
+    privacy_accepted_at TIMESTAMPTZ,                      -- Data Privacy Notice (RA 10173), its own checkbox
+    must_change_password BOOLEAN NOT NULL DEFAULT false,  -- set when the Admin resets the password
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -74,7 +75,6 @@ CREATE TABLE grade_levels (
     id               SMALLSERIAL PRIMARY KEY,
     grade            SMALLINT UNIQUE NOT NULL CHECK (grade BETWEEN 7 AND 12),
     level            school_level NOT NULL,
-    period_minutes   SMALLINT NOT NULL DEFAULT 45,   -- default only; real lengths come from time_slots
     CHECK ((grade <= 10 AND level = 'JHS') OR (grade >= 11 AND level = 'SHS'))
 );
 
@@ -118,7 +118,8 @@ CREATE TABLE time_slots (
 -- ---------------------------------------------------------------------
 CREATE TABLE buildings (
     id    SERIAL PRIMARY KEY,
-    name  VARCHAR(80) UNIQUE NOT NULL
+    name  VARCHAR(80) UNIQUE NOT NULL,
+    department VARCHAR(3) CHECK (department IN ('JHS', 'SHS'))   -- NULL = shared, Admin only
 );
 
 CREATE TABLE rooms (
@@ -128,13 +129,13 @@ CREATE TABLE rooms (
     room_name    VARCHAR(80),
     capacity     SMALLINT,
     is_active    BOOLEAN NOT NULL DEFAULT true,
+    in_charge    VARCHAR(100),                -- the teacher or staff in charge of the room
     UNIQUE (building_id, room_number)
 );
 
 CREATE TABLE departments (                 -- subject departments: Math, Science, ...
     id              SERIAL PRIMARY KEY,
-    name            VARCHAR(80) UNIQUE NOT NULL,
-    faculty_room_id INT REFERENCES rooms(id) ON DELETE SET NULL
+    name            VARCHAR(80) UNIQUE NOT NULL
 );
 
 CREATE TABLE designations (                -- Teacher I–III, Master Teacher I ...
@@ -216,6 +217,7 @@ CREATE TABLE activities (
     school_year_id  INT NOT NULL REFERENCES school_years(id) ON DELETE RESTRICT,
     code            VARCHAR(20),
     name            VARCHAR(100) NOT NULL,
+    department      VARCHAR(3) CHECK (department IN ('JHS', 'SHS')),   -- NULL = shared, Admin only
     UNIQUE (school_year_id, name)
 );
 
@@ -319,20 +321,6 @@ CREATE TABLE schedule_entries (
     ) WHERE (status <> 'rejected')
 );
 
--- Auto-fill runs, so one run can be undone without touching what was placed by hand
-CREATE TABLE auto_fill_runs (
-    id            BIGSERIAL PRIMARY KEY,
-    term_id       INT NOT NULL REFERENCES school_terms(id) ON DELETE RESTRICT,
-    scope         VARCHAR(10) NOT NULL CHECK (scope IN ('section', 'grade', 'all')),
-    scope_ref_id  INT,
-    created_by    BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    undone_at     TIMESTAMPTZ
-);
--- set to NULL when the entry is edited by hand
-ALTER TABLE schedule_entries
-    ADD COLUMN auto_fill_run_id BIGINT REFERENCES auto_fill_runs(id) ON DELETE SET NULL;
-
 -- Lookups used by the plotter, reports and approvals
 CREATE INDEX section_subjects_teacher_term_idx ON section_subjects (teacher_id, term_id);
 CREATE INDEX schedule_entries_section_term_idx ON schedule_entries (section_id, term_id);
@@ -361,7 +349,16 @@ CREATE TABLE school_profile (              -- single row
     address       VARCHAR(255),
     phone         VARCHAR(50),
     email         VARCHAR(150),
-    website       VARCHAR(150)
+    website       VARCHAR(150),
+    region        VARCHAR(120),
+    division      VARCHAR(150),
+    tagline       VARCHAR(200),              -- "About the school" on the home page
+    facebook_url  VARCHAR(255),
+    vision        TEXT,
+    mission       TEXT,
+    core_values   VARCHAR(255),
+    photo_mime    VARCHAR(50),
+    photo_base64  TEXT
 );
 
 -- Kept here and not on disk, because free hosting erases its disk on every restart.
@@ -369,6 +366,7 @@ CREATE TABLE school_logos (
     id            BIGSERIAL PRIMARY KEY,
     mime_type     VARCHAR(50) NOT NULL,
     image_base64  TEXT        NOT NULL,      -- the first logo is the school's own
+    placement     VARCHAR(10) NOT NULL DEFAULT 'header' CHECK (placement IN ('header', 'footer')),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -413,6 +411,26 @@ CREATE TABLE audit_logs (
     old_data    JSONB,
     new_data    JSONB,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Second step of signing in: a 6-digit code emailed to the DepEd address (bcrypt hash only,
+-- 10 minutes, 5 tries), and browsers the user chose to remember for 30 days (SHA-256 of a random token).
+CREATE TABLE login_codes (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash   VARCHAR(255) NOT NULL,
+    attempts    SMALLINT NOT NULL DEFAULT 0,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE trusted_devices (
+    id            BIGSERIAL PRIMARY KEY,
+    user_id       BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash    CHAR(64) UNIQUE NOT NULL,
+    expires_at    TIMESTAMPTZ NOT NULL,
+    last_used_at  TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ---------------------------------------------------------------------

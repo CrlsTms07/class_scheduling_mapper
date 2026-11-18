@@ -26,7 +26,7 @@ Last updated: Nov 6, 2026.
 
 ## Team decisions on the schedule-creation flow (Nov 9, 2026)
 
-Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
+Based on a reference prototype the team reviewed (removed from the repo on Nov 17, 2026).
 
 - **Four steps** on the Chairperson / Master Teacher dashboard: Subjects & Sections → Teachers →
   Load Distribution → Plot, each with its progress, plus **Import previous data**.
@@ -43,12 +43,11 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
   (`teachers.max_hours_per_week`, default 30). The subject limit (`max_subjects`) stays as well.
 - **Changing the teacher in the plotter** changes the teacher loading of that subject in the section,
   so all its periods follow. A conflict lists up to 5 free teachers.
-- **SHS shift:** placing by hand keeps it a flag; auto-fill never places outside a shift.
+- **SHS shift:** placing by hand keeps it a flag.
 - **Bell schedule presets** of 8, 10, 14 or 16 rows fill an empty bell schedule. Bell schedules stay per
   school year, level and shift.
 - **Color coding** on the schedule can be turned off; the choice is kept on the account.
-- **Auto-fill** (greedy, no backtracking for now): preview first, saved as drafts in one transaction,
-  can be undone per run. No queue is needed: a whole school fills in about a second.
+- ~~**Auto-fill**~~: removed on Nov 17, 2026 (see below).
 
 ## Team decisions on roles, menus and exports (Nov 10, 2026)
 
@@ -72,7 +71,7 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
   teach in both departments. A teacher who teaches only in the other department is view only; the Admin
   edits that record.
 - **New schedule:** the Schedule page has "New schedule" (choose the section, then build on the timetable,
-  auto-fill, copy another term or import a file) and "Add section".
+  copy another term or import a file) and "Add section".
 - **Import from the school's own class program workbook** (the "G11/G12 _CP" sheets, sections side by side,
   four lines per class): uploaded as it is in Import from a file, read into one row per class, and checked
   in the same review. Teachers match by first initial and last name ("J. DELA CRUZ"), subjects ignore case
@@ -87,9 +86,7 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
   bell schedules (Time Slots) of their own department, Junior High or Senior High. The Admin follows the same
   four steps on the dashboard and can still plot, approve, reject and reopen.
 - **Plotter:** until a section has a bell schedule and teacher loading, a "Before you can plot" checklist shows
-  what is missing, with a button to each place. Auto-fill says what it does: it places the subjects not placed
-  yet into free periods (priority subjects first, never where the teacher, room or section is busy), shows a
-  preview, and can be undone.
+  what is missing, with a button to each place.
 - **Rooms & Buildings:** each room and building has Edit and Delete.
 - **Lists:** Sections and Teachers have View, Edit and Delete on each row. A Master Teacher's filters offer
   Senior High grades only, and a Chairperson's Junior High grades only.
@@ -98,11 +95,11 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
 
 - **Layout:** the Schedule, classroom, section, Section Directory, Teachers Directory and teacher pages follow the
   team's layout: breadcrumbs, gray tabs for buildings and terms (the terms come from the school year), day by day
-  cards with "+" to add, and Edit and Delete in side sheets. The plotter's timetable, drag and drop, Auto-fill,
+  cards with "+" to add, and Edit and Delete in side sheets. The plotter's timetable, drag and drop,
   flags and Submit stay, one tab away ("Daily schedule" or "Timetable" on the section page).
 - **Typed times:** when building a schedule by hand, a class or a break is given its Start and End time. A time
   that matches a period uses it. A new time becomes a period (or break) of the department's bell schedule, so the
-  conflict rules, the Class Program and Auto-fill work the same way. With no bell schedule yet, the first typed
+  conflict rules and the Class Program work the same way. With no bell schedule yet, the first typed
   time starts one (Monday – Friday). A time that overlaps another period or a break is refused and says which.
   Breaks belong to the bell schedule, so the other sections on it get them too.
 - **Rooms:** "+ Add Section" on a room card makes that room the section's home or usual room. Each building has a
@@ -191,6 +188,61 @@ Based on the reference prototype in `docs/reference/scheduling-demo-v2.html`.
 - **Teacher record on Users** (was "Personnel record"): links an account to its teacher record so My Schedule and My
   Profile work. Hidden for an Admin who has none; explains when no record is free.
 - **Deploys** come from `main`: branch, pull request, merge, then Manual Deploy.
+
+## Team decisions (Nov 17, 2026)
+
+- **Auto-fill is removed**, with its code, API routes and the `auto_fill_runs` table (migration
+  `2026_11_17_100000_drop_auto_fill`). Classes it placed before stay as drafts. Schedules are made by hand,
+  by import from a file, or by copying another term.
+- **One place to start a schedule:** "Import from a file" and "Copy another term's schedule" are only in
+  **New schedule**, not on the Schedule page toolbar. The Copy choice uses the school year's word (Term,
+  Semester or Quarter).
+- **Times are 12-hour everywhere**, on screen and in inputs (7:00 AM, 1:30 PM), never 13:30. Any time from
+  12:00 AM to 11:59 PM can be entered.
+- **Placing a class offers only fitting periods:** free periods (teacher, room and section all free) whose
+  length is not more than the subject's minutes per week still unplaced.
+- **Front-end stack change approved by the team:** HTML + Tailwind CSS + vanilla JavaScript (Vite), with the
+  same Laravel API and PostgreSQL. The React front end stays live until the new one passes the parity checklist.
+- **Design audit approved** (all Must fix items): 14 px text on phones, a shorter menu that follows the setup
+  steps (Main, Setup 1–6, Admin), the schedule first on phones, one view switch (Day cards or Weekly grid), icons
+  with text, one main button color, one "Add / Edit class" dialog, searchable dropdowns, toasts and 12-hour time
+  pickers. They are built into the new front end (`frontend-v2/`), module by module.
+- **Free periods** (`GET /terms/{term}/sections/{section}/free-periods`, read only): the free days of each period
+  for the section, a teacher and a room, with the reason for each busy day. The class dialog offers only these.
+- **Dashboard bell schedule step:** counts only departments that have sections, like the Admin's setup checklist
+  (it said "Not set up yet" for Senior High with no SHS sections).
+- **Clean-up:** unused files removed (Neon CLI config at the root, unused components, the Nov 6 analysis, the
+  reference prototype and the Laravel example tests).
+
+## Team decision (Nov 18, 2026)
+
+- **Exports are PDF and CSV; imports are XLSX and PDF.** Every report, the Class Program and My Schedule
+  download as PDF (the official form) or CSV (the data). The XLSX download routes and the Excel formula
+  totals were removed. The import template is the only XLSX, since it is filled in and uploaded back.
+  Imports take an Excel workbook (.xlsx) or a PDF; .xls and CSV files are no longer accepted.
+- **PDF import is not read yet:** a PDF is accepted by the file chooser, but the system asks for the Excel
+  workbook instead, because reading tables out of a PDF needs a new library (see the suggestion in the
+  progress report of Nov 18).
+- **One web app:** the React app was removed and `frontend-v2/` was renamed `frontend/`. The React code
+  stays in the Git history (commit `51a4cca`).
+- **Clean-up:** columns no code used were dropped (`users.phone_number`, `grade_levels.period_minutes`,
+  `departments.faculty_room_id`; migration `2026_11_18_100000_drop_unused_columns`), and so was the import
+  template download, which no screen offered. "Tracks" on the Subjects page and "Edit lists" on the Teachers
+  page add and delete tracks, departments, designations and tasks (a name still in use stays).
+- **Look of the public and sign-in pages:**
+  - Home page: the school's name, core values and seal, three short cards, and "Contact us" from the
+    school profile, with a red footer. The small label on top reads "Department of Education" and the
+    division from the school profile (now part of the public school details).
+  - Sign in: the form on the left, the system's name and a picture on the right. "Sign in to your
+    account", the "Forgot your password?" link beside the Password label, and an eye button to show or
+    hide the password (also on Sign up and Reset password). "View as Guest" and "No account yet? Sign up".
+  - The account page is named **Sign up** (not "Create account"); its button says "Sign up".
+  - Guest view: a red welcome with the search, then "Browse all sections", which lists every section by
+    grade, with buttons for the department and grade level.
+- **Header:** a round picture with the user's initials (Carlos Tomas: "CT"), the name, and the role as a
+  red badge: Admin, GLC, MT or Teacher.
+- **Notifications:** at the top center of the screen, saying "Success", "Failed" or "Notice", and shown
+  above an open dialog too.
 
 ## Open questions for the client
 
