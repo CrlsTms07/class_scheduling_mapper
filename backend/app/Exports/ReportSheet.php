@@ -3,8 +3,13 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -13,8 +18,10 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * One worksheet of a report. The report decides the rows and which cells stand out,
  * so every XLSX in the system looks the same.
+ *
+ * Reports are exported as CSV; the import template is the only XLSX (team decision, Nov 18, 2026).
  */
-class ReportSheet implements FromArray, WithStyles, WithTitle
+class ReportSheet extends DefaultValueBinder implements FromArray, WithCustomValueBinder, WithStrictNullComparison, WithStyles, WithTitle
 {
     /**
      * @param  array<int, array<int, mixed>>  $rows
@@ -36,9 +43,32 @@ class ReportSheet implements FromArray, WithStyles, WithTitle
         private array $columnWidths = [],
     ) {}
 
+    /**
+     * Text that looks like a formula ("=...") is written as plain text, so a typed name can never
+     * run as a formula in the template. Everything else is written as usual.
+     */
+    public function bindValue(Cell $cell, mixed $value): bool
+    {
+        if (is_string($value) && str_starts_with($value, '=')) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
+    }
+
+    /**
+     * The rows as they go into the file. A blank row stays a blank row (Laravel Excel would drop
+     * an empty one, and every row below would move up, away from its borders and formulas), an
+     * empty text becomes an empty cell, and a 0 is written as 0 instead of being left out.
+     */
     public function array(): array
     {
-        return $this->rows;
+        return array_map(
+            fn (array $row) => $row === [] ? [null] : array_map(fn ($value) => $value === '' ? null : $value, $row),
+            $this->rows,
+        );
     }
 
     public function title(): string

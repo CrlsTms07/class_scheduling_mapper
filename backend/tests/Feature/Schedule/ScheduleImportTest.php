@@ -21,14 +21,15 @@ beforeEach(function () {
     $this->filipinoTeacher = Teacher::find(SectionSubject::whereHas('subject', fn ($q) => $q->where('name', 'Filipino'))->value('teacher_id'))->printedName();
 });
 
-function csvFile(array $rows): UploadedFile
+/** The import template filled in with these rows, as an Excel workbook (imports are XLSX or PDF). */
+function templateFile(array $rows): UploadedFile
 {
-    $lines = array_map(fn (array $row) => implode(',', array_map(fn ($cell) => '"'.$cell.'"', $row)), [
+    $sheet = new ReportSheet('Schedule import', [
         ['Grade', 'Section', 'Day', 'Start', 'End', 'Subject', 'Teacher', 'Room'],
-        ...$rows,
+        ...array_map(fn (array $row) => array_map(fn ($cell) => (string) $cell, $row), $rows),
     ]);
 
-    return UploadedFile::fake()->createWithContent('schedule.csv', "\xEF\xBB\xBF".implode("\n", $lines));
+    return UploadedFile::fake()->createWithContent('schedule.xlsx', Excel::raw($sheet, ExcelWriter::XLSX));
 }
 
 function importFile(object $test, UploadedFile $file, bool $preview = false, ?SchoolTerm $term = null)
@@ -38,15 +39,12 @@ function importFile(object $test, UploadedFile $file, bool $preview = false, ?Sc
     return $test->post("/api/terms/{$term->id}/schedule-import", ['file' => $file, 'preview' => $preview ? '1' : '0'], ['Accept' => 'application/json']);
 }
 
-it('gives a template with the headings and a sample row', function () {
-    $response = $this->get("/api/terms/{$this->term->id}/schedule-import/template.csv")->assertOk();
-
-    expect($response->getContent())->toContain('"Grade","Section","Day","Start","End","Subject","Teacher","Room"');
-    $this->get("/api/terms/{$this->term->id}/schedule-import/template.xlsx")->assertOk();
+it('has no template download, since the school uploads its own workbooks', function () {
+    $this->get("/api/terms/{$this->term->id}/schedule-import/template.xlsx")->assertNotFound();
 });
 
 it('checks every row in a preview, saving nothing', function () {
-    $response = importFile($this, csvFile([
+    $response = importFile($this, templateFile([
         [7, 'Sample A', 'Monday', '7:15 AM', '8:00 AM', 'Values Education', '', ''],
         [7, 'Sample A', 'Tuesday', '7:15', '8:00', 'Filipino', '', '101'],
     ]), preview: true)->assertOk();
@@ -57,7 +55,7 @@ it('checks every row in a preview, saving nothing', function () {
 });
 
 it('saves the good rows as drafts, and says why each bad row was left out', function () {
-    $response = importFile($this, csvFile([
+    $response = importFile($this, templateFile([
         [7, 'Sample A', 'Monday', '7:15 AM', '8:00 AM', 'Values Education', $this->valuesTeacher, '101'],
         [7, 'Sample Z', 'Monday', '7:15 AM', '8:00 AM', 'Values Education', '', ''],
         [7, 'Sample A', 'Someday', '7:15 AM', '8:00 AM', 'Filipino', '', ''],
@@ -87,7 +85,7 @@ it('saves the good rows as drafts, and says why each bad row was left out', func
 });
 
 it('adds the teacher loading a subject is missing, from the teacher in the file', function () {
-    $response = importFile($this, csvFile([
+    $response = importFile($this, templateFile([
         [7, 'Sample A', 'Monday', '7:15 AM', '8:00 AM', 'Filipino', $this->filipinoTeacher, '101'],
         [7, 'Sample A', 'Tuesday', '7:15 AM', '8:00 AM', 'Filipino', '', '101'],
     ]), term: $this->third)->assertOk();
@@ -99,7 +97,7 @@ it('adds the teacher loading a subject is missing, from the teacher in the file'
 });
 
 it('places activities named in the file', function () {
-    importFile($this, csvFile([[7, 'Sample A', 'Friday', '7:10 AM', '7:50 AM', 'Catch-up Friday', '', '']]))->assertOk()->assertJsonPath('data.ok', 1);
+    importFile($this, templateFile([[7, 'Sample A', 'Friday', '7:10 AM', '7:50 AM', 'Catch-up Friday', '', '']]))->assertOk()->assertJsonPath('data.ok', 1);
 
     expect(ScheduleEntry::sole()->activity_id)->not->toBeNull();
 });
@@ -114,7 +112,7 @@ it('reads XLSX files too', function () {
     importFile($this, $file)->assertOk()->assertJsonPath('data.ok', 1);
 });
 
-it('refuses a file that is not the template', function () {
+it('takes only an Excel workbook (.xlsx) or a PDF', function () {
     $file = UploadedFile::fake()->createWithContent('schedule.csv', "Name,Time\nMath,7:00");
 
     importFile($this, $file)->assertUnprocessable()->assertJsonValidationErrors('file');
@@ -136,5 +134,5 @@ it('explains a workbook that is not the template, without failing', function () 
 it('is not for teachers', function () {
     $this->actingAs(User::where('email', 'teacher@deped.gov.ph')->first());
 
-    importFile($this, csvFile([[7, 'Sample A', 'Monday', '7:15 AM', '8:00 AM', 'Values Education', '', '']]))->assertForbidden();
+    importFile($this, templateFile([[7, 'Sample A', 'Monday', '7:15 AM', '8:00 AM', 'Values Education', '', '']]))->assertForbidden();
 });

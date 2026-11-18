@@ -45,7 +45,7 @@ class DemoDataSeeder extends Seeder
         [11, null, '15:50', '16:30'],
     ];
 
-    // Name => minutes per week. Homeroom stays at 60 until the client answers Q2 in docs/analysis.md.
+    // Name => minutes per week. Homeroom stays at 60 until the client answers open question 5 in docs/client-notes.md.
     private const GRADE_7_SUBJECTS = [
         'Values Education' => 220,
         'Filipino' => 220,

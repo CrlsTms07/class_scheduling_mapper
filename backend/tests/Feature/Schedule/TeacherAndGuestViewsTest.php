@@ -109,18 +109,19 @@ describe('My Schedule', function () {
 
         $this->getJson($this->url)->assertOk()->assertJsonPath('data', null);
         $this->getJson("{$this->url}/program.pdf")->assertNotFound();
-        $this->getJson("{$this->url}/program.xlsx")->assertNotFound();
+        $this->getJson("{$this->url}/program.csv")->assertNotFound();
     });
 
-    it('downloads as PDF and XLSX', function () {
+    it('downloads as PDF and CSV', function () {
         viewsEntry($this, 'approved');
 
         $pdf = $this->get("{$this->url}/program.pdf")->assertOk();
-        $xlsx = $this->get("{$this->url}/program.xlsx")->assertOk();
+        $csv = $this->get("{$this->url}/program.csv")->assertOk();
 
         expect(substr($pdf->getContent(), 0, 4))->toBe('%PDF')
             ->and($pdf->headers->get('Content-Disposition'))->toContain('my-schedule-ana-reyes-first.pdf')
-            ->and(substr($xlsx->getContent(), 0, 2))->toBe('PK');
+            ->and(substr($csv->getContent(), 0, 3))->toBe("\xEF\xBB\xBF")
+            ->and($csv->headers->get('Content-Disposition'))->toContain('my-schedule-ana-reyes-first.csv');
     });
 
     it('needs a sign-in', function () {

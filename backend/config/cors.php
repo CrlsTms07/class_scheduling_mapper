@@ -25,7 +25,8 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    // The app reads the file name of a download (PDF or CSV) from this header.
+    'exposed_headers' => ['Content-Disposition'],
 
     'max_age' => 0,
 

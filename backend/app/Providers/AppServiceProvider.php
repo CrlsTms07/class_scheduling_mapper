@@ -60,7 +60,7 @@ class AppServiceProvider extends ServiceProvider
                 ->exists();
         });
 
-        // Same password policy as the front-end form (frontend/src/types/FieldSchema.ts).
+        // Same password policy as the web app's forms (frontend/src/lib/forms.js).
         Password::defaults(fn () => Password::min(8)->max(64)->mixedCase()->numbers()->symbols());
 
         // Slows down password guessing: 5 tries a minute from one device, and 20 every 15 minutes for one
@@ -91,7 +91,7 @@ class AppServiceProvider extends ServiceProvider
         // Changing the password from an open session: per account, so a shared address does not matter.
         RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(10)->by('user:'.($request->user()?->id ?? $request->ip())));
 
-        // The reset link in the email opens the React page, not a Laravel page.
+        // The reset link in the email opens the web app's Reset password page, not a Laravel page.
         // Links the system makes (like the reset link) always use HTTPS on the live server.
         if ($this->app->isProduction()) {
             \Illuminate\Support\Facades\URL::forceScheme('https');

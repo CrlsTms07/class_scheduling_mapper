@@ -111,7 +111,16 @@ class SchedulerDashboardService
         $submitted = $sections->whereIn('status', ['pending', 'approved'])->count();
 
         // The bell schedules of the departments in the user's scope (JHS, SHS), with their periods.
+        // Like the Admin's setup checklist, only a department that has sections needs one; before any
+        // section exists, every department in scope is counted.
         $levels = DB::table('grade_levels')->whereIn('id', $scope)->distinct()->pluck('level');
+        $levelsWithSections = DB::table('sections')
+            ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
+            ->where('sections.school_year_id', $term->school_year_id)
+            ->whereIn('sections.grade_level_id', $scope)
+            ->distinct()
+            ->pluck('grade_levels.level');
+        $levels = $levelsWithSections->isNotEmpty() ? $levelsWithSections : $levels;
         $patterns = DayPattern::where('school_year_id', $term->school_year_id)->whereIn('level', $levels)->withCount('timeSlots')->get();
         $bellLevels = $patterns->where('time_slots_count', '>', 0)->pluck('level')->unique();
 

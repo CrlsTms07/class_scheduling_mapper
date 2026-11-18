@@ -119,8 +119,6 @@ class ScheduleService
                         'day_of_week' => $toDays[$index],
                         'start_time' => $to->start_time,
                         'end_time' => $to->end_time,
-                        // Moved by hand, so it is no longer part of an auto-fill run.
-                        'auto_fill_run_id' => null,
                     ]);
                 }
 

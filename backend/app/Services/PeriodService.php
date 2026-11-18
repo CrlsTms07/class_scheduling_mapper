@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Typed times, for building a schedule by hand from the start. A time that matches a period of
  * the section's bell schedule uses that period. A new time becomes a new period (or break) of the
- * bell schedule, so the conflict rules, the Class Program and Auto-fill keep working the same way.
+ * bell schedule, so the conflict rules and the Class Program keep working the same way.
  * A day with no bell schedule yet gets one. A time that overlaps another period or a break is refused.
  */
 class PeriodService
