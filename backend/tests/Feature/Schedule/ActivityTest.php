@@ -51,6 +51,21 @@ function classIn(object $test, Section $section, TimeSlot $slot, string $subject
     ]);
 }
 
+it('keeps a department activity to its own department, even when the Admin applies it to all', function () {
+    $grade11 = Illuminate\Support\Facades\DB::table('grade_levels')->where('grade', 11)->value('id');
+    Section::create(['school_year_id' => $this->sectionA->school_year_id, 'grade_level_id' => $grade11, 'name' => 'STEM A']);
+    $this->catchUp->update(['department' => 'JHS']);
+
+    $this->flushSession();
+    $this->app['auth']->forgetGuards();
+    $this->actingAs(User::factory()->create()->assignRole('super_admin'));
+
+    $labels = collect(placeActivity($this, $this->sectionA, $this->friday, $this->catchUp, 'all', [5], true)->assertOk()->json('summary.sections'))->pluck('label');
+
+    expect($labels)->toContain('Grade 7 – Sample A')
+        ->and($labels->filter(fn ($label) => str_starts_with($label, 'Grade 11')))->toBeEmpty();
+});
+
 describe('the list of activities', function () {
     it('is kept per school year and can be added to', function () {
         $yearId = $this->sectionA->school_year_id;

@@ -9,7 +9,7 @@ evaluation run **Nov 23–29, 2026**. Prefer working, tested features over many 
 
 Read these first:
 - `docs/schema.sql`: database design (source of truth)
-- `docs/ERD_Class_Scheduling_System(11-06-26).png`
+- `docs/ERD_Class_Scheduling_System(11-18-26).png`
 - `docs/client-notes.md`: client requests, decisions and open questions
 
 ---
@@ -18,18 +18,18 @@ Read these first:
 
 | Layer     | Tech |
 |-----------|------|
-| Front-end | React + TypeScript + Vite + Tailwind CSS, React Router, TanStack Query, TanStack Table, react-hook-form + zod, dnd-kit |
-| Back-end  | PHP + Laravel (REST API only), Laravel Sanctum (SPA cookie auth), Laravel Socialite (Google sign-in, approved Nov 13, 2026), spatie/laravel-permission, Laravel Excel (XLSX), barryvdh/laravel-dompdf (PDF) |
+| Front-end | HTML + Tailwind CSS v4 + plain JavaScript (ES modules, JSDoc with `// @ts-check`), built with Vite; `lucide` icons, `qrcode` (team decision, Nov 17, 2026: replaces React + TypeScript) |
+| Back-end  | PHP + Laravel (REST API only), Laravel Sanctum (SPA cookie auth), Laravel Socialite (Google sign-in, approved Nov 13, 2026), spatie/laravel-permission, Laravel Excel (CSV exports, XLSX import), barryvdh/laravel-dompdf (PDF) |
 | Database  | PostgreSQL (with `btree_gist` extension) |
-| Testing   | Pest (back-end), Vitest (front-end) |
+| Testing   | Pest (back-end), Vitest + jsdom and Playwright (front-end) |
 | Tools     | Git + GitHub, VS Code |
 
 ## Repository layout
 
 ```
-/frontend         React app (existing UI — keep its look, layout and components)
+/frontend         The web app (HTML, Tailwind CSS, plain JavaScript)
 /backend          Laravel API
-/docs             schema.sql, ERD_Class_Scheduling_System(11-06-26).png, client-notes.md, forms/ (official templates)
+/docs             schema.sql, ERD_Class_Scheduling_System(11-18-26).png, client-notes.md, forms/ (official templates)
 CLAUDE.md
 ```
 <!-- Adjust the folder names above if the actual project differs. -->
@@ -45,15 +45,16 @@ php artisan migrate:fresh --seed
 php artisan serve                 # http://localhost:8000
 ./vendor/bin/pest
 
-# frontend
+# web app
 cd frontend
 npm install
 npm run dev                       # http://localhost:5173
-npm run test
+npm run test                      # Vitest
 npm run build
+npm run test:e2e                  # Playwright; only against a throwaway database (see docs/deployment.md)
 ```
 
-## Current status (Nov 16, 2026)
+## Current status (Nov 18, 2026)
 
 - **Front-end, working with the API:** login, sign-up, forgot and reset password, route
   guards, role-based menu, responsive layout with phone drawer. Tests: `npm run test`.
@@ -76,9 +77,9 @@ npm run build
 - **Working, Copy schedule:** from another term of the year, by section, grade or all, with a review
   first. Periods become draft open slots; teachers and subjects that continue can be filled in.
 - **Working, Reports page:** JHS and SHS Class Program, Teacher Program, Room Schedule, room usage, the
-  Conflict and Validation Report, Teacher Load Report and Grade Level Timetable, in PDF and XLSX. Teacher Program and Room Schedule have no official form yet, so their layout is to be
+  Conflict and Validation Report, Teacher Load Report and Grade Level Timetable, in PDF and CSV. Teacher Program and Room Schedule have no official form yet, so their layout is to be
   confirmed with the school.
-- **Working, Teacher:** My Schedule (approved entries only, PDF and XLSX) and My Profile. Chairpersons
+- **Working, Teacher:** My Schedule (approved entries only, PDF and CSV) and My Profile. Chairpersons
   and Master Teachers with a personnel record have them too.
 - **Working, Chairperson and Master Teacher:** dashboard with their own counts and next steps.
 - **Working, Guest:** pick department, grade and section; approved schedules of the active term only;
@@ -87,7 +88,7 @@ npm run build
   four steps on the scheduler dashboard with Import previous data (teacher loading only), activities
   applied to a section, grade or all sections with an Unplaced list, Load Distribution in hours a week
   (`max_hours_per_week`, default 30), free teachers on a conflict, bell schedule presets (8/10/14/16 rows),
-  color coding per user, and Auto-fill with preview and undo.
+  and color coding per user. (Auto-fill was removed, team decision, Nov 17, 2026.)
 - **Working, layout and hand-built schedules (team decisions, Nov 11, 2026, see `docs/client-notes.md`):**
   breadcrumbs and term tabs, classroom and section pages with day cards, typed Start/End times that become
   bell-schedule periods (`PeriodService`), break times, "+ Add Section" on rooms, building view with print,
@@ -107,8 +108,18 @@ npm run build
   to the DepEd email with "Remember this device for 30 days" (`LoginCodeService`, `SCHOOL_LOGIN_CODE=auto`), a
   separate Data Privacy Notice (RA 10173) with its own checkbox, notifications under the bell, Sign out at the
   bottom of the menu, empty dd/mm/yyyy school year dates, and deploys from `main`.
+- **New web app, done (team decision, Nov 17, 2026):** `frontend/` (HTML, Tailwind CSS and plain JavaScript
+  with Vite) has every module of the parity checklist: sign-in with the 6-digit code and Google, sign-up, forgot,
+  reset and forced password change, the frame (setup menu in step order, term picker, alerts, dark mode button),
+  shared components (centered dialog, searchable select, 12-hour time picker, toasts, skeleton loaders), every
+  dashboard, the Schedule module and plotter (only free periods that fit the subject's remaining minutes are
+  offered), Teacher Loading, Approvals, Reports (PDF and CSV), every setup and Admin page, My Schedule, My
+  Profile, the guide and the Guest view with QR codes. Tests: 89 Vitest and 41 Playwright (sizes 360×640,
+  844×390, 1366×768). It was built as `frontend-v2/`; on Nov 18, 2026 the React app was removed (still in the
+  Git history, commit `51a4cca`) and the folder was renamed `frontend/`.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
-- **Deployment:** Render (one Docker service for Laravel and React) with a Neon database. Steps, including
+- **Deployment:** Render (one Docker service for Laravel and the web app) with a Supabase database (Neon as a
+  fallback). Steps, including
   the first Admin (`php artisan app:create-admin`), are in `docs/deployment.md`.
 
 ---
@@ -245,7 +256,7 @@ acknowledged:
 - Approved entries are locked. The Admin can **reopen** them, with a reason.
 
 ## Generated schedules (reports)
-Three main documents, in **PDF and XLSX** (CSV optional), matching the school's official
+Three main documents, in **PDF and CSV** (team decision, Nov 18, 2026: every export is PDF or CSV; imports are XLSX or PDF), matching the school's official
 forms in `docs/forms/`:
 1. **Class Program**: per section.
 2. **Teacher Program**: per teacher, with total teaching minutes.
@@ -324,14 +335,13 @@ filter by grade level.
 - Teacher loading
 - Plotter with hard conflicts and soft flags
 - Approvals by scope
-- 3 generated schedules (PDF/XLSX) with signatories
+- 3 generated schedules (PDF/CSV) with signatories
 - Teacher "My Schedule"
 - Guest view
 
 **Should have:** copy to next term, Conflict and Validation Report, QR links.
 
-**Nice to have:** auto-fill (priority subjects first, then first valid slot), custom
-color schemes. Basic light/dark mode is fine.
+**Nice to have:** custom color schemes. (Auto-fill was removed, team decision, Nov 17, 2026.) Basic light/dark mode is fine.
 
 ---
 
@@ -349,9 +359,9 @@ tablets and desktops. Test at 360×640, 390×844, 844×390 (landscape), 768×102
   - Desktop and landscape: weekly grid with a **sticky time column** and horizontal scroll.
   - Phone portrait: **day tabs (Mon–Fri) + list of periods**. Tap a period to open a
     bottom sheet to assign subject, teacher and room.
-  - Drag-and-drop must also work by **tap** (dnd-kit touch sensor + tap-to-assign fallback).
+  - Drag-and-drop must also work by **tap** (Pointer Events + tap-to-assign fallback).
 - **Schedule views** (teacher, guest): grid on wide screens, day-by-day list on phones.
-- **Reports:** preview fits the screen. Phones get Download PDF/XLSX buttons.
+- **Reports:** preview fits the screen. Phones get Download PDF/CSV buttons.
 - Touch targets are at least 44×44 px. No hover-only actions. Forms use the right input
   types (`email`, `time`, `date`).
 - Every new screen must be checked in portrait and landscape before a task is done.
@@ -364,10 +374,12 @@ tablets and desktops. Test at 360×640, 390×844, 844×390 (landscape), 768×102
   - Validation goes in Form Requests. Authorization goes in Policies, which always check
     the user's grade-level scope.
   - Routes are under `/api` and return JSON through API Resources.
-- **Front-end**
-  - Function components and TypeScript types for all API data.
-  - Server state goes through TanStack Query hooks in `src/api/`.
-  - Reuse existing components and Tailwind styles. Do not redesign the existing UI.
+- **Front-end** (`frontend/src`)
+  - One folder per feature in `features/`, shared parts in `components/`, `layout/`, `lib/` and `state/`.
+  - Plain JavaScript with `// @ts-check` and JSDoc types for API data. Build pages with `h()` from `lib/dom.js`
+    (text, never `innerHTML` with data).
+  - API calls go through `src/api/` and the cache in `state/cache.js`.
+  - Reuse the shared components and the design tokens in `src/styles/main.css` (brand red, teal subheadings, dark mode).
 - UI text in English. Times shown as `7:00 AM`. Days Monday–Friday.
 - No secrets in Git (`.env` is ignored, `.env.example` is kept updated).
 

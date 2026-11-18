@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Exports\ReportSheet;
 use App\Models\Activity;
 use App\Models\Building;
 use App\Models\DayPattern;
@@ -27,8 +26,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
- * Import a schedule from a file: the system's template (CSV or XLSX), filled in from the
- * school's previous Excel schedules. Every row is checked first, with the same rules as
+ * Import a schedule from an Excel workbook: one in the template layout (Grade, Section, Day, Start,
+ * End, Subject, Teacher, Room), or the school's own class programs and Teachers Program. Every row is checked first, with the same rules as
  * placing a class by hand; good rows are saved as drafts, and each bad row says why.
  */
 class ScheduleImportService
@@ -49,31 +48,6 @@ class ScheduleImportService
     private array $sectionsFound = [];
 
     public function __construct(private ConflictService $conflicts, private AuditLogger $audit, private ClassProgramReader $classPrograms) {}
-
-    /**
-     * The template, with a sample row from the user's own sections so the format is clear.
-     */
-    public function template(SchoolTerm $term, User $user): ReportSheet
-    {
-        $rows = [self::COLUMNS];
-
-        $entry = ScheduleEntry::with(['section.gradeLevel', 'sectionSubject.subject', 'teacher', 'room'])
-            ->where('term_id', $term->id)
-            ->whereNotNull('section_subject_id')
-            ->whereIn('section_id', Section::visibleTo($user)->select('id'))
-            ->orderBy('section_id')
-            ->orderBy('day_of_week')
-            ->orderBy('start_time')
-            ->first();
-
-        $rows[] = $entry
-            ? [$entry->section->gradeLevel->grade, $entry->section->name, ScheduleFormat::dayName($entry->day_of_week),
-                ScheduleFormat::time($entry->start_time), ScheduleFormat::time($entry->end_time),
-                $entry->subjectName(), $entry->teacher?->printedName(), $entry->room?->room_number]
-            : [7, 'Honesty', 'Monday', '7:15 AM', '8:00 AM', 'Mathematics', 'Juan Dela Cruz', '101'];
-
-        return new ReportSheet('Schedule import', $rows, headers: ['A1:H1'], columnWidths: [8, 18, 12, 11, 11, 26, 26, 12]);
-    }
 
     /**
      * Checks every row. With $isPreview, nothing is saved.
@@ -203,22 +177,16 @@ class ScheduleImportService
         }
 
         try {
-            $reader = IOFactory::createReader(match ($extension) {
-                'csv', 'txt' => 'Csv',
-                'xls' => 'Xls',
-                default => 'Xlsx',
-            });
+            $reader = IOFactory::createReader('Xlsx');
 
             // The template is the first sheet: only its values, columns and rows.
-            if (! in_array($extension, ['csv', 'txt'], true)) {
-                $reader->setReadDataOnly(true);
-                $reader->setLoadSheetsOnly([$reader->listWorksheetNames($file->getRealPath())[0]]);
-            }
+            $reader->setReadDataOnly(true);
+            $reader->setLoadSheetsOnly([$reader->listWorksheetNames($file->getRealPath())[0]]);
             $reader->setReadFilter(new TemplateReadFilter(self::MAX_ROWS + 1));
 
             $rows = $reader->load($file->getRealPath())->getActiveSheet()->toArray(null, false, false, false);
         } catch (\Throwable) {
-            throw ValidationException::withMessages(['file' => 'This file could not be read. Make sure it is an Excel workbook (.xlsx or .xls) that opens in Excel.']);
+            throw ValidationException::withMessages(['file' => 'This file could not be read. Make sure it is an Excel workbook (.xlsx) that opens in Excel.']);
         }
 
         $header = array_map(fn ($cell) => strtolower(trim((string) $cell)), $rows[0] ?? []);

@@ -175,6 +175,72 @@ class ConflictService
     }
 
     /**
+     * Which days of each period are free for the section, its teacher and its room, so the plotter
+     * offers only places where a class can go (UI requirement 6, Nov 17, 2026). Nothing is saved:
+     * the same overlap rule as the conflict check decides what is busy, and says why.
+     *
+     * An open slot of the section (copied from another term, with no subject yet) counts as free,
+     * since a subject can be placed on it.
+     *
+     * @return array<int, array{slot_id: int, minutes: int, free_days: array<int, int>, busy: array<int, array{day: int, reason: string}>}>
+     */
+    public function freePeriods(int $termId, Section $section, ?int $teacherId, ?int $roomId): array
+    {
+        $patterns = DayPattern::forSection($section)
+            ->with(['timeSlots' => fn ($query) => $query->where('is_break', false)])
+            ->orderBy('id')
+            ->get();
+
+        $entries = ScheduleEntry::query()
+            ->where('term_id', $termId)
+            ->where('status', '<>', 'rejected')
+            ->where(fn (Builder $query) => $query
+                ->where(fn (Builder $own) => $own
+                    ->where('section_id', $section->id)
+                    ->where(fn (Builder $taken) => $taken->whereNotNull('section_subject_id')->orWhereNotNull('activity_id')))
+                ->when($teacherId, fn (Builder $other) => $other->orWhere('teacher_id', $teacherId))
+                ->when($roomId, fn (Builder $other) => $other->orWhere('room_id', $roomId)))
+            ->with(['section.gradeLevel', 'teacher', 'room.building'])
+            ->get();
+
+        $periods = [];
+
+        foreach ($patterns as $pattern) {
+            foreach ($pattern->timeSlots as $slot) {
+                $free = [];
+                $busy = [];
+
+                foreach ($pattern->day_numbers as $day) {
+                    $clash = $entries->first(fn (ScheduleEntry $entry) => $entry->day_of_week === $day
+                        && $entry->start_time < $slot->end_time
+                        && $entry->end_time > $slot->start_time);
+
+                    if ($clash === null) {
+                        $free[] = $day;
+
+                        continue;
+                    }
+
+                    $busy[] = ['day' => $day, 'reason' => match (true) {
+                        $clash->section_id === $section->id => 'This section already has a class then.',
+                        $teacherId !== null && (int) $clash->teacher_id === $teacherId => "{$clash->teacher->printedName()} is teaching {$clash->section->labelFor(withArticle: true)}.",
+                        default => "{$clash->room->label()} is used by {$clash->section->labelFor(withArticle: true)}.",
+                    }];
+                }
+
+                $periods[] = [
+                    'slot_id' => $slot->id,
+                    'minutes' => ScheduleFormat::minutesBetween($slot->start_time, $slot->end_time),
+                    'free_days' => $free,
+                    'busy' => $busy,
+                ];
+            }
+        }
+
+        return $periods;
+    }
+
+    /**
      * Rooms that are free at this time, and other periods when the teacher and room are free.
      *
      * @param  array<int, int>  $days

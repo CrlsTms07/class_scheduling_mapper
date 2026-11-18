@@ -52,16 +52,10 @@ function reportEntry(object $test, int $day = 1, string $status = 'approved', st
     ]);
 }
 
-/** All the text of a downloaded workbook, cell by cell. */
+/** All the text of a downloaded CSV (reports are exported as PDF and CSV). */
 function workbookText(object $response): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'report').'.xlsx';
-    file_put_contents($path, $response->getContent());
-
-    $text = collect(IOFactory::load($path)->getActiveSheet()->toArray())->flatten()->filter()->implode(' | ');
-    unlink($path);
-
-    return $text;
+    return $response->getContent();
 }
 
 describe('Teacher Program', function () {
@@ -114,13 +108,13 @@ describe('Teacher Program', function () {
             ->and(substr($response->getContent(), 0, 4))->toBe('%PDF');
     });
 
-    it('downloads as an XLSX with the same content', function () {
+    it('downloads as an CSV with the same content', function () {
         reportEntry($this);
 
-        $response = $this->get("{$this->base}/teachers/{$this->teacherId}/program.xlsx")->assertOk();
+        $response = $this->get("{$this->base}/teachers/{$this->teacherId}/program.csv")->assertOk();
         $text = workbookText($response);
 
-        expect($response->headers->get('Content-Disposition'))->toContain('teacher-program-ana-reyes-first.xlsx')
+        expect($response->headers->get('Content-Disposition'))->toContain('teacher-program-ana-reyes-first.csv')
             ->and($text)->toContain('My School')
             ->and($text)->toContain('TEACHER PROGRAM')
             ->and($text)->toContain('ANA REYES')
@@ -136,7 +130,7 @@ describe('Teacher Program', function () {
         ]);
         reportEntry($this);
 
-        $text = workbookText($this->get("{$this->base}/teachers/{$this->teacherId}/program.xlsx"));
+        $text = workbookText($this->get("{$this->base}/teachers/{$this->teacherId}/program.csv"));
 
         expect($text)->toContain('Conforme: Ana Reyes, Teacher');
     });
@@ -176,7 +170,7 @@ describe('Teacher Program', function () {
 
             $this->getJson("{$this->base}/teachers/{$other}")->assertForbidden();
             $this->get("{$this->base}/teachers/{$other}/program.pdf")->assertForbidden();
-            $this->get("{$this->base}/teachers/{$other}/program.xlsx")->assertForbidden();
+            $this->get("{$this->base}/teachers/{$other}/program.csv")->assertForbidden();
         });
 
         it('lets the Admin print anyone', function () {
@@ -202,15 +196,15 @@ describe('Room Schedule', function () {
             ->assertJsonPath('data.totals.week', 45);
     });
 
-    it('downloads as a PDF and XLSX', function () {
+    it('downloads as a PDF and CSV', function () {
         reportEntry($this);
 
         $pdf = $this->get("{$this->base}/rooms/{$this->roomId}/schedule.pdf")->assertOk();
-        $xlsx = $this->get("{$this->base}/rooms/{$this->roomId}/schedule.xlsx")->assertOk();
+        $csv = $this->get("{$this->base}/rooms/{$this->roomId}/schedule.csv")->assertOk();
 
         expect(substr($pdf->getContent(), 0, 4))->toBe('%PDF')
             ->and($pdf->headers->get('Content-Disposition'))->toContain('room-schedule-main-101-first.pdf')
-            ->and(workbookText($xlsx))->toContain('ROOM SCHEDULE');
+            ->and(workbookText($csv))->toContain('ROOM SCHEDULE');
     });
 });
 
@@ -229,11 +223,11 @@ describe('Room usage', function () {
             ->assertJsonPath('data.buildings.0.rooms.1.sections', []);
     });
 
-    it('downloads as a PDF and XLSX', function () {
+    it('downloads as a PDF and CSV', function () {
         reportEntry($this);
 
         $pdf = $this->get("{$this->base}/room-usage.pdf")->assertOk();
-        $text = workbookText($this->get("{$this->base}/room-usage.xlsx")->assertOk());
+        $text = workbookText($this->get("{$this->base}/room-usage.csv")->assertOk());
 
         expect(substr($pdf->getContent(), 0, 4))->toBe('%PDF')
             ->and($text)->toContain('ROOM AND BUILDING USAGE')
@@ -252,12 +246,12 @@ describe('Room usage', function () {
             ->assertJsonCount(1, 'data.buildings')
             ->assertJsonPath('data.buildings.0.id', $main);
 
-        $text = workbookText($this->get("{$this->base}/room-usage.xlsx?building={$main}")->assertOk());
+        $text = workbookText($this->get("{$this->base}/room-usage.csv?building={$main}")->assertOk());
         expect($text)->toContain('MAIN – ROOM USAGE')->not->toContain('301');
     });
 });
 
-describe('Class Program XLSX', function () {
+describe('Class Program CSV', function () {
     beforeEach(function () {
         $patternId = DB::table('day_patterns')->insertGetId([
             'school_year_id' => $this->yearId, 'level' => 'JHS', 'shift' => 'WHOLE_DAY', 'name' => 'Monday – Thursday', 'days' => '{1,2,3,4}',
@@ -275,10 +269,10 @@ describe('Class Program XLSX', function () {
             'auto_source' => 'section_adviser', 'position' => 'Class Adviser',
         ]);
 
-        $response = $this->get("/api/terms/{$this->termId}/sections/{$this->sectionId}/class-program.xlsx")->assertOk();
+        $response = $this->get("/api/terms/{$this->termId}/sections/{$this->sectionId}/class-program.csv")->assertOk();
         $text = workbookText($response);
 
-        expect($response->headers->get('Content-Disposition'))->toContain('class-program-grade-7-honesty-first.xlsx')
+        expect($response->headers->get('Content-Disposition'))->toContain('class-program-grade-7-honesty-first.csv')
             ->and($text)->toContain('GRADE 7 – HONESTY')
             ->and($text)->toContain('Class Adviser: Ana Reyes')
             ->and($text)->toContain('MONDAY – THURSDAY')
@@ -292,7 +286,7 @@ describe('Class Program XLSX', function () {
             'school_year_id' => $this->yearId, 'grade_level_id' => reportGrade(9), 'name' => 'Outside',
         ]);
 
-        $this->get("/api/terms/{$this->termId}/sections/{$outside}/class-program.xlsx")->assertForbidden();
+        $this->get("/api/terms/{$this->termId}/sections/{$outside}/class-program.csv")->assertForbidden();
     });
 
 });

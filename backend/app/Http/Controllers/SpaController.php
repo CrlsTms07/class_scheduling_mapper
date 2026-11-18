@@ -6,7 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
 /**
- * On the live server, Laravel also serves the built React app, so both share one address and
+ * On the live server, Laravel also serves the built web app, so both share one address and
  * the session cookies just work. On a developer's computer there is no build, and Vite serves it.
  */
 class SpaController extends Controller

@@ -18,7 +18,7 @@ class ImportScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'mimes:xlsx,xls,pdf,csv,txt', 'max:5120'],
+            'file' => ['required', 'file', 'mimes:xlsx,pdf', 'max:5120'],
             'preview' => ['sometimes', 'boolean'],
             'set_up' => ['sometimes', 'boolean'],
         ];
@@ -26,6 +26,6 @@ class ImportScheduleRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['file.mimes' => 'Upload an Excel workbook (.xlsx or .xls).', 'file.max' => 'The file must be 5 MB or smaller.'];
+        return ['file.mimes' => 'Upload an Excel workbook (.xlsx) or a PDF.', 'file.max' => 'The file must be 5 MB or smaller.'];
     }
 }

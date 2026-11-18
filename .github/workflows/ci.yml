@@ -55,3 +55,5 @@ jobs:
       - run: npm ci
       - run: npm run test
       - run: npm run build
+      # The Playwright flows need a database and the API running; they are run before each
+      # deploy with the steps in docs/deployment.md.

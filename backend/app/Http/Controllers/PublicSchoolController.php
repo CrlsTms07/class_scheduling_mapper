@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  */
 class PublicSchoolController extends Controller
 {
-    private const FIELDS = ['school_name', 'address', 'phone', 'email', 'website', 'facebook_url', 'tagline', 'vision', 'mission', 'core_values'];
+    private const FIELDS = ['school_name', 'address', 'phone', 'email', 'website', 'facebook_url', 'tagline', 'vision', 'mission', 'core_values', 'division'];
 
     public function show(): JsonResponse
     {

@@ -27,12 +27,12 @@ class ReportController extends Controller
         return response()->json(['data' => $reports->options($term, $request->user())]);
     }
 
-    public function classProgramXlsx(SchoolTerm $term, Section $section, ReportService $reports): Response
+    public function classProgramCsv(SchoolTerm $term, Section $section, ReportService $reports): Response
     {
         Gate::authorize('view', $section);
         abort_unless($term->school_year_id === $section->school_year_id, 404);
 
-        return $this->xlsx(
+        return $this->csv(
             $reports->classProgramSheet($reports->classProgramData($term, $section)),
             "class-program-{$section->label()}-{$term->name}",
         );
@@ -52,11 +52,11 @@ class ReportController extends Controller
         return $this->pdf($reports->gridPdf($reports->teacherProgram($term, $teacher)), $this->teacherFile($term, $teacher));
     }
 
-    public function teacherProgramXlsx(SchoolTerm $term, Teacher $teacher, ScheduleReportService $reports): Response
+    public function teacherProgramCsv(SchoolTerm $term, Teacher $teacher, ScheduleReportService $reports): Response
     {
         Gate::authorize('view-teacher-program', [$teacher, $term]);
 
-        return $this->xlsx($reports->gridSheet($reports->teacherProgram($term, $teacher), 'Teacher Program'), $this->teacherFile($term, $teacher));
+        return $this->csv($reports->gridSheet($reports->teacherProgram($term, $teacher), 'Teacher Program'), $this->teacherFile($term, $teacher));
     }
 
     public function roomSchedule(SchoolTerm $term, Room $room, ScheduleReportService $reports): JsonResponse
@@ -77,13 +77,13 @@ class ReportController extends Controller
         return $this->pdf($reports->gridPdf($reports->roomSchedule($term, $room)), $this->roomFile($term, $room));
     }
 
-    public function roomScheduleXlsx(SchoolTerm $term, Room $room, ScheduleReportService $reports): Response
+    public function roomScheduleCsv(SchoolTerm $term, Room $room, ScheduleReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
         $this->authorizeRoom($room);
 
-        return $this->xlsx($reports->gridSheet($reports->roomSchedule($term, $room), 'Room Schedule'), $this->roomFile($term, $room));
+        return $this->csv($reports->gridSheet($reports->roomSchedule($term, $room), 'Room Schedule'), $this->roomFile($term, $room));
     }
 
     public function roomUsage(Request $request, SchoolTerm $term, ScheduleReportService $reports): JsonResponse
@@ -102,11 +102,11 @@ class ReportController extends Controller
         return $this->pdf($reports->usagePdf($reports->roomUsage($term, $request->integer('building') ?: null)), "room-usage-{$term->name}");
     }
 
-    public function roomUsageXlsx(Request $request, SchoolTerm $term, ScheduleReportService $reports): Response
+    public function roomUsageCsv(Request $request, SchoolTerm $term, ScheduleReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
-        return $this->xlsx($reports->usageSheet($reports->roomUsage($term, $request->integer('building') ?: null)), "room-usage-{$term->name}");
+        return $this->csv($reports->usageSheet($reports->roomUsage($term, $request->integer('building') ?: null)), "room-usage-{$term->name}");
     }
 
     public function teacherLoad(Request $request, SchoolTerm $term, SummaryReportService $reports): JsonResponse
@@ -123,11 +123,11 @@ class ReportController extends Controller
         return $this->pdf($reports->teacherLoadPdf($reports->teacherLoad($term, $request->user())), "teacher-load-{$term->name}");
     }
 
-    public function teacherLoadXlsx(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
+    public function teacherLoadCsv(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
-        return $this->xlsx($reports->teacherLoadSheet($reports->teacherLoad($term, $request->user())), "teacher-load-{$term->name}");
+        return $this->csv($reports->teacherLoadSheet($reports->teacherLoad($term, $request->user())), "teacher-load-{$term->name}");
     }
 
     public function adviserSummary(Request $request, SchoolTerm $term, SummaryReportService $reports): JsonResponse
@@ -144,11 +144,11 @@ class ReportController extends Controller
         return $this->pdf($reports->adviserSummaryPdf($reports->adviserSummary($term, $request->user())), 'adviser-summary');
     }
 
-    public function adviserSummaryXlsx(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
+    public function adviserSummaryCsv(Request $request, SchoolTerm $term, SummaryReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
-        return $this->xlsx($reports->adviserSummarySheet($reports->adviserSummary($term, $request->user())), 'adviser-summary');
+        return $this->csv($reports->adviserSummarySheet($reports->adviserSummary($term, $request->user())), 'adviser-summary');
     }
 
     public function gradeTimetable(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): JsonResponse
@@ -165,11 +165,11 @@ class ReportController extends Controller
         return $this->pdf($reports->gradeTimetablePdf($reports->gradeTimetable($term, $grade)), "grade-{$grade}-timetable-{$term->name}");
     }
 
-    public function gradeTimetableXlsx(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): Response
+    public function gradeTimetableCsv(Request $request, SchoolTerm $term, int $grade, SummaryReportService $reports): Response
     {
         $this->authorizeGrade($request, $grade);
 
-        return $this->xlsx($reports->gradeTimetableSheet($reports->gradeTimetable($term, $grade)), "grade-{$grade}-timetable-{$term->name}");
+        return $this->csv($reports->gradeTimetableSheet($reports->gradeTimetable($term, $grade)), "grade-{$grade}-timetable-{$term->name}");
     }
 
     private function authorizeGrade(Request $request, int $grade): void
@@ -198,11 +198,11 @@ class ReportController extends Controller
         return $this->pdf($reports->pdf($reports->forUser($term, $request->user())), "validation-report-{$term->name}");
     }
 
-    public function validationXlsx(Request $request, SchoolTerm $term, ValidationReportService $reports): Response
+    public function validationCsv(Request $request, SchoolTerm $term, ValidationReportService $reports): Response
     {
         Gate::authorize('view-school-records');
 
-        return $this->xlsx($reports->sheet($reports->forUser($term, $request->user())), "validation-report-{$term->name}");
+        return $this->csv($reports->sheet($reports->forUser($term, $request->user())), "validation-report-{$term->name}");
     }
 
     /**
@@ -240,9 +240,9 @@ class ReportController extends Controller
         ]);
     }
 
-    /** XLSX, or CSV when the address ends in .csv. Both come from the same sheet. */
-    private function xlsx(object $sheet, string $name): Response
+    /** The report as a CSV file (exports are PDF and CSV, team decision, Nov 18, 2026). */
+    private function csv(object $sheet, string $name): Response
     {
-        return SheetResponse::make($sheet, Str::slug($name), SheetResponse::formatOf(request()));
+        return SheetResponse::csv($sheet, Str::slug($name));
     }
 }

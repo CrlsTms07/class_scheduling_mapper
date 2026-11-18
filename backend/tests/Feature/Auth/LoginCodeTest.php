@@ -129,3 +129,42 @@ it('says so when the code cannot be sent', function () {
         ->assertJsonPath('message', fn (string $message) => str_contains($message, 'could not be sent'));
     $this->assertGuest('web');
 });
+
+describe('forgetting remembered devices', function () {
+    beforeEach(function () {
+        $this->remember = fn () => app(LoginCodeService::class)->trustDevice($this->user);
+        $this->remember->__invoke();
+    });
+
+    it('when the user changes their password', function () {
+        app(\App\Services\AccountService::class)->changePassword($this->user, 'NewPass123!');
+
+        expect(DB::table('trusted_devices')->where('user_id', $this->user->id)->count())->toBe(0);
+    });
+
+    it('when the Admin gives a temporary password', function () {
+        $admin = User::factory()->create();
+        app(\App\Services\AccountService::class)->adminResetPassword($this->user, $admin);
+
+        expect(DB::table('trusted_devices')->where('user_id', $this->user->id)->count())->toBe(0);
+    });
+
+    it('when the password is reset by email', function () {
+        $token = Illuminate\Support\Facades\Password::broker()->createToken($this->user);
+        $this->postJson('/api/reset-password', ['token' => $token, 'email' => $this->user->email, 'password' => 'NewPass123!', 'password_confirmation' => 'NewPass123!'])->assertOk();
+
+        expect(DB::table('trusted_devices')->where('user_id', $this->user->id)->count())->toBe(0);
+    });
+
+    it('when the account is deactivated, but not when it is reactivated', function () {
+        $admin = User::factory()->create();
+        $accounts = app(\App\Services\AccountService::class);
+
+        $accounts->changeStatus($this->user, $admin, 'inactive');
+        expect(DB::table('trusted_devices')->where('user_id', $this->user->id)->count())->toBe(0);
+
+        $this->remember->__invoke();
+        $accounts->changeStatus($this->user, $admin, 'active');
+        expect(DB::table('trusted_devices')->where('user_id', $this->user->id)->count())->toBe(1);
+    });
+});

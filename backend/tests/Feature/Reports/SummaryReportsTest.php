@@ -98,9 +98,9 @@ describe('Teacher Load Report', function () {
             ->assertJsonPath('data.teachers.0.assigned', 2);
     });
 
-    it('downloads as PDF and XLSX, even when empty', function () {
+    it('downloads as PDF and CSV, even when empty', function () {
         expect(substr($this->get("{$this->base}/teacher-load.pdf")->assertOk()->getContent(), 0, 4))->toBe('%PDF')
-            ->and(substr($this->get("{$this->base}/teacher-load.xlsx")->assertOk()->getContent(), 0, 2))->toBe('PK');
+            ->and(substr($this->get("{$this->base}/teacher-load.csv")->assertOk()->getContent(), 0, 3))->toBe("\xEF\xBB\xBF");
     });
 });
 
@@ -141,9 +141,9 @@ describe('Grade Level Timetable', function () {
         expect($this->getJson("{$this->base}/grades/7/timetable")->json('data.tables'))->toHaveCount(2);
     });
 
-    it('downloads as PDF and XLSX', function () {
+    it('downloads as PDF and CSV', function () {
         expect(substr($this->get("{$this->base}/grades/7/timetable.pdf")->assertOk()->getContent(), 0, 4))->toBe('%PDF')
-            ->and(substr($this->get("{$this->base}/grades/7/timetable.xlsx")->assertOk()->getContent(), 0, 2))->toBe('PK');
+            ->and(substr($this->get("{$this->base}/grades/7/timetable.csv")->assertOk()->getContent(), 0, 3))->toBe("\xEF\xBB\xBF");
     });
 
     it('stays within the grade levels of the user', function () {
@@ -192,9 +192,9 @@ describe('Adviser Summary', function () {
             ->and($sheet[6][3])->toBe('Ana Reyes')->and($sheet[6][7])->toBe('Faith');
     });
 
-    it('downloads as PDF, XLSX and CSV', function () {
+    it('downloads as PDF and CSV', function () {
         expect(substr($this->get("{$this->base}/adviser-summary.pdf")->assertOk()->getContent(), 0, 4))->toBe('%PDF')
-            ->and(substr($this->get("{$this->base}/adviser-summary.xlsx")->assertOk()->getContent(), 0, 2))->toBe('PK')
+            ->and(substr($this->get("{$this->base}/adviser-summary.csv")->assertOk()->getContent(), 0, 3))->toBe("\xEF\xBB\xBF")
             ->and($this->get("{$this->base}/adviser-summary.csv")->assertOk()->getContent())->toContain('Ana Reyes');
     });
 });

@@ -131,7 +131,7 @@ it('downloads as a PDF', function () {
         ->and($response->headers->get('Content-Disposition'))->toContain('class-program-grade-11-stem-11-1-first-semester.pdf');
 });
 
-it('downloads as an XLSX with the same content', function () {
+it('downloads as an CSV with the same content', function () {
     DB::table('report_settings')->insert([
         'report_type' => 'class_program', 'level' => 'SHS', 'title_format' => '{level} GRADE {grade} - CLASS PROGRAM', 'reference_note' => 'DO 12',
     ]);
@@ -141,12 +141,9 @@ it('downloads as an XLSX with the same content', function () {
     ]);
     shsEntry($this, 1);
 
-    $response = $this->get("/api/terms/{$this->termId}/sections/{$this->sectionId}/class-program.xlsx")->assertOk();
+    $response = $this->get("/api/terms/{$this->termId}/sections/{$this->sectionId}/class-program.csv")->assertOk();
 
-    $path = tempnam(sys_get_temp_dir(), 'shs').'.xlsx';
-    file_put_contents($path, $response->getContent());
-    $text = collect(IOFactory::load($path)->getActiveSheet()->toArray())->flatten()->filter()->implode(' | ');
-    unlink($path);
+    $text = $response->getContent();
 
     expect($text)->toContain('SHS GRADE 11 - CLASS PROGRAM')
         ->and($text)->toContain('First Semester, School Year 2026-2027')
@@ -166,5 +163,5 @@ it('keeps a Master Teacher to their grade levels', function () {
     ]);
 
     $this->get("/api/terms/{$this->termId}/sections/{$outside}/class-program.pdf")->assertForbidden();
-    $this->get("/api/terms/{$this->termId}/sections/{$outside}/class-program.xlsx")->assertForbidden();
+    $this->get("/api/terms/{$this->termId}/sections/{$outside}/class-program.csv")->assertForbidden();
 });

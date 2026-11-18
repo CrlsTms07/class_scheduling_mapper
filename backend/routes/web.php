@@ -10,5 +10,5 @@ Route::middleware('throttle:account')->group(function () {
     Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 });
 
-// React Router handles the page addresses. Anything for the API keeps its own errors.
+// The web app's router handles the page addresses. Anything for the API keeps its own errors.
 Route::get('/{path?}', SpaController::class)->where('path', '^(?!api(/|$)|sanctum(/|$)|auth/google(/|$)|up$).*$');

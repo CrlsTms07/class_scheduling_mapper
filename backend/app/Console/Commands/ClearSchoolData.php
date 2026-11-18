@@ -25,7 +25,6 @@ class ClearSchoolData extends Command
         'schedule_flag_acknowledgements',
         'schedule_entries',
         'schedule_reviews',
-        'auto_fill_runs',
         'section_subjects',
         'activities',
         'sections',
@@ -55,10 +54,7 @@ class ClearSchoolData extends Command
         }
 
         DB::transaction(function () {
-            // A department may name a faculty room. The department stays, the room does not.
-            DB::table('departments')->update(['faculty_room_id' => null]);
-
-            // TRUNCATE is refused while a kept table (departments) points at rooms, so delete in order.
+            // Delete in order, so no row is left pointing at one that is gone.
             foreach (self::TABLES as $table) {
                 DB::table($table)->delete();
                 // New records start from 1 again.

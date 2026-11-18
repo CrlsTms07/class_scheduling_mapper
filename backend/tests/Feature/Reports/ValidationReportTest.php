@@ -159,19 +159,19 @@ it('is not for teachers', function () {
 
     $this->getJson($this->url)->assertForbidden();
     $this->getJson("{$this->url}.pdf")->assertForbidden();
-    $this->getJson("{$this->url}.xlsx")->assertForbidden();
+    $this->getJson("{$this->url}.csv")->assertForbidden();
 });
 
-it('downloads as PDF and XLSX, with or without issues', function () {
+it('downloads as PDF and CSV, with or without issues', function () {
     $pdf = $this->get("{$this->url}.pdf")->assertOk();
-    $xlsx = $this->get("{$this->url}.xlsx")->assertOk();
+    $csv = $this->get("{$this->url}.csv")->assertOk();
 
     expect(substr($pdf->getContent(), 0, 4))->toBe('%PDF')
-        ->and(substr($xlsx->getContent(), 0, 2))->toBe('PK')
+        ->and(substr($csv->getContent(), 0, 3))->toBe("\xEF\xBB\xBF")
         ->and($pdf->headers->get('Content-Disposition'))->toContain('validation-report-first');
 
     DB::table('sections')->where('id', $this->sectionId)->update(['adviser_id' => null]);
 
     expect(substr($this->get("{$this->url}.pdf")->assertOk()->getContent(), 0, 4))->toBe('%PDF');
-    $this->get("{$this->url}.xlsx")->assertOk();
+    $this->get("{$this->url}.csv")->assertOk();
 });

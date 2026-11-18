@@ -53,12 +53,12 @@ class MyRecordsController extends Controller
         ]);
     }
 
-    public function scheduleXlsx(Request $request, SchoolTerm $term, ScheduleReportService $reports): Response
+    public function scheduleCsv(Request $request, SchoolTerm $term, ScheduleReportService $reports): Response
     {
         $teacher = $this->teacherOrFail($request);
         $sheet = $reports->gridSheet($reports->teacherProgram($term, $teacher, self::FINAL_ONLY), 'My Schedule');
 
-        return SheetResponse::make($sheet, $this->fileName($term, $teacher), SheetResponse::formatOf($request));
+        return SheetResponse::csv($sheet, $this->fileName($term, $teacher));
     }
 
     public function profile(Request $request, SchoolTerm $term): JsonResponse

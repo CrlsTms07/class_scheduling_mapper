@@ -1,19 +1,21 @@
 # Deployment
 
 The live system runs on **Render** (one free Docker service: Laravel serving the API and the built
-React app) with a **Neon** PostgreSQL database in Singapore.
+web app) with a **Supabase** PostgreSQL database (Neon is kept as a fallback).
 
-React and Laravel share one address on purpose. Sanctum's session and CSRF cookies do not work
+The web app is `frontend/` (HTML, Tailwind CSS and plain JavaScript, team decision, Nov 17, 2026). The old
+React app was removed on Nov 18, 2026; it is still in the Git history (commit `51a4cca`) if it is ever needed.
+
+The web app and Laravel share one address on purpose. Sanctum's session and CSRF cookies do not work
 across two unrelated domains.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Builds React, installs PHP packages, and sets up Apache |
+| `Dockerfile` | Builds the web app (`APP_DIR`), installs PHP packages, and sets up Apache |
 | `docker/start.sh` | Runs at each start: caches config, migrates, adds reference data, starts Apache |
 | `render.yaml` | Render Blueprint: free plan, Singapore, and the environment variables |
-| `neon.ts` | Neon project settings |
 
 ## First deploy
 
@@ -60,7 +62,7 @@ Remove-Item Env:DB_URL, Env:DB_CONNECTION
 
 ## Email (Gmail, free)
 
-The system sends one kind of email: the forgot-password link. It uses the school's Gmail account
+The system sends two kinds of email: the 6-digit sign-in code and the forgot-password link. It uses the school's Gmail account
 (free, up to 500 emails a day). There are two ways to send it.
 
 ### A. Gmail SMTP: local computer or a paid Render plan
@@ -238,3 +240,16 @@ page that reads the database is opened, so Render wakes up and the database has 
 
 Until `LIVE_URL` is set, the workflow does nothing. GitHub pauses scheduled workflows in a repository
 with no activity for 60 days; any push, or **Enable workflow** on the Actions tab, starts it again.
+
+## Before each deploy: the end-to-end tests
+
+The Playwright flows of `frontend/tests/e2e` (sign in, plot with a conflict, submit, approve, reports,
+the Guest view, every page at 360×640, 844×390 and 1366×768) need a database and the API, so they run on a
+computer, not in GitHub Actions:
+
+1. Make a test database, run `php artisan migrate:fresh --seed` against it, and start `php artisan serve`.
+2. In `frontend`, start `npm run dev` with `VITE_API_URL` set to the API's address.
+3. Run `E2E_APP=http://localhost:5173 E2E_SECTION_A=<id> E2E_SECTION_B=<id> npm run test:e2e`, where the ids are
+   those of the demo sections Sample A and Sample B.
+
+Never run them against the live database: they add and approve records.

@@ -64,7 +64,6 @@ class PlotterService
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->toArray(),
-            'last_auto_fill' => $this->lastAutoFill($section, $termId),
             // How many sections "Apply to" reaches, for its labels.
             'apply_counts' => [
                 'grade' => Section::visibleTo($user)->where('school_year_id', $section->school_year_id)
@@ -72,26 +71,6 @@ class PlotterService
                 'all' => Section::visibleTo($user)->where('school_year_id', $section->school_year_id)->count(),
             ],
         ];
-    }
-
-    /**
-     * The latest auto-fill run that still has entries in this section, so it can be undone.
-     *
-     * @return array{id: int, created_at: string, entries: int}|null
-     */
-    private function lastAutoFill(Section $section, int $termId): ?array
-    {
-        $run = DB::table('auto_fill_runs')
-            ->join('schedule_entries', 'schedule_entries.auto_fill_run_id', '=', 'auto_fill_runs.id')
-            ->where('auto_fill_runs.term_id', $termId)
-            ->whereNull('auto_fill_runs.undone_at')
-            ->where('schedule_entries.section_id', $section->id)
-            ->groupBy('auto_fill_runs.id', 'auto_fill_runs.created_at')
-            ->orderByDesc('auto_fill_runs.id')
-            ->selectRaw('auto_fill_runs.id, auto_fill_runs.created_at, COUNT(*) AS entries')
-            ->first();
-
-        return $run ? ['id' => $run->id, 'created_at' => $run->created_at, 'entries' => (int) $run->entries] : null;
     }
 
     /**
@@ -185,7 +164,6 @@ class PlotterService
                 'status' => $entry->status,
                 'section_subject_id' => $entry->section_subject_id,
                 'activity_id' => $entry->activity_id,
-                'auto_filled' => $entry->auto_fill_run_id !== null,
                 'subject' => $entry->subjectName(),
                 'teacher' => $entry->teacher?->printedName(),
                 'room_id' => $entry->room_id,

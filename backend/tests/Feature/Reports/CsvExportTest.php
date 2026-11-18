@@ -32,10 +32,10 @@ it('downloads the summary reports as CSV too', function (string $path) {
     expect($response->headers->get('Content-Type'))->toStartWith('text/csv');
 })->with(['teacher-load.csv', 'room-usage.csv', 'grades/7/timetable.csv', 'validation.csv']);
 
-it('still downloads XLSX as before', function () {
-    $response = $this->get("/api/terms/{$this->termId}/reports/teacher-load.xlsx")->assertOk();
-
-    expect($response->headers->get('Content-Type'))->toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+it('no longer exports XLSX: reports are PDF and CSV (team decision, Nov 18, 2026)', function () {
+    $this->get("/api/terms/{$this->termId}/reports/teacher-load.xlsx")->assertNotFound();
+    $this->get("/api/terms/{$this->termId}/sections/{$this->section->id}/class-program.xlsx")->assertNotFound();
+    $this->get("/api/terms/{$this->termId}/my-schedule/program.xlsx")->assertNotFound();
 });
 
 it('keeps the same rules as the other formats', function () {
@@ -43,4 +43,10 @@ it('keeps the same rules as the other formats', function () {
 
     $this->get("/api/terms/{$this->termId}/reports/teacher-load.csv")->assertForbidden();
     $this->get("/api/terms/{$this->termId}/my-schedule/program.csv")->assertOk();
+});
+
+it('lets the app read the file name of a download', function () {
+    $response = $this->withHeader('Origin', 'http://localhost:5173')->get("/api/terms/{$this->termId}/reports/teacher-load.csv")->assertOk();
+
+    expect($response->headers->get('Access-Control-Expose-Headers'))->toContain('Content-Disposition');
 });

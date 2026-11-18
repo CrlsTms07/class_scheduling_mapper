@@ -153,6 +153,23 @@ it('starts the steps with rooms and the bell schedule of the department', functi
         ->and($steps[1]['counts'])->toHaveKeys(['patterns', 'departments', 'ready']);
 });
 
+it('needs a bell schedule only for a department that has sections, like the setup checklist', function () {
+    $admin = User::factory()->create()->assignRole('super_admin');
+
+    // No section yet: Junior High has a bell schedule, Senior High does not.
+    $bell = fn () => collect($this->actingAs($admin)->getJson($this->url)->json('data.steps'))->firstWhere('key', 'bell');
+    expect($bell()['done'])->toBeFalse();
+
+    // Only Junior High has sections, and its bell schedule is ready.
+    schedulerSection($this, 'Honesty');
+    expect($bell()['done'])->toBeTrue()
+        ->and($bell()['counts']['departments'])->toBe(1);
+
+    // A Senior High section needs its own bell schedule too.
+    schedulerSection($this, 'STEM', 11);
+    expect($bell()['done'])->toBeFalse();
+});
+
 it('needs a sign-in', function () {
     $this->getJson($this->url)->assertUnauthorized();
 });

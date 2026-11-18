@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AssignSlotRequest;
 use App\Http\Requests\ClearSlotRequest;
+use App\Http\Requests\FreePeriodsRequest;
 use App\Http\Requests\MoveEntryRequest;
 use App\Http\Requests\SubmitScheduleRequest;
 use App\Models\SchoolTerm;
 use App\Models\Section;
 use App\Models\TimeSlot;
+use App\Services\ConflictService;
 use App\Services\PlotterService;
 use App\Services\ScheduleService;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +25,21 @@ class PlotterController extends Controller
         $this->ensureSameSchoolYear($term, $section);
 
         return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
+    }
+
+    /**
+     * The free days of each period for a teacher and room, so only places that fit are offered.
+     */
+    public function freePeriods(FreePeriodsRequest $request, SchoolTerm $term, Section $section, ConflictService $conflicts): JsonResponse
+    {
+        $this->ensureSameSchoolYear($term, $section);
+
+        return response()->json(['data' => $conflicts->freePeriods(
+            $term->id,
+            $section,
+            $request->filled('teacher_id') ? $request->integer('teacher_id') : null,
+            $request->filled('room_id') ? $request->integer('room_id') : null,
+        )]);
     }
 
     public function assign(AssignSlotRequest $request, SchoolTerm $term, Section $section, TimeSlot $timeSlot, ScheduleService $schedule, PlotterService $plotter): JsonResponse
