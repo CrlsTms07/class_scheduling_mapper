@@ -3,6 +3,7 @@
  * Starts the app: finds out who is signed in, loads the terms, then shows the page of the
  * address. Moving between pages does not reload the browser; links still work as links.
  */
+// @ts-ignore CSS is handled by the bundler and has no TypeScript declarations.
 import "@/styles/main.css";
 import { h, replace } from "@/lib/dom.js";
 import { applyTheme } from "@/state/theme.js";
@@ -71,7 +72,11 @@ async function render() {
     if (thisRender !== renderCount) return; // the user already went elsewhere
     const pageArea = h("div");
     replace(container, pageArea);
-    const done = await page.render(pageArea, { params, query: new URLSearchParams(location.search), navigate });
+    const done = await page.render(pageArea, {
+      params,
+      query: new URLSearchParams(location.search),
+      navigate,
+    });
     if (thisRender !== renderCount) {
       if (typeof done === "function") done();
       return;
@@ -81,16 +86,42 @@ async function render() {
     window.scrollTo({ top: 0 });
   } catch (error) {
     console.error(error);
-    replace(container, h("div", { class: "p-6" }, h("p", { role: "alert", class: "text-danger" }, "This page could not open. Please reload the page and try again.")));
+    replace(
+      container,
+      h(
+        "div",
+        { class: "p-6" },
+        h(
+          "p",
+          { role: "alert", class: "text-danger" },
+          "This page could not open. Please reload the page and try again.",
+        ),
+      ),
+    );
   }
 }
 
 // Links inside the app change the page without reloading. New tabs and downloads still work.
 document.addEventListener("click", (event) => {
   const link = /** @type {HTMLElement} */ (event.target).closest?.("a");
-  if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (
+    !link ||
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  )
+    return;
   const href = link.getAttribute("href");
-  if (!href || !href.startsWith("/") || link.target || link.hasAttribute("download")) return;
+  if (
+    !href ||
+    !href.startsWith("/") ||
+    link.target ||
+    link.hasAttribute("download")
+  )
+    return;
   event.preventDefault();
   if (href !== location.pathname + location.search) navigate(href);
 });
@@ -109,9 +140,24 @@ async function start() {
       root,
       h(
         "div",
-        { class: "flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center" },
-        h("p", { class: "text-sm" }, "Cannot reach the server. Please check the connection and try again."),
-        h("button", { type: "button", class: "btn btn-primary", onclick: () => location.reload() }, "Try again"),
+        {
+          class:
+            "flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center",
+        },
+        h(
+          "p",
+          { class: "text-sm" },
+          "Cannot reach the server. Please check the connection and try again.",
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "btn btn-primary",
+            onclick: () => location.reload(),
+          },
+          "Try again",
+        ),
       ),
     );
     return;

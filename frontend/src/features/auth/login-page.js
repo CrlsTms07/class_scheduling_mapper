@@ -13,8 +13,26 @@ import { loadTerms } from "@/state/term.js";
 import { withEye } from "@/lib/forms.js";
 import { googleButton, openTerms } from "./account-pages.js";
 
+/**
+ * What the server's ?google= answer means after "Continue with Google" (GoogleAuthController,
+ * AccountService::fromGoogle). A new Google account starts pending until the Admin activates it.
+ */
+export const GOOGLE_MESSAGES = {
+  pending: { text: "Your account was created with Google. You can sign in once the Admin activates it.", isError: false },
+  inactive: { text: "Your account is not active. Please contact the Admin.", isError: true },
+  not_deped: { text: "Use your official DepEd Google account (@deped.gov.ph).", isError: true },
+  not_verified: { text: "Google has not verified this email yet. Use your official DepEd account.", isError: true },
+  cancelled: { text: "Signing in with Google was cancelled.", isError: true },
+  failed: { text: "Signing in with Google did not work. Please try again, or use your email and password.", isError: true },
+  unavailable: { text: "Signing in with Google is not set up yet. Use your email and password.", isError: true },
+};
+
 /** @type {import("@/router.js").RenderPage} */
-export function render(container, { navigate }) {
+export function render(container, { navigate, query }) {
+  // Back from Google without signing in: say why once, then clean the address so a refresh does not repeat it.
+  const googleResult = GOOGLE_MESSAGES[/** @type {keyof typeof GOOGLE_MESSAGES} */ (query.get("google") ?? "")] ?? null;
+  if (query.has("google")) history.replaceState(history.state, "", location.pathname);
+
   const finish = async (/** @type {{ data: import("@/state/session.js").User }} */ result) => {
     setUser(result.data);
     await loadTerms();
@@ -61,6 +79,9 @@ export function render(container, { navigate }) {
         },
       },
       h("div", { class: "space-y-1 text-center" }, h("h1", { class: "text-2xl font-bold text-brand" }, "Sign in to your account"), h("p", { class: "text-muted-foreground" }, "Enter your DepEd email below to access your account")),
+      googleResult
+        ? h("p", { role: googleResult.isError ? "alert" : "status", class: `rounded-lg border p-3 text-sm ${googleResult.isError ? "border-danger/40 bg-danger/5 text-danger" : "border-success/40 bg-success/5 text-success"}` }, googleResult.text)
+        : null,
       googleButton(),
       h("div", { class: "space-y-1.5" }, h("label", { class: "block font-medium", htmlFor: emailId }, "Email"), email),
       h(
