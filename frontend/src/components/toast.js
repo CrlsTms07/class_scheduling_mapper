@@ -40,10 +40,35 @@ function areaForNow() {
   const host = dialogs.at(-1) ?? document.body;
   if (toastArea.parentElement !== host) {
     host.append(toastArea);
-    // A dialog that only closes (the menu drawer) gives the notifications back to the page.
-    if (host !== document.body) host.addEventListener("close", () => releaseToasts(host), { once: true });
+    if (host !== document.body) {
+      // A dialog that only closes (the menu drawer) gives the notifications back to the page.
+      host.addEventListener("close", () => releaseToasts(host), { once: true });
+      watchRemoval(host);
+    }
   }
   return toastArea;
+}
+
+/** @type {MutationObserver | null} */
+let removalWatch = null;
+
+/**
+ * A dialog can also leave the page without closing, for example the menu drawer when Sign out
+ * changes the page. Then the notifications inside it come back to the page at once.
+ * @param {Element} host
+ */
+function watchRemoval(host) {
+  removalWatch?.disconnect();
+  removalWatch = new MutationObserver(() => {
+    if (host.isConnected) return;
+    removalWatch?.disconnect();
+    removalWatch = null;
+    if (toastArea && !toastArea.isConnected) {
+      document.body.append(toastArea);
+      if (toastArea.children.length) bringToFront(toastArea);
+    }
+  });
+  removalWatch.observe(document.body, { childList: true, subtree: true });
 }
 
 /**

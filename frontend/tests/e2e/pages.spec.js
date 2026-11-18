@@ -143,6 +143,18 @@ test("a new sign-up is activated by the Admin", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Sign-ups waiting" })).toHaveCount(0);
 });
 
+test("signing out says so, also from the phone menu", async ({ page }) => {
+  for (const [width, height, fromMenu] of [[1366, 768, false], [390, 844, true]]) {
+    await page.setViewportSize({ width: Number(width), height: Number(height) });
+    await signIn(page, "admin@deped.gov.ph");
+    if (fromMenu) await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out" }).last().click();
+    await page.getByRole("button", { name: "Yes, sign out" }).click();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByRole("status").filter({ hasText: "Signed out." })).toBeVisible();
+  }
+});
+
 test("the school years, report settings, guide, rooms and buildings open", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await signIn(page, "admin@deped.gov.ph");
