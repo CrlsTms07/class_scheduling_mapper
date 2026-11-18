@@ -56,6 +56,6 @@ class SchoolYearController extends Controller
 
         $service->activateTerm($term, $request->user());
 
-        return response()->json(['message' => "{$term->name} is now the active term."]);
+        return response()->json(['message' => "{$term->name} is now active."]);
     }
 }

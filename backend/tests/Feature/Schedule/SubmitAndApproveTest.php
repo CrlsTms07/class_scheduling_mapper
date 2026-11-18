@@ -173,10 +173,10 @@ describe('submitting', function () {
             ->assertJsonPath('data.status', 'pending');
     });
 
-    it('is not for the Admin', function () {
+    it('is not for teachers', function () {
         entryFor($this, $this->sectionA, 'Filipino');
 
-        $this->actingAs($this->admin);
+        $this->actingAs(User::where('email', 'teacher@deped.gov.ph')->first());
 
         $this->postJson(plotterUrl($this, $this->sectionA).'/submit', ['acknowledged_flags' => []])->assertForbidden();
     });
@@ -379,10 +379,10 @@ describe('after a rejection', function () {
             ->assertJsonValidationErrors('section');
     });
 
-    it('is not for the Admin', function () {
+    it('is not for teachers', function () {
         entryFor($this, $this->sectionA, 'Filipino', ['status' => 'rejected']);
 
-        $this->actingAs($this->admin);
+        $this->actingAs(User::where('email', 'teacher@deped.gov.ph')->first());
 
         $this->postJson(plotterUrl($this, $this->sectionA).'/revise')->assertForbidden();
     });

@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Models\DayPattern;
-use App\Models\SchoolYear;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -14,9 +13,12 @@ use Illuminate\Validation\Validator;
  */
 class SaveDayPatternRequest extends FormRequest
 {
+    /** The department of the bell schedule, and of the new one for a copy, must be the user's. */
     public function authorize(): bool
     {
-        return $this->user()->can('manage', SchoolYear::class);
+        $levels = array_filter([$this->route('dayPattern')?->level, $this->input('level')]);
+
+        return collect($levels ?: [null])->every(fn ($level) => $this->user()->can('manage', [DayPattern::class, $level]));
     }
 
     /**

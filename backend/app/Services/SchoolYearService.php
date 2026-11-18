@@ -137,7 +137,7 @@ class SchoolYearService
         $termIds = $year->terms()->pluck('id');
 
         if ($year->terms()->where('is_active', true)->exists()) {
-            return 'It has the active term. Set a term of another year as active first.';
+            return 'It is the active school year. Activate another year first.';
         }
 
         $sections = DB::table('sections')->where('school_year_id', $year->id)->count();
@@ -157,7 +157,7 @@ class SchoolYearService
     public function whyTermCannotBeRemoved(SchoolTerm $term): ?string
     {
         if ($term->is_active) {
-            return "{$term->name} is the active term. Set another term as active first.";
+            return "{$term->name} is active. Activate another one first.";
         }
 
         $scheduled = DB::table('schedule_entries')

@@ -92,8 +92,8 @@ it('limits repeated login attempts', function () {
         ->assertTooManyRequests();
 });
 
-it('refuses /me without a session', function () {
-    $this->getJson('/api/me')->assertUnauthorized();
+it('answers /me without a session with no user, and no error', function () {
+    $this->getJson('/api/me')->assertOk()->assertExactJson(['data' => null]);
 });
 
 it('returns the signed-in user from /me with their grade-level scope', function () {
@@ -128,5 +128,5 @@ it('signs out', function () {
 });
 
 it('ignores bearer tokens because the system uses session cookies', function () {
-    $this->withToken('1|anything')->getJson('/api/me')->assertUnauthorized();
+    $this->withToken('1|anything')->getJson('/api/me')->assertOk()->assertExactJson(['data' => null]);
 });

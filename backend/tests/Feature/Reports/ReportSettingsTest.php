@@ -78,8 +78,12 @@ describe('school profile', function () {
         $this->putJson('/api/school-profile', profileBody(['school_name' => 'New Name']))->assertOk();
 
         $this->getJson('/api/report-settings')->assertJsonPath('data.school.school_name', 'New Name');
+        $this->putJson('/api/school-profile', profileBody(['region' => 'Region IV-A CALABARZON', 'division' => 'Schools Division of Cavite Province']))->assertOk();
+        $this->getJson('/api/report-settings')
+            ->assertJsonPath('data.school.region', 'Region IV-A CALABARZON')
+            ->assertJsonPath('data.school.division', 'Schools Division of Cavite Province');
         expect(DB::table('school_profile')->count())->toBe(1)
-            ->and(DB::table('audit_logs')->where('table_name', 'school_profile')->count())->toBe(2);
+            ->and(DB::table('audit_logs')->where('table_name', 'school_profile')->count())->toBe(3);
     });
 
     it('needs a school name and a valid email', function () {
@@ -112,9 +116,16 @@ describe('logos', function () {
         expect($logos)->toHaveCount(2)
             ->and($logos[0])->toStartWith('data:image/png;base64,');
 
-        $profile = DB::table('school_profile')->first();
-        expect($profile->logo_path)->toContain('report-assets/')
-            ->and(json_decode($profile->extra_logos))->toHaveCount(1);
+        expect(DB::table('school_logos')->count())->toBe(2);
+    });
+
+    it('keeps logos in the database, so they survive a restart of the server', function () {
+        Storage::fake('local');
+
+        $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
+
+        expect(Storage::disk('local')->allFiles())->toBe([])
+            ->and(DB::table('school_logos')->sole()->mime_type)->toBe('image/png');
     });
 
     it('refuses other file types, big files and too many logos', function () {
@@ -126,42 +137,54 @@ describe('logos', function () {
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['logo' => '2 MB']);
 
-        foreach (range(1, 4) as $number) {
+        foreach (range(1, 6) as $number) {
             $this->post('/api/school-profile/logos', ['logo' => pngFile("{$number}.png")], ['Accept' => 'application/json'])->assertCreated();
         }
 
         $this->post('/api/school-profile/logos', ['logo' => pngFile('5.png')], ['Accept' => 'application/json'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['logo' => 'up to 4']);
+            ->assertJsonValidationErrors(['logo' => 'up to 6']);
     });
 
-    it('moves the next logo up when the first is removed, and deletes the file', function () {
+    it('moves the next logo up when the first is removed', function () {
         $this->post('/api/school-profile/logos', ['logo' => pngFile('a.png')], ['Accept' => 'application/json']);
         $this->post('/api/school-profile/logos', ['logo' => pngFile('b.png')], ['Accept' => 'application/json']);
-        $before = DB::table('school_profile')->first();
-        $firstFile = base_path($before->logo_path);
-        $second = json_decode($before->extra_logos)[0];
+        $second = DB::table('school_logos')->orderByDesc('id')->value('id');
 
         $this->deleteJson('/api/school-profile/logos/0')->assertOk();
 
-        $after = DB::table('school_profile')->first();
-        expect($after->logo_path)->toBe($second)
-            ->and(json_decode($after->extra_logos))->toBe([])
-            ->and(is_file($firstFile))->toBeFalse();
+        expect(DB::table('school_logos')->pluck('id')->all())->toBe([$second]);
     });
 
-    it('never deletes an image that ships with the system', function () {
-        DB::table('school_profile')->update(['logo_path' => 'resources/report-assets/school-logo.png']);
+    it('removes the one asked for', function () {
+        $this->post('/api/school-profile/logos', ['logo' => pngFile('a.png')], ['Accept' => 'application/json']);
+        $this->post('/api/school-profile/logos', ['logo' => pngFile('b.png')], ['Accept' => 'application/json']);
+        $first = DB::table('school_logos')->orderBy('id')->value('id');
 
-        $this->deleteJson('/api/school-profile/logos/0')->assertOk();
+        $this->deleteJson('/api/school-profile/logos/1')->assertOk();
 
-        expect(is_file(base_path('resources/report-assets/school-logo.png')))->toBeTrue();
+        expect(DB::table('school_logos')->pluck('id')->all())->toBe([$first]);
     });
 
     it('explains when the logo is already gone', function () {
         $this->deleteJson('/api/school-profile/logos/3')
             ->assertUnprocessable()
             ->assertJsonValidationErrors('logo');
+    });
+
+    it('prints a logo at the top or in the footer of the form', function () {
+        $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
+        $this->post('/api/school-profile/logos', ['logo' => pngFile('deped.png')], ['Accept' => 'application/json'])->assertCreated();
+
+        $this->putJson('/api/school-profile/logos/1/placement', ['placement' => 'footer'])->assertOk();
+        $this->putJson('/api/school-profile/logos/0/placement', ['placement' => 'side'])->assertUnprocessable();
+        $this->putJson('/api/school-profile/logos/5/placement', ['placement' => 'footer'])->assertUnprocessable();
+
+        $this->getJson('/api/report-settings')
+            ->assertJsonPath('data.logo_items.0.placement', 'header')
+            ->assertJsonPath('data.logo_items.1.placement', 'footer');
+        expect(app(\App\Services\ReportSettingsService::class)->logoDataUris('footer'))->toHaveCount(1)
+            ->and(app(\App\Services\ReportSettingsService::class)->logoDataUris())->toHaveCount(1);
     });
 });
 

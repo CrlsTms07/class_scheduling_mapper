@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\DepEdEmail;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ForgotPasswordRequest extends FormRequest
@@ -16,6 +17,6 @@ class ForgotPasswordRequest extends FormRequest
      */
     public function rules(): array
     {
-        return ['email' => ['required', 'email']];
+        return ['email' => ['required', 'email', new DepEdEmail]];
     }
 }

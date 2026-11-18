@@ -11,6 +11,7 @@ import { ROLE_LABELS } from "@/lib/navigation";
 import { fullName } from "@/lib/users";
 import type { RoleName, User } from "@/types/api";
 import ConfirmDelete from "@/components/global-component/ConfirmDelete";
+import ResetPasswordBlock from "./ResetPasswordBlock";
 import FormAlert from "@/components/global-component/FormAlert";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,6 +217,8 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
                   onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
                 />
               ) : (
+                <>
+                <ResetPasswordBlock user={user} />
                 <ConfirmDelete
                   label="Deactivate this account"
                   warning="They will be signed out and cannot sign in until you reactivate them. Their schedules stay as they are."
@@ -223,6 +226,7 @@ const ActivationSheet = ({ user, onClose }: { user: User; onClose: () => void })
                   isPending={changeStatus.isPending}
                   onConfirm={() => changeStatus.mutate("inactive", { onSuccess: onClose })}
                 />
+                </>
               )}
             </>
           )}

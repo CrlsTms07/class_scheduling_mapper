@@ -52,6 +52,9 @@ function openPage() {
           method: init.method,
           body: init.body ? JSON.parse(init.body as string) : {},
         });
+        if (url.endsWith("/reset-password")) {
+          return new Response(JSON.stringify({ temporary_password: "ERC-ABCD-1234", message: "ok" }), { status: 200 });
+        }
         return new Response(JSON.stringify({ data: TEACHER }), { status: 200 });
       }
       const data = url.includes("access-options") ? OPTIONS : USERS;
@@ -128,6 +131,34 @@ describe("users page", () => {
   });
 });
 
+describe("sign-ups waiting", () => {
+  it("are listed with checkboxes and activated together as Teacher", async () => {
+    const calls = openPage();
+    const panel = within(screen.getByRole("region", { name: "Sign-ups waiting" }));
+
+    expect(panel.getByText("1 sign-up is waiting")).toBeInTheDocument();
+    expect(panel.getByText("Not on the teachers list")).toBeInTheDocument();
+    expect(panel.getByRole("button", { name: "Activate selected as Teacher" })).toBeDisabled();
+
+    await userEvent.click(panel.getByRole("checkbox", { name: "Choose Pending Reyes" }));
+    await userEvent.click(panel.getByRole("button", { name: "Activate 1 selected as Teacher" }));
+
+    await waitFor(() => expect(calls.find(({ url }) => url.endsWith("/users/activate-teachers"))?.body).toEqual({ user_ids: [2] }));
+  });
+
+  it("can all be approved at once after one question, and each keeps its own Manage", async () => {
+    const calls = openPage();
+    const panel = within(screen.getByRole("region", { name: "Sign-ups waiting" }));
+
+    expect(panel.getByRole("button", { name: "Manage" })).toBeInTheDocument();
+    await userEvent.click(panel.getByRole("button", { name: "Approve all (1) as Teacher" }));
+    expect(calls.find(({ url }) => url.endsWith("/users/activate-teachers"))).toBeUndefined();
+    await userEvent.click(panel.getByRole("button", { name: "Yes, approve all 1" }));
+
+    await waitFor(() => expect(calls.find(({ url }) => url.endsWith("/users/activate-teachers"))?.body).toEqual({ user_ids: [2] }));
+  });
+});
+
 describe("a pending account", () => {
   it("is activated with a role and grade levels", async () => {
     const calls = openPage();
@@ -168,6 +199,20 @@ describe("an active account", () => {
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].body).toEqual({ role: "teacher", grade_level_ids: [], teacher_id: 30 });
+  });
+
+  it("gets a temporary password after a warning, shown once", async () => {
+    const calls = openPage();
+
+    await manage("Change access: Linked Reyes");
+    await click("Give a temporary password");
+    expect(screen.getByText(/must choose a new password on the next sign-in/)).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+
+    await click("Yes, reset");
+
+    expect(await screen.findByText("ERC-ABCD-1234")).toBeInTheDocument();
+    expect(calls[0].url).toMatch(/\/users\/3\/reset-password$/);
   });
 
   it("can be deactivated after a warning", async () => {

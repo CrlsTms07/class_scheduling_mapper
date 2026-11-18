@@ -1,15 +1,30 @@
-import { Lock, Plus } from "lucide-react";
-import { isLocked, subjectColor } from "@/lib/schedule";
-import type { ScheduleEntry } from "@/types/api";
+import { Lock, Plus, Sparkles } from "lucide-react";
+import { useColorCoding } from "@/api/auth";
+import { ACTIVITY_COLOR, isActivity, isLocked, subjectColor } from "@/lib/schedule";
+import type { ScheduleEntry, TimeSlot } from "@/types/api";
+import { useEntryDrag } from "./useEntryDrag";
 
 type ScheduleCellProp = {
   entry: ScheduleEntry | undefined;
+  slot: TimeSlot;
+  day: number;
   label: string;
+  /** The phone list only taps. It sits hidden beside the wide views, so it needs its own id. */
+  isDraggable?: boolean;
   /** Left out when the user can only view this schedule. */
   onSelect?: () => void;
 };
 
-const ScheduleCell = ({ entry, label, onSelect }: ScheduleCellProp) => {
+const ScheduleCell = ({ entry, slot, day, label, onSelect, isDraggable = true }: ScheduleCellProp) => {
+  const isColored = useColorCoding();
+  const { dragRef, dragListeners, dragClasses } = useEntryDrag(
+    entry,
+    slot,
+    day,
+    isDraggable && onSelect !== undefined,
+    isDraggable ? "placed" : "list",
+  );
+
   const content = entry ? (
     <>
       <span className="flex items-start justify-between gap-1">
@@ -17,6 +32,7 @@ const ScheduleCell = ({ entry, label, onSelect }: ScheduleCellProp) => {
           {entry.subject ?? "Open slot"}
         </span>
         {isLocked(entry) && <Lock className="size-3 shrink-0" aria-label={entry.status} />}
+        {!isLocked(entry) && entry.auto_filled && <Sparkles className="size-3 shrink-0 opacity-70" aria-label="Auto-filled" />}
       </span>
       {entry.teacher && (
         <span className="block text-[11px] leading-tight mt-0.5">{entry.teacher}</span>
@@ -26,11 +42,21 @@ const ScheduleCell = ({ entry, label, onSelect }: ScheduleCellProp) => {
       )}
     </>
   ) : (
-    onSelect && <Plus className="size-4 mx-auto text-neutral-400" />
+    onSelect &&
+    (isDraggable ? (
+      <Plus className="size-4 mx-auto text-neutral-400" />
+    ) : (
+      <span className="flex items-center justify-center gap-1 py-1 text-xs font-medium text-branding">
+        <Plus className="size-3.5" />
+        Add subject
+      </span>
+    ))
   );
 
   const classes = `block w-full h-full min-h-11 rounded-md border p-1.5 text-left ${
-    entry ? subjectColor(entry.section_subject_id) : "border-dashed border-neutral-300"
+    entry
+      ? isActivity(entry) ? ACTIVITY_COLOR : subjectColor(entry.section_subject_id, isColored)
+      : "border-dashed border-neutral-300"
   }`;
 
   if (!onSelect) {
@@ -39,10 +65,12 @@ const ScheduleCell = ({ entry, label, onSelect }: ScheduleCellProp) => {
 
   return (
     <button
+      ref={dragRef}
       type="button"
       aria-label={label}
       onClick={onSelect}
-      className={`${classes} cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-[#790D16]`}
+      {...dragListeners}
+      className={`${classes} cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-[#790D16] ${dragClasses}`}
     >
       {content}
     </button>

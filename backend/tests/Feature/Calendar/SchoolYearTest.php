@@ -333,7 +333,7 @@ it('blocks removing the active term', function () {
 
     $this->putJson("/api/school-years/{$this->yearId}", currentYearAsInput($this, TWO_TERMS))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['terms' => 'active term']);
+        ->assertJsonValidationErrors(['terms' => 'is active']);
 });
 
 it('blocks removing a term that has schedules and names the sections', function () {
@@ -370,7 +370,7 @@ it('blocks removing a term that still has subjects', function () {
 
 it('tells the screen ahead of time which terms cannot be removed', function () {
     $this->getJson('/api/school-years')
-        ->assertJsonPath('data.0.terms.0.cannot_remove_reason', 'First Term is the active term. Set another term as active first.')
+        ->assertJsonPath('data.0.terms.0.cannot_remove_reason', 'First Term is active. Activate another one first.')
         ->assertJsonPath('data.0.terms.2.cannot_remove_reason', null);
 });
 
@@ -421,7 +421,7 @@ it('deletes a mistaken year together with its copied setup', function () {
 it('refuses to delete the year of the active term', function () {
     $this->deleteJson("/api/school-years/{$this->yearId}")
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['school_year' => 'active term']);
+        ->assertJsonValidationErrors(['school_year' => 'active school year']);
 
     expect(DB::table('school_years')->count())->toBe(1);
 });

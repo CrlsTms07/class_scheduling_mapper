@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AssignSlotRequest;
 use App\Http\Requests\ClearSlotRequest;
+use App\Http\Requests\MoveEntryRequest;
 use App\Http\Requests\SubmitScheduleRequest;
 use App\Models\SchoolTerm;
 use App\Models\Section;
@@ -33,11 +34,30 @@ class PlotterController extends Controller
         return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
     }
 
+    public function move(MoveEntryRequest $request, SchoolTerm $term, Section $section, TimeSlot $timeSlot, ScheduleService $schedule, PlotterService $plotter): JsonResponse
+    {
+        $this->ensureSameSchoolYear($term, $section);
+
+        $schedule->move($term->id, $section, $request->fromSlot(), $timeSlot, $request->input('from_days'), $request->input('days'), $request->user());
+
+        return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
+    }
+
     public function clear(ClearSlotRequest $request, SchoolTerm $term, Section $section, TimeSlot $timeSlot, ScheduleService $schedule, PlotterService $plotter): JsonResponse
     {
         $this->ensureSameSchoolYear($term, $section);
 
         $schedule->clear($term->id, $section, $timeSlot, $request->input('days'));
+
+        return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
+    }
+
+    public function clearAll(Request $request, SchoolTerm $term, Section $section, ScheduleService $schedule, PlotterService $plotter): JsonResponse
+    {
+        $this->ensureSameSchoolYear($term, $section);
+        abort_unless($request->user()->can('plot', $section), 403);
+
+        $schedule->clearAll($term->id, $section, $request->user());
 
         return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
     }

@@ -27,13 +27,13 @@ const PATTERN: ManagedPattern = {
   slots: [
     { id: 50, period_no: 1, label: null, start_time: "07:00", end_time: "07:45", minutes: 45, is_break: false, locked_reason: null },
     { id: 51, period_no: null, label: "Recess", start_time: "07:45", end_time: "08:05", minutes: 20, is_break: true, locked_reason: null },
-    { id: 52, period_no: 2, label: null, start_time: "08:05", end_time: "09:25", minutes: 80, is_break: false, locked_reason: "These sections have schedules on it: Grade 7 Honesty." },
+    { id: 52, period_no: 2, label: null, start_time: "08:05", end_time: "09:25", minutes: 80, is_break: false, locked_reason: "These sections have schedules on it: Grade 7 Honesty.", in_use: { classes: 4, sections: 1 }, delete_blocked_reason: null },
   ],
 };
 
 type Call = { url: string; method: string; body: Record<string, unknown> };
 
-function openPage(patterns: ManagedPattern[] = [PATTERN], reply: unknown = { data: PATTERN }, status = 200) {
+function openPage(patterns: ManagedPattern[] = [PATTERN], reply: unknown = { data: PATTERN }, status = 200, me: unknown = { role: "super_admin", grade_levels: [] }) {
   const calls: Call[] = [];
 
   vi.stubGlobal(
@@ -59,6 +59,7 @@ function openPage(patterns: ManagedPattern[] = [PATTERN], reply: unknown = { dat
   });
   client.setQueryData(["terms"], [TERM]);
   client.setQueryData(["school-years", 1, "day-patterns"], patterns);
+  client.setQueryData(["me"], me);
 
   render(
     <QueryClientProvider client={client}>
@@ -232,7 +233,27 @@ describe("periods and breaks", () => {
     expect(screen.getByLabelText("Ends")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Break" })).toBeDisabled();
     expect(screen.getByLabelText("Name (optional)")).toBeEnabled();
+  });
+
+  it("deletes a slot with classes after saying how many go with it", async () => {
+    const calls = openPage();
+
+    await click("Edit Period 2, 8:05 AM – 9:25 AM");
+    await click("Delete this period");
+    expect(screen.getByText(/This also deletes its 4 classes in 1 section/)).toBeInTheDocument();
+    await click("Yes, delete with its classes");
+
+    await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
+    expect(calls[0].url).toMatch(/\/time-slots\/52\?with_classes=1$/);
+  });
+
+  it("explains why a slot of an approved section cannot be deleted", async () => {
+    const blocked = { ...PATTERN.slots[2], delete_blocked_reason: "These sections are waiting for approval or approved: Grade 7 Honesty. The Admin has to reopen them first." };
+    openPage([{ ...PATTERN, slots: [PATTERN.slots[0], PATTERN.slots[1], blocked] }]);
+
+    await click("Edit Period 2, 8:05 AM – 9:25 AM");
     expect(screen.queryByRole("button", { name: "Delete this period" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Cannot be deleted. These sections are waiting for approval/)).toBeInTheDocument();
   });
 
   it("deletes a free slot after asking", async () => {
@@ -244,6 +265,54 @@ describe("periods and breaks", () => {
     await click("Yes, delete");
 
     await waitFor(() => expect(calls[0]?.method).toBe("DELETE"));
-    expect(calls[0].url).toMatch(/\/time-slots\/50$/);
+    expect(calls[0].url).toMatch(/\/time-slots\/50\?with_classes=1$/);
+  });
+});
+
+describe("presets", () => {
+  it("fills an empty bell schedule with 8, 10, 14 or 16 rows", async () => {
+    const calls = openPage([{ ...PATTERN, slots: [] }]);
+
+    await click("Use a preset");
+    expect(screen.getByRole("list", { name: "Preview" }).children).toHaveLength(10);
+
+    await click("8");
+    expect(screen.getByRole("list", { name: "Preview" }).children).toHaveLength(8);
+    await click("Create these 8 rows");
+
+    await waitFor(() => expect(calls[0]?.url).toMatch(/\/day-patterns\/5\/slots\/preset$/));
+    const slots = calls[0].body.slots as { is_break: boolean; label: string; start_time: string }[];
+    expect(slots).toHaveLength(8);
+    expect(slots.filter(({ is_break }) => is_break).map(({ label }) => label)).toEqual(["Recess", "Lunch"]);
+    expect(slots[0].start_time).toBe("07:30");
+  });
+
+  it("is not offered once a bell schedule has periods", () => {
+    openPage();
+
+    expect(screen.queryByRole("button", { name: "Use a preset" })).not.toBeInTheDocument();
+  });
+});
+
+describe("a department with no bell schedule yet", () => {
+  it("says what to do, with a tip for Senior High shifts", async () => {
+    openPage([PATTERN]);
+
+    await userEvent.click(screen.getByRole("tab", { name: "SHS" }));
+
+    expect(screen.getByText(/No SHS bell schedule for the/)).toBeInTheDocument();
+    expect(screen.getByText(/AM and a PM shift/)).toBeInTheDocument();
+  });
+});
+
+describe("for a Master Teacher", () => {
+  it("shows the Senior High bell schedules only, with no department choice", () => {
+    openPage([PATTERN, { ...PATTERN, id: 99, level: "SHS", name: "Monday – Friday" }], undefined, 200, {
+      role: "master_teacher",
+      grade_levels: [{ id: 5, grade: 11, level: "SHS" }],
+    });
+
+    expect(screen.getByText(/Bell schedules of SY 2026-2027, Senior High/)).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "JHS" })).not.toBeInTheDocument();
   });
 });

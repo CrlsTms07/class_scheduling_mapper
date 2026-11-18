@@ -28,6 +28,8 @@ class ManagedSectionResource extends JsonResource
             'track' => $this->track?->name,
             'adviser_id' => $this->adviser_id,
             'adviser' => $this->adviser?->printedName(),
+            'co_adviser_id' => $this->co_adviser_id,
+            'co_adviser' => $this->coAdviser?->printedName(),
             'home_room_id' => $this->home_room_id,
             'home_room' => $this->homeRoom?->label(),
             'class_size' => $this->class_size,

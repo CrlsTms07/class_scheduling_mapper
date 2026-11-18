@@ -4,11 +4,13 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SigninSchema } from "@/types/FieldSchema";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import GoogleButton, { GOOGLE_MESSAGES } from "@/components/global-component/GoogleButton";
 import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
 import Container from "@/components/global-component/Container";
 import FormAlert from "@/components/global-component/FormAlert";
 import PasswordInput from "@/components/global-component/PasswordInput";
+import TermsDialog from "@/components/global-component/TermsDialog";
 import { useLogin } from "@/api/auth";
 import { applyApiErrors } from "@/lib/forms";
 import { homePathFor } from "@/lib/navigation";
@@ -17,8 +19,12 @@ import * as z from "zod";
 
 const Login = () => {
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [isTermsOpen, setIsTermsOpen] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
+  // Back from Google without signing in: say why.
+  const googleMessage = GOOGLE_MESSAGES[params.get("google") ?? ""];
   const login = useLogin();
   const form = useForm<z.infer<typeof SigninSchema>>({
     resolver: zodResolver(SigninSchema),
@@ -47,6 +53,15 @@ const Login = () => {
           title="Sign in to your account"
           description="Enter your DepEd email below to access your account"
         >
+          <>
+          {googleMessage && (
+            <div className="mb-4">
+              <FormAlert variant={googleMessage.isError ? undefined : "success"}>{googleMessage.text}</FormAlert>
+            </div>
+          )}
+          <div className="mb-6">
+            <GoogleButton />
+          </div>
           <form onSubmit={form.handleSubmit(handleSignin)} noValidate>
             <div className="space-y-6">
               {formError && <FormAlert>{formError}</FormAlert>}
@@ -129,7 +144,7 @@ const Login = () => {
                   className: "w-full h-11",
                 })}
               >
-                View Schedule
+                View as Guest
               </Link>
               <p className="text-center text-sm text-neutral-700">
                 No account yet?{" "}
@@ -143,8 +158,17 @@ const Login = () => {
                   Sign up
                 </Link>
               </p>
+              <p className="text-center text-xs text-neutral-600">
+                On your first sign-in you will be asked to accept the{" "}
+                <button type="button" className="inline-flex min-h-11 items-center font-medium text-branding underline underline-offset-2" onClick={() => setIsTermsOpen(true)}>
+                  Terms and Conditions
+                </button>
+                .
+              </p>
             </div>
+            <TermsDialog open={isTermsOpen} onOpenChange={setIsTermsOpen} />
           </form>
+          </>
         </AuthenticationLayout>
       </Container>
     </>

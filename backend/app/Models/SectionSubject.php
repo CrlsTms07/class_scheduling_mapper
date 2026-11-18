@@ -14,6 +14,11 @@ class SectionSubject extends Model
 
     protected $guarded = [];
 
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(Section::class);
+    }
+
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);

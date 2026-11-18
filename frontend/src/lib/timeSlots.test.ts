@@ -5,6 +5,7 @@ import {
   minutesBetween,
   minutesTotals,
   PatternSchema,
+  presetRows,
   slotName,
   SlotSchema,
 } from "./timeSlots";
@@ -82,5 +83,32 @@ describe("forms", () => {
   it("needs at least one day for a bell schedule", () => {
     const result = PatternSchema.safeParse({ level: "JHS", shift: "AM", name: "Friday", days: [] });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("presetRows", () => {
+  const TEN = { rows: 10, start: "07:30", periodMinutes: 45, recess: { after: 3, minutes: 15 }, lunch: { after: 5, minutes: 90 } } as const;
+
+  it("makes ten rows: eight periods, a recess and a lunch, one after another", () => {
+    const rows = presetRows(TEN);
+
+    expect(rows).toHaveLength(10);
+    expect(rows?.filter(({ is_break }) => !is_break)).toHaveLength(8);
+    expect(rows?.[0]).toEqual({ is_break: false, label: "", start_time: "07:30", end_time: "08:15" });
+    expect(rows?.[3]).toEqual({ is_break: true, label: "Recess", start_time: "09:45", end_time: "10:00" });
+    expect(rows?.[6]).toEqual({ is_break: true, label: "Lunch", start_time: "11:30", end_time: "13:00" });
+    expect(rows?.at(-1)?.end_time).toBe("15:15");
+  });
+
+  it("gives the freed row to a period when a break is left out", () => {
+    const rows = presetRows({ ...TEN, rows: 8, lunch: { after: 5, minutes: 0 } });
+
+    expect(rows?.filter(({ is_break }) => !is_break)).toHaveLength(7);
+    expect(rows?.filter(({ is_break }) => is_break).map(({ label }) => label)).toEqual(["Recess"]);
+  });
+
+  it("refuses a break after a period that does not exist, or a day past midnight", () => {
+    expect(presetRows({ ...TEN, rows: 8, lunch: { after: 7, minutes: 60 } })).toBeNull();
+    expect(presetRows({ ...TEN, rows: 16, start: "20:00" })).toBeNull();
   });
 });

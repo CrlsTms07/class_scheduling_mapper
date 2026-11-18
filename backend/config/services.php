@@ -18,6 +18,20 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    // "Continue with Google" (Laravel Socialite): an OAuth client of the school's Google Cloud project.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost:8000'), '/').'/auth/google/callback'),
+    ],
+
+    // The Gmail API mailer (MAIL_MAILER=gmail-api): made once in Google Cloud, see docs/deployment.md.
+    'gmail' => [
+        'client_id' => env('GMAIL_CLIENT_ID'),
+        'client_secret' => env('GMAIL_CLIENT_SECRET'),
+        'refresh_token' => env('GMAIL_REFRESH_TOKEN'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

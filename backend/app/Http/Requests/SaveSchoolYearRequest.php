@@ -48,7 +48,7 @@ class SaveSchoolYearRequest extends FormRequest
             'name.regex' => 'Write the school year like 2027-2028.',
             'name.unique' => 'This school year already exists.',
             'end_date.after' => 'The school year must end after it starts.',
-            'terms.*.name.distinct' => 'Each term needs its own name.',
+            'terms.*.name.distinct' => 'Each one needs its own name.',
         ];
     }
 
@@ -58,9 +58,9 @@ class SaveSchoolYearRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'terms.*.name' => 'term name',
-            'terms.*.start_date' => 'term start date',
-            'terms.*.end_date' => 'term end date',
+            'terms.*.name' => 'name',
+            'terms.*.start_date' => 'start date',
+            'terms.*.end_date' => 'end date',
         ];
     }
 
@@ -116,7 +116,7 @@ class SaveSchoolYearRequest extends FormRequest
                 $term['end_date'] <= $term['start_date'] => 'must end after it starts',
                 $term['start_date'] < $this->input('start_date') => 'starts before the school year',
                 $term['end_date'] > $this->input('end_date') => 'ends after the school year',
-                $previousEnd !== null && $term['start_date'] <= $previousEnd => 'must start after the previous term ends',
+                $previousEnd !== null && $term['start_date'] <= $previousEnd => 'must start after the previous one ends',
                 default => null,
             };
 

@@ -75,7 +75,7 @@ const ForgotPassword = () => {
               />
             </div>
             <Link
-              to="/"
+              to="/login"
               className={buttonVariants({
                 variant: "link",
                 className: "h-11 px-0 text-xs mt-3",

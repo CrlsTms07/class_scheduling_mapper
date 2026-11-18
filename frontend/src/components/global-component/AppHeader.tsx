@@ -1,7 +1,7 @@
 import React from "react";
 import HeroLogo from "@/assets/login/hero-logo.png";
-import { Bell, LogOut, Menu } from "lucide-react";
-import { useLogout, useMe } from "@/api/auth";
+import { Menu } from "lucide-react";
+import { useMe } from "@/api/auth";
 import { ROLE_LABELS } from "@/lib/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +13,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import AppSideBar from "./AppSideBar";
+import NotificationBell from "./NotificationBell";
+import SignOutButton from "./SignOutButton";
 import TermSelect from "./TermSelect";
 
 const AppHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { data: user } = useMe();
-  const logout = useLogout();
 
   const initials = `${user?.first_name[0] ?? ""}${user?.last_name[0] ?? ""}`;
 
@@ -51,7 +52,7 @@ const AppHeader = () => {
           />
           <div className="ml-2 sm:ml-5 min-w-0">
             <p className="font-medium text-[#790D16] text-sm sm:text-base truncate">
-              ERCIHS - Scheduling Mapper
+              ERCIHS Scheduling System
             </p>
           </div>
           <TermSelect className="hidden sm:block ml-4 w-64 max-lg:w-52 shrink-0" />
@@ -72,19 +73,8 @@ const AppHeader = () => {
               )}
             </div>
           </div>
-          <div className="hidden xl:block bg-mauve-100 p-2 rounded-full">
-            <Bell className="text-[#790D16] size-5" />
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Sign out"
-            className="size-11"
-            disabled={logout.isPending}
-            onClick={() => logout.mutate()}
-          >
-            <LogOut className="text-[#790D16]" />
-          </Button>
+          <NotificationBell />
+          <SignOutButton />
         </div>
       </div>
       <TermSelect className="sm:hidden mt-1 w-full" />

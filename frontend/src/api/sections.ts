@@ -53,6 +53,9 @@ export const useUpdateSection = (sectionId: number) =>
 export const useDeleteSection = (sectionId: number) =>
   useSectionChange(() => api(`/sections/${sectionId}`, { method: "DELETE" }));
 
+export const useDeleteTrack = () =>
+  useSectionChange((trackId: number) => api(`/tracks/${trackId}`, { method: "DELETE" }));
+
 export const useAddTrack = () =>
   useSectionChange((name: string) =>
     api<DataResponse<Track>>("/tracks", { method: "POST", body: { name } }),

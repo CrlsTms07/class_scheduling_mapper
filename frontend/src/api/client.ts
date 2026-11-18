@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+/** Where the API lives. Empty on the live server, where it shares the address of the page. */
+export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const CSRF_EXPIRED = 419;
 

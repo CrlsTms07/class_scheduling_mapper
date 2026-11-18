@@ -16,7 +16,7 @@ type TabKey = (typeof TABS)[number]["key"];
 const HOW_IT_WORKS = [
   "School Profile: the school's details and logos, printed in the header and footer of every form.",
   "Documents: the title and document control block (Doc. Ref. Code, Revision, Effectivity) of each form.",
-  "Signatories: who signs each form, per term. Names are typed here, except names the system can fill by itself, like the class adviser.",
+  "Signatories: who signs each form. Names are typed here, except names the system can fill by itself, like the class adviser.",
 ];
 
 const ReportSettingsIndex = () => {

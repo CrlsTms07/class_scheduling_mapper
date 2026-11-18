@@ -75,6 +75,7 @@ class DemoDataSeeder extends Seeder
         $activeTermId = $this->seedTerms($schoolYearId);
         $this->seedBellSchedule($schoolYearId);
         $this->seedGradeSeven($schoolYearId, $activeTermId);
+        $this->seedActivities($schoolYearId);
         $this->seedDocumentSettings();
 
         foreach (['Academic', 'TechPro'] as $track) {
@@ -99,6 +100,7 @@ class DemoDataSeeder extends Seeder
                 'last_name' => ucwords(str_replace(['.', '_'], ' ', $role)),
                 'status' => 'active',
             ]);
+            $user->forceFill(['terms_accepted_at' => now()])->save();
             $user->assignRole($role);
 
             foreach ($grades as $grade) {
@@ -167,7 +169,14 @@ class DemoDataSeeder extends Seeder
     private function seedGradeSeven(int $schoolYearId, int $termId): void
     {
         $gradeId = DB::table('grade_levels')->where('grade', 7)->value('id');
+        // Shared by both departments, like most school buildings in the demo.
         $buildingId = DB::table('buildings')->insertGetId(['name' => 'Sample Building']);
+
+        // A Senior High building, so the Master Teacher has rooms of their own to manage.
+        $seniorId = DB::table('buildings')->insertGetId(['name' => 'Senior High Building', 'department' => 'SHS']);
+        foreach (['501', '502'] as $roomNumber) {
+            DB::table('rooms')->insert(['building_id' => $seniorId, 'room_number' => $roomNumber, 'capacity' => 40]);
+        }
 
         $roomIds = [];
         foreach (['101', '102', '103'] as $roomNumber) {
@@ -229,6 +238,16 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
+     * Activities take a period but have no teacher. Recess and lunch are breaks instead.
+     */
+    private function seedActivities(int $schoolYearId): void
+    {
+        foreach ([['FLAG', 'Flag Ceremony'], ['CUF', 'Catch-up Friday']] as [$code, $name]) {
+            DB::table('activities')->insert(['school_year_id' => $schoolYearId, 'code' => $code, 'name' => $name]);
+        }
+    }
+
+    /**
      * Placeholder document details, all editable later in Admin → Report Settings.
      */
     private function seedDocumentSettings(): void
@@ -239,7 +258,11 @@ class DemoDataSeeder extends Seeder
             'phone' => '(000) 000-0000',
             'email' => 'school@deped.gov.ph',
             'website' => 'https://www.example.com',
-            'logo_path' => 'resources/report-assets/school-logo.png',
+        ]);
+
+        DB::table('school_logos')->insert([
+            'mime_type' => 'image/png',
+            'image_base64' => base64_encode(file_get_contents(resource_path('report-assets/school-logo.png'))),
         ]);
 
         DB::table('report_settings')->insert([

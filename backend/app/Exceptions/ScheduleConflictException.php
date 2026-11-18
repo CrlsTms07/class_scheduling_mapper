@@ -7,13 +7,13 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * A hard conflict: nothing is saved. The reply says who or what conflicts and when,
- * and offers free rooms and time slots.
+ * and offers free rooms, time slots and teachers.
  */
 class ScheduleConflictException extends Exception
 {
     /**
      * @param  array<int, array<string, mixed>>  $conflicts
-     * @param  array{rooms: array<int, array<string, mixed>>, slots: array<int, array<string, mixed>>}  $suggestions
+     * @param  array{rooms: array<int, array<string, mixed>>, slots: array<int, array<string, mixed>>, teachers: array<int, array<string, mixed>>}  $suggestions
      */
     public function __construct(private array $conflicts, private array $suggestions)
     {

@@ -14,6 +14,7 @@ function signUpData(array $overrides = []): array
         'email' => 'juan.delacruz@deped.gov.ph',
         'password' => 'Password123!',
         'password_confirmation' => 'Password123!',
+        'accept_terms' => true,
         ...$overrides,
     ];
 }
@@ -63,4 +64,28 @@ it('rejects a password confirmation that does not match', function () {
     $this->postJson('/api/register', signUpData(['password_confirmation' => 'Different123!']))
         ->assertUnprocessable()
         ->assertJsonValidationErrors('password');
+});
+
+it('needs the Terms and Conditions accepted, and keeps when they were', function () {
+    $this->postJson('/api/register', signUpData(['accept_terms' => false]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['accept_terms' => 'Please read and accept the Terms and Conditions.']);
+
+    $this->postJson('/api/register', signUpData())->assertCreated();
+
+    expect(\App\Models\User::where('email', 'juan.delacruz@deped.gov.ph')->value('terms_accepted_at'))->not->toBeNull();
+});
+
+it('asks an older account to accept the Terms and Conditions once, on sign-in', function () {
+    $this->withHeader('Referer', 'http://localhost:5173');
+    $this->seed(\Database\Seeders\ReferenceDataSeeder::class);
+    $user = \App\Models\User::factory()->create(['status' => 'active'])->assignRole('teacher');
+    $this->actingAs($user);
+
+    $this->getJson('/api/me')->assertOk()->assertJsonPath('data.terms_accepted_at', null);
+    $this->postJson('/api/me/accept-terms', ['accept_terms' => false])->assertUnprocessable();
+
+    $this->postJson('/api/me/accept-terms', ['accept_terms' => true])->assertOk();
+    expect($user->fresh()->terms_accepted_at)->not->toBeNull();
+    $this->getJson('/api/me')->assertJsonPath('data.terms_accepted_at', fn ($value) => $value !== null);
 });

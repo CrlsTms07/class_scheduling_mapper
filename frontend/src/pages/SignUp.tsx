@@ -9,7 +9,10 @@ import { Link } from "react-router";
 import AuthenticationLayout from "@/components/global-component/AuthenticationLayout";
 import Container from "@/components/global-component/Container";
 import FormAlert from "@/components/global-component/FormAlert";
+import GoogleButton from "@/components/global-component/GoogleButton";
 import PasswordInput from "@/components/global-component/PasswordInput";
+import TermsDialog from "@/components/global-component/TermsDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSignUp } from "@/api/auth";
 import { applyApiErrors } from "@/lib/forms";
 import React from "react";
@@ -30,7 +33,7 @@ const NAME_FIELDS: {
 
 const BackToSignin = () => (
   <Link
-    to="/"
+    to="/login"
     className={buttonVariants({ variant: "link", className: "h-11 px-0 text-xs" })}
   >
     <ArrowLeft />
@@ -40,6 +43,7 @@ const BackToSignin = () => (
 
 const SignUp = () => {
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [isTermsOpen, setIsTermsOpen] = React.useState(false);
   const signUp = useSignUp();
   const form = useForm<SignUpValues>({
     resolver: zodResolver(SignUpSchema),
@@ -51,6 +55,7 @@ const SignUp = () => {
       email: "",
       password: "",
       confirmPassword: "",
+      accept_terms: false,
     },
     mode: "onSubmit",
   });
@@ -76,6 +81,10 @@ const SignUp = () => {
               <BackToSignin />
             </div>
           ) : (
+            <>
+            <div className="mb-6">
+              <GoogleButton />
+            </div>
             <form onSubmit={form.handleSubmit(handleSignUp)} noValidate>
               <div className="space-y-5">
                 {formError && <FormAlert>{formError}</FormAlert>}
@@ -180,7 +189,41 @@ const SignUp = () => {
                     </Field>
                   )}
                 />
+                <Controller
+                  name="accept_terms"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <div className="flex items-start gap-3 rounded-md border p-3">
+                        <Checkbox
+                          id="accept_terms"
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                          aria-invalid={fieldState.invalid}
+                          className="mt-0.5 size-5"
+                        />
+                        <label htmlFor="accept_terms" className="text-sm text-neutral-800">
+                          I have read and agree to the{" "}
+                          <button
+                            type="button"
+                            className="inline-flex min-h-11 items-center align-middle font-medium text-branding underline underline-offset-2"
+                            onClick={() => setIsTermsOpen(true)}
+                          >
+                            Terms and Conditions
+                          </button>
+                          , including how my information is used under the Data Privacy Act.
+                        </label>
+                      </div>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
               </div>
+              <TermsDialog
+                open={isTermsOpen}
+                onOpenChange={setIsTermsOpen}
+                onAgree={() => form.setValue("accept_terms", true, { shouldValidate: true })}
+              />
               <BackToSignin />
               <Button
                 type="submit"
@@ -190,6 +233,7 @@ const SignUp = () => {
                 {signUp.isPending ? "Creating account..." : "Create account"}
               </Button>
             </form>
+            </>
           )}
         </AuthenticationLayout>
       </Container>

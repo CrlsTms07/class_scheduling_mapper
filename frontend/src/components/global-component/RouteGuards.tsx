@@ -1,8 +1,10 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useMe } from "@/api/auth";
+import { session, useMe } from "@/api/auth";
 import { homePathFor } from "@/lib/navigation";
 import type { RoleName } from "@/types/api";
 import { Button } from "@/components/ui/button";
+import ChangePasswordGate from "./ChangePasswordGate";
+import TermsGate from "./TermsGate";
 
 const CheckingSession = () => (
   <div className="flex min-h-dvh items-center justify-center text-sm text-neutral-600">
@@ -21,14 +23,25 @@ const ServerUnavailable = ({ onRetry }: { onRetry: () => void }) => (
   </div>
 );
 
-/** Pages for signed-in users. Visitors are sent to the login page. */
+/** Pages for signed-in users. Visitors are sent to the login page; someone who just signed out, home. */
 export const RequireAuth = () => {
   const { data: user, isPending, isError, refetch } = useMe();
   const location = useLocation();
 
   if (isPending) return <CheckingSession />;
   if (isError) return <ServerUnavailable onRetry={() => refetch()} />;
-  if (!user) return <Navigate to="/" replace state={{ from: location.pathname }} />;
+  if (!user) {
+    return session.hasSignedOut ? (
+      <Navigate to="/" replace />
+    ) : (
+      <Navigate to="/login" replace state={{ from: location.pathname }} />
+    );
+  }
+
+  // An account that has not accepted the Terms and Conditions sees them before anything else.
+  if (user.terms_accepted_at === null) return <TermsGate />;
+  // After the Admin gave a temporary password, a new one comes next.
+  if (user.must_change_password) return <ChangePasswordGate />;
 
   return <Outlet />;
 };

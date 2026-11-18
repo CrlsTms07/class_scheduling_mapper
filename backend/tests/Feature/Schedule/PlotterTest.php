@@ -279,14 +279,14 @@ describe('access', function () {
         $this->getJson("/api/terms/{$this->termId}/sections/{$this->sectionA->id}/plotter")->assertForbidden();
     });
 
-    it('lets the Admin view but not plot', function () {
+    it('lets the Admin plot any section too (team decision, Nov 10, 2026)', function () {
         $this->actingAs($this->admin);
 
         $this->getJson("/api/terms/{$this->termId}/sections/{$this->sectionA->id}/plotter")
             ->assertOk()
-            ->assertJsonPath('data.can_plot', false);
+            ->assertJsonPath('data.can_plot', true);
 
-        assign($this, $this->sectionA, slotOf('Friday', 1), mathInSlot($this->sectionA, [5]))->assertForbidden();
+        assign($this, $this->sectionA, slotOf('Friday', 1), mathInSlot($this->sectionA, [5]))->assertOk();
     });
 
     it('keeps teachers out of the plotter', function () {
