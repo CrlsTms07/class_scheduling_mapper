@@ -1,0 +1,132 @@
+// @ts-check
+/**
+ * The icons the system uses (from Lucide, the same set as before). Only these are bundled.
+ * Icons always sit next to a text label, never alone (design audit, Must fix #5).
+ */
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  Building2,
+  CalendarCheck,
+  CalendarDays,
+  CalendarPlus,
+  CalendarSearch,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  CircleCheck,
+  ClipboardList,
+  Clock,
+  Copy,
+  createElement,
+  Download,
+  Eraser,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  FileCog,
+  FileUp,
+  FolderOpen,
+  GripVertical,
+  Info,
+  Layers,
+  LayoutDashboard,
+  Link2,
+  Lock,
+  LogIn,
+  LogOut,
+  Mail,
+  MapPin,
+  Menu,
+  Moon,
+  MoreHorizontal,
+  Pencil,
+  Phone,
+  Plus,
+  Printer,
+  QrCode,
+  Search,
+  Send,
+  ShieldCheck,
+  Sun,
+  TableProperties,
+  Trash2,
+  TriangleAlert,
+  UserRound,
+  Users,
+  UsersRound,
+  X,
+} from "lucide";
+
+const ICONS = {
+  "arrow-left": ArrowLeft,
+  "arrow-right": ArrowRight,
+  bell: Bell,
+  book: BookOpen,
+  building: Building2,
+  "calendar-check": CalendarCheck,
+  calendar: CalendarDays,
+  "calendar-plus": CalendarPlus,
+  "calendar-search": CalendarSearch,
+  check: Check,
+  "chevron-down": ChevronDown,
+  alert: CircleAlert,
+  "circle-check": CircleCheck,
+  clipboard: ClipboardList,
+  clock: Clock,
+  copy: Copy,
+  download: Download,
+  eraser: Eraser,
+  external: ExternalLink,
+  eye: Eye,
+  "eye-off": EyeOff,
+  "file-cog": FileCog,
+  "file-up": FileUp,
+  folder: FolderOpen,
+  grip: GripVertical,
+  info: Info,
+  dashboard: LayoutDashboard,
+  layers: Layers,
+  link: Link2,
+  lock: Lock,
+  login: LogIn,
+  logout: LogOut,
+  mail: Mail,
+  "map-pin": MapPin,
+  menu: Menu,
+  moon: Moon,
+  more: MoreHorizontal,
+  pencil: Pencil,
+  phone: Phone,
+  plus: Plus,
+  printer: Printer,
+  qr: QrCode,
+  search: Search,
+  send: Send,
+  shield: ShieldCheck,
+  sun: Sun,
+  table: TableProperties,
+  trash: Trash2,
+  warning: TriangleAlert,
+  user: UserRound,
+  users: Users,
+  team: UsersRound,
+  x: X,
+};
+
+/** @typedef {keyof typeof ICONS} IconName */
+
+/**
+ * An icon as an SVG element, hidden from screen readers (the text next to it says what it is).
+ * @param {IconName} name
+ * @param {string} [className]
+ * @returns {SVGElement}
+ */
+export function icon(name, className = "size-4") {
+  const svg = createElement(ICONS[name]);
+  svg.setAttribute("class", `shrink-0 ${className}`);
+  svg.setAttribute("aria-hidden", "true");
+  return svg;
+}

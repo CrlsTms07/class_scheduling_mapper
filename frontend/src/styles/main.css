@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/* Dark mode follows a class on <html>, set from the user's choice (src/state/theme.js). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Colors of the school system. #790D16 is the school's red; every main button uses it,
+ * so the main action on a page always looks the same (design audit, Must fix #6).
+ */
+:root {
+  --brand: #790d16;
+  --brand-hover: #5f0a11;
+  --brand-soft: #790d161a;
+  /* Teal for sub-headings, like the current system. */
+  --accent: #0f766e;
+  --background: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f5f5f5;
+  --foreground: #171717;
+  --muted-foreground: #525252;
+  --border: #e5e5e5;
+  --ring: #790d16;
+  --danger: #b91c1c;
+  --success: #047857;
+  --warning: #b45309;
+}
+
+.dark {
+  --brand: #e05561;
+  --brand-hover: #f0717c;
+  --brand-soft: #e055612b;
+  --accent: #5eead4;
+  --background: #0f0f10;
+  --surface: #18181b;
+  --surface-muted: #232327;
+  --foreground: #f4f4f5;
+  --muted-foreground: #b4b4bb;
+  --border: #33333a;
+  --ring: #f0717c;
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #fbbf24;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}
+
+@layer base {
+  html {
+    @apply bg-background font-sans text-foreground antialiased;
+    /* Phones never get text smaller than 14 px (design audit, Must fix #1). */
+    font-size: 16px;
+  }
+
+  body {
+    @apply min-h-dvh bg-background text-foreground;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label[for] {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* The smallest text on a phone is 14 px; it only gets smaller (12 px) on wide screens. */
+@utility text-small {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  @media (width >= 48rem) {
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+  }
+}
+
+@layer components {
+
+  /* Buttons: one main (brand), the rest outline or quiet. Always at least 44 px tall. */
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:size-4 [&_svg]:shrink-0;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-hover;
+  }
+  .btn-outline {
+    @apply border bg-surface text-foreground hover:bg-surface-muted;
+  }
+  .btn-quiet {
+    @apply text-foreground hover:bg-surface-muted;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:opacity-90;
+  }
+
+  .field-label {
+    @apply text-sm font-medium text-foreground;
+  }
+  .field-help {
+    @apply text-sm text-muted-foreground md:text-xs;
+  }
+  .field-error {
+    @apply text-sm font-medium text-danger md:text-xs;
+  }
+  .input {
+    @apply min-h-11 w-full rounded-lg border bg-surface px-3 text-base text-foreground placeholder:text-muted-foreground md:text-sm;
+  }
+
+  .card {
+    @apply rounded-xl border bg-surface shadow-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium md:text-xs;
+  }
+
+  /* Loading placeholders that respect "reduce motion" (UI requirement 1). */
+  .skeleton {
+    @apply rounded-md bg-surface-muted motion-safe:animate-pulse;
+  }
+  .spinner {
+    @apply inline-block size-4 rounded-full border-2 border-current border-r-transparent motion-safe:animate-spin;
+  }
+}
+
+/* Pop-up notifications: top center, newest at the top. A popover resets its own box, so it is set again here. */
+#toasts {
+  @apply pointer-events-none fixed inset-x-0 top-0 bottom-auto z-[100] m-0 flex h-auto w-full flex-col items-center gap-2 overflow-visible border-0 bg-transparent p-3 sm:p-4;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+#toasts:empty {
+  display: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
