@@ -1,6 +1,6 @@
-# One image for the live server: Laravel, serving the API and the built React app.
+# One image for the live server: Laravel, serving the API and the built web app.
 
-# 1. Build the React app.
+# 1. Build the web app (frontend/: HTML, Tailwind CSS and plain JavaScript, team decision, Nov 17, 2026).
 FROM node:24-slim AS frontend
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
