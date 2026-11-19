@@ -29,7 +29,7 @@ export function googleButton() {
         h(
           "div",
           { class: "space-y-4" },
-          h("a", { href: `${API_URL}/auth/google/redirect`, class: "btn btn-outline min-h-12 w-full text-base" }, h("img", { src: "/google-g.svg", alt: "", class: "size-5" }), "Continue with Google"),
+          h("a", { href: `${API_URL}/auth/google/redirect`, rel: "external", class: "btn btn-outline min-h-12 w-full text-base" }, h("img", { src: "/google-g.svg", alt: "", class: "size-5" }), "Continue with Google"),
           h("div", { class: "flex items-center gap-3 text-sm text-muted-foreground" }, h("span", { class: "h-px flex-1 bg-border" }), "or use your email", h("span", { class: "h-px flex-1 bg-border" })),
         ),
       );

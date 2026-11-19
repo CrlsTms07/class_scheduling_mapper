@@ -119,7 +119,11 @@ document.addEventListener("click", (event) => {
     !href ||
     !href.startsWith("/") ||
     link.target ||
-    link.hasAttribute("download")
+    link.hasAttribute("download") ||
+    // Server pages (like "Continue with Google") need a real page visit. On the live site the API
+    // is on the same address, so these links start with "/" too and must not be kept in the app.
+    link.relList.contains("external") ||
+    /^\/(api|sanctum|auth\/google)(\/|$)/.test(href)
   )
     return;
   event.preventDefault();
