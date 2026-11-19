@@ -32,6 +32,29 @@ export const ROLE_BADGES = {
 };
 
 /**
+ * The role with the department a Chairperson or Master Teacher schedules, so a user who sees
+ * teachers of both departments still knows which one is theirs: "GLC · JHS" on the badge,
+ * "Chairperson, Junior High: Grades 7, 8" in full.
+ * @param {{ role: RoleName | null, grade_levels?: { grade: number, level: "JHS" | "SHS" }[] } | null | undefined} user
+ * @returns {{ short: string, full: string }}
+ */
+export function roleWithScope(user) {
+  const role = user?.role ?? null;
+  if (!role) return { short: "", full: "" };
+  const short = ROLE_BADGES[role];
+  const full = ROLE_LABELS[role];
+  if (role !== "glc" && role !== "master_teacher") return { short, full };
+  const grades = [...(user?.grade_levels ?? [])].sort((a, b) => a.grade - b.grade);
+  const levels = /** @type {const} */ (["JHS", "SHS"]).filter((level) => grades.some((grade) => grade.level === level));
+  if (levels.length === 0) return { short, full: `${full}, no grade levels yet` };
+  const names = { JHS: "Junior High", SHS: "Senior High" };
+  return {
+    short: `${short} · ${levels.join(" & ")}`,
+    full: `${full}, ${levels.map((level) => `${names[level]}: Grades ${grades.filter((grade) => grade.level === level).map(({ grade }) => grade).join(", ")}`).join("; ")}`,
+  };
+}
+
+/**
  * @typedef {{ name: string, path: string, icon: import("@/components/icons.js").IconName, roles: RoleName[], ownRecord?: boolean }} NavItem
  * @typedef {{ label: string, items: NavItem[] }} NavGroup
  */

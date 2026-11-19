@@ -244,3 +244,21 @@ it('gives every teacher the same load limit, whatever is sent (team decision, No
 
     expect(DB::table('teachers')->orderByDesc('id')->value('max_subjects'))->toBe(5);
 });
+
+it('refuses list names that do not read like a name, or are already there in other letters', function () {
+    $this->postJson('/api/personnel-options/departments', ['name' => 'vffxfszv'])
+        ->assertUnprocessable()->assertJsonPath('errors.name.0', 'This does not look like a name (it has no vowel). Check the spelling, or type a short form in capitals, like SSG.');
+    $this->postJson('/api/personnel-options/teaching-tasks', ['name' => 'Saaaaa'])->assertUnprocessable();
+    $this->postJson('/api/personnel-options/designations', ['name' => 'Teacher #1'])->assertUnprocessable();
+
+    $this->postJson('/api/personnel-options/teaching-tasks', ['name' => 'SSG'])->assertCreated();
+    $this->postJson('/api/personnel-options/teaching-tasks', ['name' => 'ict coordinator'])
+        ->assertUnprocessable()->assertJsonPath('errors.name.0', 'This already exists in the list.');
+});
+
+it('refuses a track name typed at random or already there in other letters', function () {
+    $this->actingAs(User::factory()->create()->assignRole('super_admin'));
+    $this->postJson('/api/tracks', ['name' => 'vrtgbgvrv'])->assertUnprocessable();
+    $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertCreated();
+    $this->postJson('/api/tracks', ['name' => 'techpro'])->assertUnprocessable()->assertJsonPath('errors.name.0', 'This track already exists.');
+});

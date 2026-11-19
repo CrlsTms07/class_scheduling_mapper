@@ -8,7 +8,7 @@ import { icon } from "@/components/icons.js";
 import { searchableSelect } from "@/components/searchable-select.js";
 import { confirmAction } from "@/components/dialog.js";
 import { toast } from "@/components/toast.js";
-import { navigationFor, ROLE_BADGES, ROLE_LABELS } from "@/lib/navigation.js";
+import { navigationFor, roleWithScope } from "@/lib/navigation.js";
 import { displayName, initialsOf, session, signOut } from "@/state/session.js";
 import { selectTerm, termLabel, termState } from "@/state/term.js";
 import { notificationBell } from "./notification-bell.js";
@@ -130,7 +130,7 @@ export function appShell(navigate) {
    */
   function userBadge({ inDrawer = false } = {}) {
     const role = user?.role ?? null;
-    const fullRole = role ? ROLE_LABELS[role] : "";
+    const { short: badge, full: fullRole } = roleWithScope(user);
     return h(
       "div",
       // Small phones have no room in the header: there it shows at the top of the menu drawer.
@@ -140,7 +140,7 @@ export function appShell(navigate) {
         "span",
         { class: `min-w-0 flex-col items-start leading-tight ${inDrawer ? "flex" : "hidden xl:flex"}`, "aria-hidden": "true" },
         h("span", { class: "max-w-40 truncate text-sm font-medium" }, displayName()),
-        role ? h("span", { class: "mt-0.5 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white", title: fullRole }, ROLE_BADGES[role]) : null,
+        role ? h("span", { class: "mt-0.5 whitespace-nowrap rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white", title: fullRole }, badge) : null,
       ),
     );
   }

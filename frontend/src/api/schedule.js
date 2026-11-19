@@ -86,20 +86,6 @@ export async function clearSlot(termId, sectionId, { slotId, days }) {
   return keep(termId, sectionId, data);
 }
 
-/**
- * A typed time: the period it matches on each day, or a new period of the bell schedule.
- * Returns the period of each day, like { "1": 12, "2": 12 }.
- * @param {number} termId
- * @param {number} sectionId
- * @param {{ days: number[], start_time: string, end_time: string }} body
- * @returns {Promise<Record<string, number>>}
- */
-export async function resolvePeriod(termId, sectionId, body) {
-  const { data } = /** @type {{ data: { slots: Record<string, number>, plotter: Plotter } }} */ (await api(`/terms/${termId}/sections/${sectionId}/periods`, { method: "POST", body }));
-  invalidate(["school-years"]);
-  keep(termId, sectionId, data.plotter);
-  return data.slots;
-}
 
 /**
  * Puts an activity on this section, its grade level or all sections. With preview, only says

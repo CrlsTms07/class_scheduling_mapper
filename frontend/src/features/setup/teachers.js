@@ -10,7 +10,7 @@ import { dataList, editButton } from "@/components/data-list.js";
 import { openFormDialog } from "@/components/form-dialog.js";
 import { openListEditor } from "@/components/list-editor.js";
 import { skeletonList, skeletonPage } from "@/components/loading.js";
-import { breadcrumbs, emptyState, pageHeader } from "@/components/page-header.js";
+import { breadcrumbs, emptyState, noMatches, pageHeader } from "@/components/page-header.js";
 import { searchableSelect } from "@/components/searchable-select.js";
 import { api, errorMessage } from "@/api/client.js";
 import { changeRecord, getRecords } from "@/api/records.js";
@@ -159,7 +159,20 @@ export async function render(container, { query }) {
         teachers.length === 0
           ? emptyState({ title: "No teachers yet", text: "Add the school's teachers. A teacher can also be added from Teacher Loading by typing a new name.", action: h("button", { type: "button", class: "btn btn-primary", onclick: () => teacherForm() }, icon("plus"), "Add teacher") })
           : shown.length === 0
-            ? h("p", { class: "text-sm text-muted-foreground" }, "No teacher matches what is chosen above.")
+            ? noMatches({
+                noun: "teacher",
+                search: ui.search,
+                filters: [
+                  ui.level ? LEVEL_TABS.find(([key]) => key === ui.level)?.[1] : null,
+                  ui.type === "teaching" ? "Teaching" : ui.type === "non_teaching" ? "Non-teaching" : null,
+                  ui.status === "active" ? "Active" : ui.status === "inactive" ? "Inactive" : null,
+                ],
+                onClear: () => {
+                  Object.assign(ui, { search: "", level: "", type: "", status: "" });
+                  searchInput.value = "";
+                  draw();
+                },
+              })
             : dataList({
                 label: "Teachers",
                 items: shown,

@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ReadableName;
 use App\Services\TeacherService;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A new department, designation or teaching task, added from the teacher form.
@@ -23,7 +24,12 @@ class StorePersonnelOptionRequest extends FormRequest
     {
         $table = TeacherService::OPTION_TABLES[$this->route('type')];
 
-        return ['name' => ['required', 'string', 'max:60', Rule::unique($table, 'name')]];
+        return ['name' => ['required', 'string', 'max:60', new ReadableName, function (string $attribute, mixed $value, \Closure $fail) use ($table) {
+            // "Science" and "science" are the same name.
+            if (DB::table($table)->whereRaw('LOWER(name) = LOWER(?)', [trim((string) $value)])->exists()) {
+                $fail('This already exists in the list.');
+            }
+        }]];
     }
 
     /**
@@ -31,6 +37,6 @@ class StorePersonnelOptionRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['name.unique' => 'This already exists in the list.'];
+        return [];
     }
 }

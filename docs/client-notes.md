@@ -244,6 +244,28 @@ Based on a reference prototype the team reviewed (removed from the repo on Nov 1
 - **Notifications:** at the top center of the screen, saying "Success", "Failed" or "Notice", and shown
   above an open dialog too.
 
+## Team decisions (Nov 19, 2026)
+
+- **Time blocks only:** a class is placed by choosing one of the periods of the bell schedule. "Type another
+  time" was removed with its endpoint (`POST .../periods`, `PeriodService`). New times are added on the Time
+  Slots page. Every period shows as a block: **Available**, **Selected**, or **Full / Too long** (disabled,
+  with the reason, e.g. "Teacher Sample 1 is teaching Grade 7 – Sample B"). The blocks are checked again every
+  30 seconds and when the window comes back, and right after a save that someone else beat.
+- **Problems show while working, not only on Save:** every form checks each field as it is filled in (required
+  fields and each field's own rule). On Time Slots, a period or break that overlaps another row says so while
+  the time is being chosen.
+- **Time block templates:** the Time Slots preset has "Minutes between periods" (a passing time) next to the
+  minutes per period, so 1-hour or 1.5-hour blocks with a gap can be made without code.
+- **Lists:** names of tracks, departments, designations and tasks must read like a name (at least one vowel
+  unless a short form in capitals like SSG, no symbols, no key held down) and must not repeat in other letters;
+  checked while typing and again in the API (`App\Rules\ReadableName`). Done does not close while a typed name
+  was not added.
+- **Empty results say why:** a filtered list with nothing in it names the search and the filters that are on,
+  with "Clear search and filters". The focus outline is teal, so it is never mistaken for an error.
+- **Subject name** is a searchable list of the names already used, and a new name can be typed ("Use").
+- **Role badge with the department:** "GLC · JHS" or "MT · SHS" under the user's name. A Chairperson still sees
+  every teacher, since teachers move between Junior and Senior High.
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade

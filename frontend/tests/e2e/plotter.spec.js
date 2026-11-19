@@ -69,13 +69,13 @@ test("offers only free periods, and explains a conflict with the same teacher", 
   await choose(page, "Subject", "Homeroom Guidance");
   await expect(dialog.getByText(/Monday: .* is teaching/)).toBeVisible();
 
-  // Typing that same time anyway: the API refuses it and says who and when.
-  await dialog.getByRole("button", { name: "Type another time" }).click();
-  await dialog.getByRole("textbox", { name: "Start time" }).fill("6:30");
-  await dialog.getByRole("textbox", { name: "End time" }).fill("7:15");
-  await dialog.getByRole("button", { name: "Add class" }).click();
-  await expect(dialog.getByText("Not saved. This clashes with:")).toBeVisible();
-  await expect(dialog.getByRole("listitem").filter({ hasText: /is teaching .*Sample A/ })).toBeVisible();
+  // That period shows as a Full block with the reason, before anything is saved; it cannot be chosen.
+  const full = dialog.getByRole("radio", { name: /^6:30 AM – 7:15 AM/ });
+  await expect(full).toHaveAttribute("aria-disabled", "true");
+  await expect(full).toContainText("Full");
+  // aria-disabled: Playwright will not click it unless forced, but a person can, and is told why.
+  await full.click({ force: true });
+  await expect(dialog.getByText(/6:30 AM – 7:15 AM cannot be used: .* is teaching .*Sample A/)).toBeVisible();
 });
 
 test("submits for approval after checking each flag", async ({ page }) => {

@@ -8,7 +8,7 @@ import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
 import { downloadButtons } from "@/components/download-buttons.js";
 import { skeletonList } from "@/components/loading.js";
-import { emptyState, pageHeader } from "@/components/page-header.js";
+import { emptyState, noMatches, pageHeader } from "@/components/page-header.js";
 import { searchableSelect } from "@/components/searchable-select.js";
 import { weekFromReportGrid, weekTable } from "@/components/week-table.js";
 import { errorMessage } from "@/api/client.js";
@@ -95,7 +95,17 @@ export async function render(container, { query, navigate }) {
         list,
         h("p", { class: "pb-2 text-small text-muted-foreground", "aria-live": "polite" }, `${shown.length} of ${sections.length} ${sections.length === 1 ? "section" : "sections"}`),
         shown.length === 0
-          ? h("p", { class: "text-sm text-muted-foreground" }, "No section matches what is chosen above.")
+          ? noMatches({
+              noun: "section",
+              search: ui.search,
+              filters: [ui.level ? (ui.level === "JHS" ? "Junior High School" : "Senior High School") : null, ui.grade ? `Grade ${ui.grade}` : null, ui.status ? STATUS_LABELS[/** @type {keyof typeof STATUS_LABELS} */ (ui.status)] : null],
+              onClear: () => {
+                Object.assign(ui, { level: "", grade: "", status: "", search: "" });
+                searchInput.value = "";
+                for (const select of filterSelects) select?.setValue("");
+                draw();
+              },
+            })
           : h("ul", { class: "grid gap-3 lg:grid-cols-2" }, shown.map((section) => {
               const label = `Grade ${section.grade} – ${section.name}`;
               return h("li", { class: "card space-y-3 p-4" },
@@ -107,14 +117,18 @@ export async function render(container, { query, navigate }) {
     };
 
     const grades = [...new Set(sections.map(({ grade }) => grade))].sort((a, b) => a - b);
+    // Kept, so "Clear search and filters" can set them back.
+    const filterSelects = [
+      hasBoth ? searchableSelect({ label: "Department", value: "", options: [{ value: "", label: "All departments" }, { value: "JHS", label: "Junior High School" }, { value: "SHS", label: "Senior High School" }], onChange: (value) => { ui.level = String(value); draw(); } }) : null,
+      searchableSelect({ label: "Grade level", value: "", options: [{ value: "", label: "All grades" }, ...grades.map((grade) => ({ value: String(grade), label: `Grade ${grade}` }))], onChange: (value) => { ui.grade = String(value); draw(); } }),
+      searchableSelect({ label: "Status", value: "", options: [{ value: "", label: "Any status" }, ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))], onChange: (value) => { ui.status = String(value); draw(); } }),
+    ];
     replace(
       panel,
       h(
         "div",
         { class: `card grid gap-3 p-3 sm:grid-cols-2 ${hasBoth ? "xl:grid-cols-4" : "xl:grid-cols-3"}` },
-        hasBoth ? searchableSelect({ label: "Department", value: "", options: [{ value: "", label: "All departments" }, { value: "JHS", label: "Junior High School" }, { value: "SHS", label: "Senior High School" }], onChange: (value) => { ui.level = String(value); draw(); } }) : null,
-        searchableSelect({ label: "Grade level", value: "", options: [{ value: "", label: "All grades" }, ...grades.map((grade) => ({ value: String(grade), label: `Grade ${grade}` }))], onChange: (value) => { ui.grade = String(value); draw(); } }),
-        searchableSelect({ label: "Status", value: "", options: [{ value: "", label: "Any status" }, ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))], onChange: (value) => { ui.status = String(value); draw(); } }),
+        filterSelects,
         h("div", { class: "space-y-1" }, h("label", { class: "field-label" }, "Search"), searchInput),
       ),
       list,

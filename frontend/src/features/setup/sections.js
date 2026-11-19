@@ -9,7 +9,7 @@ import { icon } from "@/components/icons.js";
 import { dataList, editButton } from "@/components/data-list.js";
 import { openFormDialog } from "@/components/form-dialog.js";
 import { skeletonList } from "@/components/loading.js";
-import { emptyState, pageHeader } from "@/components/page-header.js";
+import { emptyState, noMatches, pageHeader } from "@/components/page-header.js";
 import { searchableSelect } from "@/components/searchable-select.js";
 import { errorMessage } from "@/api/client.js";
 import { changeRecord, getRecords } from "@/api/records.js";
@@ -90,7 +90,16 @@ export async function render(container, { query }) {
         sections.length === 0
           ? emptyState({ title: "No sections yet", text: "Add your first section. A schedule is made for each one.", action: h("button", { type: "button", class: "btn btn-primary", onclick: () => sectionForm() }, icon("plus"), "Add section") })
           : shown.length === 0
-            ? h("p", { class: "text-sm text-muted-foreground" }, "No section matches what is chosen above.")
+            ? noMatches({
+                noun: "section",
+                search: ui.search,
+                filters: [ui.grade ? `Grade ${ui.grade}` : null],
+                onClear: () => {
+                  Object.assign(ui, { search: "", grade: "" });
+                  searchInput.value = "";
+                  draw();
+                },
+              })
             : dataList({
                 label: "Sections",
                 items: shown,

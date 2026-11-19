@@ -10,7 +10,7 @@ import { dataList, editButton } from "@/components/data-list.js";
 import { openFormDialog } from "@/components/form-dialog.js";
 import { openListEditor } from "@/components/list-editor.js";
 import { skeletonList } from "@/components/loading.js";
-import { emptyState, pageHeader } from "@/components/page-header.js";
+import { emptyState, noMatches, pageHeader } from "@/components/page-header.js";
 import { searchableSelect } from "@/components/searchable-select.js";
 import { errorMessage } from "@/api/client.js";
 import { changeRecord, getRecords } from "@/api/records.js";
@@ -38,11 +38,14 @@ export async function render(container) {
   const subjectForm = async (/** @type {any} */ subject = null) => {
     // The choices are loaded first, so a quick tap never opens an empty form.
     options = await getRecords(`/school-years/${year.id}/subject-options`);
+    // Names already used this school year (any grade), to pick from; a new name can still be typed.
+    const known = (await getRecords(`/school-years/${year.id}/subjects`)).map((/** @type {any} */ item) => String(item.name));
+    const names = [...new Set([...known, ...(subject ? [subject.name] : [])])].sort((a, b) => a.localeCompare(b));
     openFormDialog({
       title: subject ? `Edit ${subject.name}` : "Add a subject",
       description: subject?.locked_reason ? `${subject.locked_reason} Its grade, track and time of the year can no longer change.` : `For SY ${year.name}. Tracks and types apply to Senior High only.`,
       fields: [
-        { name: "name", label: "Subject name", required: true, value: subject?.name },
+        { name: "name", label: "Subject name", type: "select", required: true, value: subject?.name ?? "", options: names.map((name) => ({ value: name, label: name })), localCreate: true, onCreate: async (typed) => ({ value: typed.trim(), label: typed.trim() }), help: "Pick a subject already in the list, or type a new name and choose Use." },
         { name: "code", label: "Code", value: subject?.code ?? "" },
         { name: "grade_level_id", label: "Grade level", type: "select", required: true, value: subject?.grade_level_id ?? "", disabled: !!subject?.locked_reason, options: options.grade_levels.map((/** @type {any} */ grade) => ({ value: grade.id, label: `Grade ${grade.grade} (${grade.level === "JHS" ? "Junior High" : "Senior High"})` })) },
         { name: "minutes_per_week", label: "Minutes per week", type: "number", required: true, min: 1, max: 3000, value: subject?.minutes_per_week, help: "Homeroom Guidance is 60." },
@@ -143,7 +146,16 @@ export async function render(container) {
         subjects.length === 0
           ? emptyState({ title: "No subjects yet", text: `Add the subjects of SY ${year.name}, with their minutes per week.`, action: h("button", { type: "button", class: "btn btn-primary", onclick: () => subjectForm() }, icon("plus"), "Add subject") })
           : shown.length === 0
-            ? h("p", { class: "text-sm text-muted-foreground" }, "No subject matches what is chosen above.")
+            ? noMatches({
+                noun: "subject",
+                search: ui.search,
+                filters: [ui.grade ? `Grade ${ui.grade}` : null, ui.term === "year" ? "Whole year" : ui.term ? termName(Number(ui.term)) : null],
+                onClear: () => {
+                  Object.assign(ui, { search: "", grade: "", term: "" });
+                  searchInput.value = "";
+                  draw();
+                },
+              })
             : dataList({
                 label: "Subjects",
                 items: shown,

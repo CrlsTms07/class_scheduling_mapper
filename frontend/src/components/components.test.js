@@ -5,6 +5,8 @@ import { timePicker } from "./time-picker.js";
 import { confirmAction, openDialog } from "./dialog.js";
 import { toast } from "./toast.js";
 import { openListEditor } from "./list-editor.js";
+import { noMatches } from "./page-header.js";
+import { openFormDialog } from "./form-dialog.js";
 import { ApiError } from "@/api/client.js";
 
 // jsdom has no <dialog> methods; these stand in for the browser's.
@@ -83,29 +85,43 @@ describe("searchable select (UI requirement 3)", () => {
   });
 });
 
-describe("12-hour time picker (UI requirement 5)", () => {
-  it("gives 24-hour time to the API from a typed 12-hour time", () => {
-    const picker = timePicker({ label: "Start time" });
+describe("12-hour time picker (UI requirement 5): chosen, never typed", () => {
+  /** Opens one of the picker's lists and picks an option. */
+  const pick = (picker, label, option) => {
+    const field = [...picker.querySelectorAll("label")].find((item) => item.textContent === label).parentElement;
+    field.querySelector("button").click();
+    [...field.querySelectorAll("[role=option]")].find((item) => item.textContent.trim() === option).click();
+  };
+
+  it("gives 24-hour time to the API from the chosen hour, minutes and PM", () => {
+    const onChange = vi.fn();
+    const picker = timePicker({ label: "Start time", onChange });
     document.body.append(picker);
-    picker.querySelector("input").value = "1:30";
+    pick(picker, "Hour", "1");
+    pick(picker, "Minutes", "30");
     [...picker.querySelectorAll("button")].find((button) => button.textContent === "PM").click();
 
     expect(picker.getValue()).toBe("13:30");
+    expect(onChange).toHaveBeenLastCalledWith("13:30");
+    expect(picker.querySelector("input[type=text], input:not([type])")).toBeNull();
   });
 
-  it("shows a 24-hour value as 12-hour", () => {
-    const picker = timePicker({ label: "End time", value: "14:05" });
-    expect(picker.querySelector("input").value).toBe("2:05");
+  it("shows a 24-hour value as 12-hour, keeping an odd minute", () => {
+    const picker = timePicker({ label: "End time", value: "14:07" });
+    expect(picker.textContent).toContain("2");
+    expect(picker.textContent).toContain("07");
     expect([...picker.querySelectorAll("button")].find((button) => button.textContent === "PM").getAttribute("aria-pressed")).toBe("true");
+    expect(picker.getValue()).toBe("14:07");
   });
 
-  it("says what is wrong with a time that is not one", () => {
+  it("says what is missing when only the hour is chosen", () => {
     const picker = timePicker({ label: "Start time" });
     document.body.append(picker);
-    picker.querySelector("input").value = "13:00";
+    pick(picker, "Hour", "7");
 
+    expect(picker.getValue()).toBeNull();
     expect(picker.validate()).toBe(false);
-    expect(picker.textContent).toContain("hour 1 to 12");
+    expect(picker.textContent).toContain("Choose the minutes too.");
   });
 });
 
@@ -200,3 +216,65 @@ describe("list editor (tracks, departments, designations, tasks)", () => {
     expect(dialog.textContent).toContain("Only the Admin can delete a track.");
   });
 });
+
+describe("list editor checks names while typing", () => {
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("refuses letters typed at random, says why, and does not call the server", async () => {
+    const add = vi.fn(async () => {});
+    openListEditor({ title: "Lists", load: async () => [{ label: "Departments", noun: "department", items: [], add }] });
+    await settle();
+    const dialog = [...document.querySelectorAll("dialog")].at(-1);
+    const input = dialog.querySelector("input");
+    input.value = "vffxfszv";
+    input.dispatchEvent(new Event("input"));
+    expect(dialog.querySelector("[role=alert]").textContent).toContain("no vowel");
+    dialog.querySelector("form").dispatchEvent(new Event("submit", { cancelable: true }));
+    await settle();
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it("does not close on Done while a typed name was not added", async () => {
+    openListEditor({ title: "Lists", load: async () => [{ label: "Departments", noun: "department", items: [], add: async () => {} }] });
+    await settle();
+    const dialog = [...document.querySelectorAll("dialog")].at(-1);
+    dialog.querySelector("input").value = "Science";
+    [...dialog.querySelectorAll("button")].find((button) => button.textContent === "Done").click();
+    expect(dialog.open).toBe(true);
+    expect(dialog.textContent).toContain('"Science" was not added yet');
+  });
+});
+
+describe("a filtered list with nothing in it says why", () => {
+  it("names the search and the filters, and clears them", () => {
+    const onClear = vi.fn();
+    const box = noMatches({ noun: "teacher", search: "dito", filters: ["Senior High", null, "Inactive"], onClear });
+    expect(box.textContent).toContain('No teacher matches the search "dito" with the filters Senior High, Inactive.');
+    expect(box.textContent).toContain("only looks inside the filters");
+    [...box.querySelectorAll("button")].find((button) => button.textContent.includes("Clear")).click();
+    expect(onClear).toHaveBeenCalled();
+  });
+});
+
+describe("forms check each field while it is filled in", () => {
+  it("shows a field's problem as soon as it is typed, before Save", () => {
+    const onSubmit = vi.fn(async () => "Saved.");
+    openFormDialog({
+      title: "Add a room",
+      fields: [{ name: "capacity", label: "Seats", type: "number", check: (value) => (value !== null && value > 60 ? "A room holds at most 60 seats." : null) }],
+      submitLabel: "Add room",
+      onSubmit,
+    });
+    const dialog = [...document.querySelectorAll("dialog")].at(-1);
+    const input = dialog.querySelector("input");
+    input.value = "80";
+    input.dispatchEvent(new Event("input"));
+    expect(dialog.textContent).toContain("A room holds at most 60 seats.");
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    input.value = "40";
+    input.dispatchEvent(new Event("input"));
+    expect(dialog.textContent).not.toContain("A room holds at most 60 seats.");
+  });
+});
+

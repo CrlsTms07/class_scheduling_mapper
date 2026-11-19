@@ -1,100 +1,139 @@
 // @ts-check
 /**
- * A 12-hour time field (UI requirement 5): the time is typed ("7:30") and AM or PM is a tap,
- * so every phone shows the same thing, never 24-hour time. Any time of the day can be used.
+ * A 12-hour time field (UI requirement 5) made of choices, never typing: an hour list (1 to 12), a
+ * minutes list (every 5 minutes) and AM / PM buttons. Nothing can be typed in a wrong format, and
+ * every change is reported at once so the form can check it (overlaps, end after start) before Save.
  */
 import { h, uid } from "@/lib/dom.js";
-import { parseTime, splitTime } from "@/lib/time.js";
+import { searchableSelect } from "./searchable-select.js";
+
+const HOURS = Array.from({ length: 12 }, (_, index) => index + 1);
+const MINUTES = Array.from({ length: 12 }, (_, index) => index * 5);
+const two = (/** @type {number} */ number) => String(number).padStart(2, "0");
+
+/**
+ * "HH:MM" in 24 hours into its 12-hour parts.
+ * @param {string} value
+ */
+function partsOf(value) {
+  const hours = Number(value.slice(0, 2));
+  const minutes = Number(value.slice(3, 5));
+  return { hour: hours % 12 === 0 ? 12 : hours % 12, minute: minutes, period: /** @type {"AM" | "PM"} */ (hours < 12 ? "AM" : "PM") };
+}
 
 /**
  * @param {{ label: string, value?: string | null, onChange?: (value: string | null) => void }} props
  *   value is "HH:MM" in 24 hours (what the API uses), or null when empty.
  */
 export function timePicker({ label, value = null, onChange }) {
-  const inputId = uid("time");
-  const start = value ? splitTime(value) : { typed: "", period: /** @type {"AM" | "PM"} */ ("AM") };
-  let period = start.period;
+  const groupId = uid("time");
+  const start = value ? partsOf(value) : null;
+  /** @type {{ hour: number | null, minute: number | null, period: "AM" | "PM" }} */
+  const state = { hour: start?.hour ?? null, minute: start?.minute ?? null, period: start?.period ?? "AM" };
 
-  const error = h("p", { class: "field-error", hidden: true, role: "alert" });
-  const input = /** @type {HTMLInputElement} */ (
-    h("input", {
-      id: inputId,
-      class: "input w-28 text-center tabular-nums",
-      inputMode: "numeric",
-      placeholder: "7:30",
-      autocomplete: "off",
-      value: start.typed,
-      "aria-describedby": `${inputId}-period`,
-      onblur: () => {
-        check();
-        onChange?.(getValue());
-      },
-    })
-  );
+  const error = h("p", { id: `${groupId}-error`, class: "field-error", hidden: true, role: "alert" });
+
+  /** Every 5 minutes, plus an older time's own minute (like :07), so it is never lost. */
+  const minuteOptions = () =>
+    [...new Set([...MINUTES, ...(state.minute !== null ? [state.minute] : [])])].sort((a, b) => a - b).map((minute) => ({ value: minute, label: two(minute) }));
+
+  const changed = () => {
+    check();
+    onChange?.(getValue());
+  };
+
+  const hourSelect = searchableSelect({
+    label: "Hour",
+    placeholder: "--",
+    value: state.hour,
+    options: HOURS.map((hour) => ({ value: hour, label: String(hour) })),
+    onChange: (next) => {
+      state.hour = next === null ? null : Number(next);
+      changed();
+    },
+  });
+  const minuteSelect = searchableSelect({
+    label: "Minutes",
+    placeholder: "--",
+    value: state.minute,
+    options: minuteOptions(),
+    onChange: (next) => {
+      state.minute = next === null ? null : Number(next);
+      changed();
+    },
+  });
+  // Narrow enough on a phone for hour, minutes and AM / PM to share one line.
+  hourSelect.classList.add("w-[4.75rem]", "sm:w-24");
+  minuteSelect.classList.add("w-[4.75rem]", "sm:w-24");
 
   /** @param {"AM" | "PM"} next */
   const periodButton = (next) =>
-    h(
-      "button",
-      {
-        type: "button",
-        class: "btn min-w-14 rounded-none border-0 px-3",
-        "aria-pressed": String(period === next),
-        onclick: () => {
-          period = next;
-          drawPeriod();
-          onChange?.(getValue());
-        },
+    h("button", {
+      type: "button",
+      class: "btn min-w-14 rounded-none border-0 px-3",
+      "aria-pressed": String(state.period === next),
+      onclick: () => {
+        state.period = next;
+        drawPeriod();
+        changed();
       },
-      next,
-    );
+    }, next);
   const am = periodButton("AM");
   const pm = periodButton("PM");
 
   const drawPeriod = () => {
     for (const [button, name] of [[am, "AM"], [pm, "PM"]]) {
-      const isOn = period === name;
+      const isOn = state.period === name;
       /** @type {HTMLElement} */ (button).setAttribute("aria-pressed", String(isOn));
       /** @type {HTMLElement} */ (button).className = `btn min-w-14 rounded-none border-0 px-3 ${isOn ? "bg-brand text-white" : "bg-surface text-foreground hover:bg-surface-muted"}`;
     }
   };
 
+  /** One part chosen without the other is not a time yet: say what is missing. */
   const check = () => {
-    const typed = input.value.trim();
-    const isBad = typed !== "" && parseTime(typed, period) === null;
-    error.hidden = !isBad;
-    error.textContent = isBad ? "Type a time like 7:30 (hour 1 to 12, minutes 0 to 59)." : "";
-    input.setAttribute("aria-invalid", String(isBad));
-    return !isBad;
+    const isHalf = (state.hour === null) !== (state.minute === null);
+    error.hidden = !isHalf;
+    error.textContent = isHalf ? (state.hour === null ? "Choose the hour too." : "Choose the minutes too.") : "";
+    return !isHalf;
   };
 
-  /** "HH:MM" in 24 hours, or null when empty or not a time. */
-  const getValue = () => (input.value.trim() ? parseTime(input.value, period) : null);
+  /** "HH:MM" in 24 hours, or null until both the hour and the minutes are chosen. */
+  const getValue = () => {
+    if (state.hour === null || state.minute === null) return null;
+    const hours = (state.hour % 12) + (state.period === "PM" ? 12 : 0);
+    return `${two(hours)}:${two(state.minute)}`;
+  };
 
   drawPeriod();
 
   const wrapper = h(
-    "div",
-    { class: "space-y-1" },
-    h("label", { class: "field-label", htmlFor: inputId }, label),
+    "fieldset",
+    { class: "space-y-1", "aria-describedby": `${groupId}-error` },
+    h("legend", { class: "field-label" }, label),
     h(
       "div",
-      { class: "flex items-center gap-2" },
-      input,
-      h("div", { id: `${inputId}-period`, role: "group", "aria-label": `${label}: AM or PM`, class: "flex overflow-hidden rounded-lg border" }, am, pm),
+      { class: "flex flex-wrap items-end gap-1.5 sm:gap-2" },
+      hourSelect,
+      h("span", { class: "pb-3 font-semibold", "aria-hidden": "true" }, ":"),
+      minuteSelect,
+      h("div", { role: "group", "aria-label": `${label}: AM or PM`, class: "flex h-11 overflow-hidden rounded-lg border" }, am, pm),
     ),
     error,
   );
 
   return Object.assign(wrapper, {
     getValue,
-    /** Shows the error and returns false when what is typed is not a time. */
+    /** Shows the error and returns false when only the hour or only the minutes are chosen. */
     validate: check,
     /** @param {string | null} next */
     setValue: (next) => {
-      const parts = next ? splitTime(next) : { typed: "", period: "AM" };
-      input.value = parts.typed;
-      period = /** @type {"AM" | "PM"} */ (parts.period);
+      const parts = next ? partsOf(next) : null;
+      state.hour = parts?.hour ?? null;
+      state.minute = parts?.minute ?? null;
+      state.period = parts?.period ?? "AM";
+      minuteSelect.setOptions(minuteOptions());
+      hourSelect.setValue(state.hour);
+      minuteSelect.setValue(state.minute);
       drawPeriod();
       check();
     },
