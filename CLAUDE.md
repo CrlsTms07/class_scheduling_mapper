@@ -90,8 +90,8 @@ npm run test:e2e                  # Playwright; only against a throwaway databas
   (`max_hours_per_week`, default 30), free teachers on a conflict, bell schedule presets (8/10/14/16 rows),
   and color coding per user. (Auto-fill was removed, team decision, Nov 17, 2026.)
 - **Working, layout and hand-built schedules (team decisions, Nov 11, 2026, see `docs/client-notes.md`):**
-  breadcrumbs and term tabs, classroom and section pages with day cards, typed Start/End times that become
-  bell-schedule periods (`PeriodService`), break times, "+ Add Section" on rooms, building view with print,
+  breadcrumbs and term tabs, classroom and section pages with day cards (typed Start/End times were replaced by
+  time blocks only, team decision, Nov 19, 2026), break times, "+ Add Section" on rooms, building view with print,
   Section and Teachers Directories, teacher detail, Terms and Conditions at sign-up, and
   `php artisan app:clear-school-data` for a fresh import.
 - **Working, accounts, forms and rooms (team decisions, Nov 12, 2026, see `docs/client-notes.md`):** one
@@ -114,7 +114,7 @@ npm run test:e2e                  # Playwright; only against a throwaway databas
   shared components (centered dialog, searchable select, 12-hour time picker, toasts, skeleton loaders), every
   dashboard, the Schedule module and plotter (only free periods that fit the subject's remaining minutes are
   offered), Teacher Loading, Approvals, Reports (PDF and CSV), every setup and Admin page, My Schedule, My
-  Profile, the guide and the Guest view with QR codes. Tests: 90 Vitest and 44 Playwright (sizes 360×640,
+  Profile, the guide and the Guest view with QR codes. Tests: 100 Vitest and 44 Playwright (sizes 360×640,
   844×390, 1366×768). It was built as `frontend-v2/`; on Nov 18, 2026 the React app was removed (still in the
   Git history, commit `51a4cca`) and the folder was renamed `frontend/`.
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
