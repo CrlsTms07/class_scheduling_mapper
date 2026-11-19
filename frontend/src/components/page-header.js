@@ -50,3 +50,21 @@ export function breadcrumbs(items) {
 export function emptyState({ title, text, action }) {
   return h("div", { class: "space-y-3 rounded-xl border border-dashed p-6 text-sm" }, h("p", { class: "font-medium" }, title), h("p", { class: "text-muted-foreground" }, text), action ?? null);
 }
+
+/**
+ * Why a filtered list shows nothing: the search words and the filters that are on, and one button
+ * that clears them all. Never just "nothing found" (design rule: errors say what to do).
+ * @param {{ noun: string, search?: string, filters?: (string | null | false | undefined)[], onClear: () => void }} props
+ */
+export function noMatches({ noun, search = "", filters = [], onClear }) {
+  const words = search.trim();
+  const active = /** @type {string[]} */ (filters.filter(Boolean));
+  const parts = [words ? `the search "${words}"` : null, active.length ? `${active.length === 1 ? "the filter" : "the filters"} ${active.join(", ")}` : null].filter(Boolean);
+  return h(
+    "div",
+    { role: "status", class: "space-y-3 rounded-xl border border-dashed p-5 text-sm" },
+    h("p", { class: "font-medium" }, `No ${noun} matches ${parts.join(" with ")}.`),
+    h("p", { class: "text-muted-foreground" }, active.length && words ? "The search only looks inside the filters that are on. Clear them to search everyone, or check the spelling." : words ? "Check the spelling, or try fewer words." : "Choose other filters, or clear them to see everyone."),
+    h("button", { type: "button", class: "btn btn-outline", onclick: onClear }, icon("x"), "Clear search and filters"),
+  );
+}

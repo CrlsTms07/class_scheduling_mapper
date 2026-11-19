@@ -1,9 +1,10 @@
 // @ts-check
 import { afterEach, describe, expect, it } from "vitest";
-import { presetRows } from "@/features/setup/time-slots.js";
+import { presetRows, slotOverlap } from "@/features/setup/time-slots.js";
 import { buildTerms, dayMonthYear, termName } from "@/features/admin/school-years.js";
 import { floorLabel, floorOf, roomsByFloor } from "@/features/schedule/places.js";
-import { depEdEmailError, passwordError } from "./forms.js";
+import { depEdEmailError, passwordError, readableNameError } from "./forms.js";
+import { roleWithScope } from "./navigation.js";
 import { matchRoute, redirectFor } from "@/router.js";
 import { session } from "@/state/session.js";
 
@@ -95,3 +96,49 @@ describe("account rules", () => {
     expect(redirectFor(matchRoute("/somewhere")?.route ?? null)).toBe("/");
   });
 });
+
+describe("names in the lists (tracks, departments, designations, tasks)", () => {
+  it("takes real names and short forms in capitals", () => {
+    for (const name of ["Science", "Academic", "TechPro", "ICT Coordinator", "SSG", "Teacher III", "Lab Manager (Science)"]) expect(readableNameError(name)).toBeNull();
+  });
+
+  it("says what is wrong with letters typed at random, symbols, repeats and copies", () => {
+    expect(readableNameError("vffxfszv")).toContain("no vowel");
+    expect(readableNameError("vrtgbgvrv")).toContain("no vowel");
+    expect(readableNameError("x")).toBe("Type at least 2 characters.");
+    expect(readableNameError("Math!!")).toContain("letters and numbers only");
+    expect(readableNameError("Saaaaa")).toContain("4 times");
+    expect(readableNameError("science", ["Science"])).toBe("This is already in the list.");
+  });
+});
+
+describe("role badge with the department", () => {
+  it("shows which department a Chairperson or Master Teacher schedules", () => {
+    expect(roleWithScope({ role: "glc", grade_levels: [{ grade: 8, level: "JHS" }, { grade: 7, level: "JHS" }] })).toEqual({ short: "GLC · JHS", full: "Chairperson, Junior High: Grades 7, 8" });
+    expect(roleWithScope({ role: "master_teacher", grade_levels: [{ grade: 11, level: "SHS" }] }).short).toBe("MT · SHS");
+    expect(roleWithScope({ role: "super_admin", grade_levels: [] })).toEqual({ short: "Admin", full: "Admin" });
+  });
+});
+
+describe("time slots are checked while choosing (no waiting for Save)", () => {
+  const slots = [
+    { id: 1, start_time: "06:00:00", end_time: "06:45:00", is_break: false, period_no: 1, label: null },
+    { id: 2, start_time: "09:20:00", end_time: "09:40:00", is_break: true, period_no: null, label: "Recess" },
+  ];
+
+  it("says which row a time overlaps", () => {
+    expect(slotOverlap(slots, "03:00", "08:00")).toBe("This overlaps Period 1 (6:00 AM – 6:45 AM). Choose a time before or after it.");
+    expect(slotOverlap(slots, "09:30", "10:00")).toContain("Recess");
+  });
+
+  it("lets a row start when another ends, and ignores the row being edited", () => {
+    expect(slotOverlap(slots, "06:45", "07:30")).toBeNull();
+    expect(slotOverlap(slots, "06:00", "06:50", 1)).toBeNull();
+  });
+
+  it("adds minutes between periods in a preset, but not before a break", () => {
+    const rows = presetRows({ rows: 4, start: "07:00", periodMinutes: 60, gapMinutes: 10, recess: { after: 2, minutes: 20 }, lunch: { after: 0, minutes: 0 } });
+    expect(rows?.map((row) => `${row.start_time}-${row.end_time}`)).toEqual(["07:00-08:00", "08:10-09:10", "09:10-09:30", "09:30-10:30"]);
+  });
+});
+

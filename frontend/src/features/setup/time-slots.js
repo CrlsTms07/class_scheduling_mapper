@@ -23,7 +23,8 @@ export const PRESET_ROWS = [8, 10, 14, 16];
  * The rows of a preset bell schedule, one after another from the start time: periods of the same
  * length, with a recess and a lunch after the chosen periods. Null when it does not fit in one day,
  * or a break comes after a period that does not exist.
- * @param {{ rows: number, start: string, periodMinutes: number, recess: { after: number, minutes: number }, lunch: { after: number, minutes: number } }} options
+ * @param {{ rows: number, start: string, periodMinutes: number, gapMinutes?: number, recess: { after: number, minutes: number }, lunch: { after: number, minutes: number } }} options
+ *   gapMinutes: minutes between two periods in a row (a passing time), 0 by default
  * @returns {{ is_break: boolean, label: string, start_time: string, end_time: string }[] | null}
  */
 export function presetRows(options) {
@@ -33,19 +34,41 @@ export function presetRows(options) {
   const periods = options.rows - breaks.length;
   if (breaks.some(({ after }) => after < 1 || after >= periods) || options.periodMinutes < 1) return null;
 
+  const gap = Math.max(0, options.gapMinutes ?? 0);
   const rows = [];
   let time = toMinutes(options.start);
   for (let period = 1; period <= periods; period += 1) {
     rows.push({ is_break: false, label: "", start_time: toTime(time), end_time: toTime(time + options.periodMinutes) });
     time += options.periodMinutes;
+    let hadBreak = false;
     for (const { after, minutes, label } of breaks) {
       if (after === period) {
         rows.push({ is_break: true, label, start_time: toTime(time), end_time: toTime(time + minutes) });
         time += minutes;
+        hadBreak = true;
       }
     }
+    // A passing time between two periods in a row; a recess or lunch already gives one.
+    if (!hadBreak && period < periods) time += gap;
   }
   return time < 24 * 60 ? rows : null;
+}
+
+/**
+ * The row a new or changed time would overlap in the same bell schedule, said in plain words, or null.
+ * Times are [start, end): a row that ends at 7:15 does not overlap one that starts at 7:15.
+ * @param {{ id: number, start_time: string, end_time: string, is_break: boolean, label?: string | null, period_no?: number | null }[]} slots
+ * @param {string | null} start  "HH:MM"
+ * @param {string | null} end
+ * @param {number | null} [exceptId]  the row being edited
+ * @returns {string | null}
+ */
+export function slotOverlap(slots, start, end, exceptId = null) {
+  if (!start || !end || end <= start) return null;
+  const other = slots.find((slot) => slot.id !== exceptId && slot.start_time.slice(0, 5) < end && slot.end_time.slice(0, 5) > start);
+  if (!other) return null;
+  const name = other.is_break ? other.label || "the break" : `Period ${other.period_no ?? ""}`.trim();
+  return `This overlaps ${name} (${timeRange(other.start_time, other.end_time)}). Choose a time before or after it.`;
 }
 
 /** @type {import("@/router.js").RenderPage} */
@@ -87,7 +110,8 @@ export async function render(container) {
     openFormDialog({
       title: slot ? `Edit ${slot.is_break ? slot.label || "break" : `period ${slot.period_no ?? ""}`}` : `Add a period or break to ${pattern.name}`,
       fields: [
-        { name: "start_time", label: "Start time", type: "time", required: true, value: slot?.start_time?.slice(0, 5) ?? null },
+        // Checked while choosing: no overlap with the other rows of this bell schedule.
+        { name: "start_time", label: "Start time", type: "time", required: true, value: slot?.start_time?.slice(0, 5) ?? null, check: (start, values) => slotOverlap(pattern.slots, start, values.end_time, slot?.id ?? null) },
         { name: "end_time", label: "End time", type: "time", required: true, value: slot?.end_time?.slice(0, 5) ?? null, check: (end, values) => (end && values.start_time && minutesBetween(values.start_time, end) <= 0 ? "The end time must be after the start time." : null) },
         { name: "is_break", label: "This is a break (recess or lunch)", type: "checkbox", value: slot?.is_break ?? false },
         { name: "label", label: "Break name", value: slot?.label ?? "", help: "Like Recess or Lunch. Leave it empty for a period." },
@@ -116,7 +140,8 @@ export async function render(container) {
       fields: [
         { name: "rows", label: "Rows (periods and breaks together)", type: "select", required: true, value: 10, options: PRESET_ROWS.map((rows) => ({ value: rows, label: `${rows} rows` })) },
         { name: "start", label: "First period starts", type: "time", required: true, value: "07:00" },
-        { name: "periodMinutes", label: "Minutes per period", type: "number", required: true, min: 1, max: 180, value: 45 },
+        { name: "periodMinutes", label: "Minutes per period", type: "number", required: true, min: 1, max: 180, value: 45, help: "Like 60 for 1-hour blocks or 90 for 1.5-hour blocks." },
+        { name: "gapMinutes", label: "Minutes between periods", type: "number", min: 0, max: 60, value: 0, help: "A passing time between periods; 0 for none." },
         { name: "recessAfter", label: "Recess after period", type: "number", min: 0, value: 3 },
         { name: "recessMinutes", label: "Recess minutes", type: "number", min: 0, value: 20, help: "0 leaves it out" },
         { name: "lunchAfter", label: "Lunch after period", type: "number", min: 0, value: 6 },
@@ -124,7 +149,7 @@ export async function render(container) {
       ],
       submitLabel: "Fill the bell schedule",
       onSubmit: async (values) => {
-        const rows = presetRows({ rows: Number(values.rows), start: values.start, periodMinutes: Number(values.periodMinutes), recess: { after: Number(values.recessAfter ?? 0), minutes: Number(values.recessMinutes ?? 0) }, lunch: { after: Number(values.lunchAfter ?? 0), minutes: Number(values.lunchMinutes ?? 0) } });
+        const rows = presetRows({ rows: Number(values.rows), start: values.start, periodMinutes: Number(values.periodMinutes), gapMinutes: Number(values.gapMinutes ?? 0), recess: { after: Number(values.recessAfter ?? 0), minutes: Number(values.recessMinutes ?? 0) }, lunch: { after: Number(values.lunchAfter ?? 0), minutes: Number(values.lunchMinutes ?? 0) } });
         if (!rows) throw new Error("This preset does not fit: check that each break comes after an existing period, and that the day ends before midnight.");
         await changeRecord(`/day-patterns/${pattern.id}/slots/preset`, "POST", { slots: rows });
         return `${pattern.name} now has ${rows.length} rows.`;

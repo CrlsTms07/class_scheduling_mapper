@@ -100,6 +100,24 @@ export function passwordError(password) {
 }
 
 /**
+ * A name people pick from a list (track, department, designation, task) must read like a name.
+ * The same rule runs in the API (backend/app/Rules/ReadableName.php).
+ * @param {string} typed
+ * @param {string[]} [existing]  names already in the list
+ * @returns {string | null} the problem, or null
+ */
+export function readableNameError(typed, existing = []) {
+  const name = typed.trim();
+  if (name.length < 2) return "Type at least 2 characters.";
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} .,'&()/-]*$/u.test(name)) return "Use letters and numbers only, with spaces and . , ' - & ( ) /";
+  if ((name.match(/\p{L}/gu) ?? []).length < 2) return "A name needs at least 2 letters.";
+  if (/(.)\1{3,}/u.test(name)) return "The same character is typed 4 times in a row. Check the spelling.";
+  if (!/[aeiouy]/i.test(name) && !/^[A-Z]{2,6}$/.test(name)) return "This does not look like a name (it has no vowel). Check the spelling, or type a short form in capitals, like SSG.";
+  if (existing.some((other) => other.trim().toLowerCase() === name.toLowerCase())) return "This is already in the list.";
+  return null;
+}
+
+/**
  * Puts the API's field errors under the right fields. Returns the message for the rest.
  * @param {unknown} error
  * @param {Record<string, { setError: (message: string | null) => void }>} fields

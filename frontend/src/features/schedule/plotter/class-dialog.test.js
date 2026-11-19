@@ -13,7 +13,6 @@ vi.mock("@/api/schedule.js", () => ({
   getTeacherChoices: vi.fn(async () => []),
   placeActivity: vi.fn(async () => ({})),
   quickAddTeacher: vi.fn(async () => ({ id: 99, name: "New Teacher" })),
-  resolvePeriod: vi.fn(async () => ({ 5: 11 })),
 }));
 
 const api = await import("@/api/schedule.js");
@@ -87,7 +86,7 @@ describe("the Add / Edit class dialog", () => {
     expect(api.assignSlot).toHaveBeenCalledWith(1, 2, { slotId: 12, section_subject_id: 50, room_id: 7, days: [5] });
   });
 
-  it("offers only periods that fit and are free (UI requirement 6)", async () => {
+  it("shows every period as a block: free ones to choose, full ones disabled with the reason (UI requirement 6)", async () => {
     api.getFreePeriods.mockResolvedValueOnce([
       { slot_id: 11, minutes: 40, free_days: [], busy: [{ day: 5, reason: "Teacher Sample 1 is teaching Grade 7 – Sample A." }] },
       { slot_id: 12, minutes: 40, free_days: [5], busy: [] },
@@ -96,9 +95,13 @@ describe("the Add / Edit class dialog", () => {
     await flush();
     await flush();
 
-    const offered = [...document.querySelectorAll("dialog [role=radio]")].map((item) => item.textContent);
+    const blocks = [...document.querySelectorAll("dialog [role=radio]")];
+    const offered = blocks.filter((item) => item.getAttribute("aria-disabled") !== "true").map((item) => item.textContent);
     expect(offered).toHaveLength(1);
     expect(offered[0]).toContain("3:50 PM");
+    const full = blocks.find((item) => item.getAttribute("aria-disabled") === "true");
+    expect(full?.textContent).toContain("Full");
+    expect(full?.textContent).toContain("Teacher Sample 1 is teaching Grade 7 – Sample A.");
     expect(document.querySelector("dialog")?.textContent).toContain("6:30 AM – 7:10 AM is not offered. Friday: Teacher Sample 1 is teaching Grade 7 – Sample A.");
   });
 });

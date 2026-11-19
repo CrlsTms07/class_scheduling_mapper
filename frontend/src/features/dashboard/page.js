@@ -14,7 +14,7 @@ import { errorMessage } from "@/api/client.js";
 import { classesOn, getAdminDashboard, getMyProfile, getMySchedule, getSchedulerDashboard, nextClass } from "@/api/dashboard.js";
 import { session } from "@/state/session.js";
 import { termState } from "@/state/term.js";
-import { ROLE_LABELS } from "@/lib/navigation.js";
+import { roleWithScope } from "@/lib/navigation.js";
 import { DAY_NAMES } from "@/lib/schedule.js";
 import { formatTime } from "@/lib/time.js";
 
@@ -93,7 +93,7 @@ export async function render(container) {
   const user = session.user;
   const term = termState.term;
   const role = user?.role ?? "teacher";
-  const greeting = h("div", null, h("h1", { class: "text-xl font-semibold text-brand" }, `Welcome, ${user?.first_name ?? ""}`), h("p", { class: "text-sm text-muted-foreground" }, `${ROLE_LABELS[role]}${term ? ` · ${term.name}, SY ${term.school_year.name}` : ""}`));
+  const greeting = h("div", null, h("h1", { class: "text-xl font-semibold text-brand" }, `Welcome, ${user?.first_name ?? ""}`), h("p", { class: "text-sm text-muted-foreground" }, `${roleWithScope(user).full}${term ? ` · ${term.name}, SY ${term.school_year.name}` : ""}`));
 
   if (!term) {
     replace(container, h("div", { class: "space-y-5 p-4 sm:p-6" }, greeting, emptyState({ title: "No school year yet", text: role === "super_admin" ? "Start the school year first: its terms, then the rest of the setup." : "The Admin has not started a school year yet.", action: role === "super_admin" ? h("a", { href: "/school-years", class: "btn btn-primary" }, icon("calendar"), "Start a school year") : null })));

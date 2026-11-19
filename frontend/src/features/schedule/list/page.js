@@ -6,7 +6,7 @@
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
 import { skeletonList } from "@/components/loading.js";
-import { emptyState, pageHeader } from "@/components/page-header.js";
+import { emptyState, noMatches, pageHeader } from "@/components/page-header.js";
 import { errorMessage } from "@/api/client.js";
 import { getScheduleMap, getSections } from "@/api/schedule.js";
 import { watch } from "@/state/cache.js";
@@ -115,7 +115,15 @@ export async function render(container, { navigate }) {
       replace(
         content,
         rooms.length === 0 && found.length === 0
-          ? h("p", { class: "text-sm text-muted-foreground" }, "Nothing matches your search.")
+          ? noMatches({
+              noun: "room or section",
+              search: ui.search,
+              onClear: () => {
+                ui.search = "";
+                searchInput.value = "";
+                draw();
+              },
+            })
           : h(
               "div",
               { class: "space-y-5" },
