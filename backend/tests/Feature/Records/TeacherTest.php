@@ -262,3 +262,27 @@ it('refuses a track name typed at random or already there in other letters', fun
     $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertCreated();
     $this->postJson('/api/tracks', ['name' => 'techpro'])->assertUnprocessable()->assertJsonPath('errors.name.0', 'This track already exists.');
 });
+
+it('saves an employee ID, unique in any letter case', function () {
+    DB::table('teachers')->where('id', $this->teacherId)->update(['employee_id' => 'EMP-001']);
+
+    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['employee_id' => ' emp-001 ']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['employee_id' => 'This employee ID already belongs to Ana Reyes.']);
+
+    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['employee_id' => '45 12']))
+        ->assertJsonValidationErrors(['employee_id' => 'only letters, numbers and dashes']);
+
+    $id = $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['employee_id' => ' 4512301 ']))
+        ->assertCreated()->json('data.id');
+    expect(DB::table('teachers')->where('id', $id)->value('employee_id'))->toBe('4512301');
+
+    // Saving a teacher again keeps its own ID; an empty one is stored as none.
+    $this->putJson("/api/terms/{$this->termId}/teachers/{$this->teacherId}", teacherBody(['first_name' => 'Ana', 'last_name' => 'Reyes', 'employee_id' => 'EMP-001']))
+        ->assertOk();
+    $this->putJson("/api/terms/{$this->termId}/teachers/{$id}", teacherBody(['employee_id' => '']))->assertOk();
+    expect(DB::table('teachers')->where('id', $id)->value('employee_id'))->toBeNull();
+
+    $listed = collect($this->getJson("/api/terms/{$this->termId}/teachers")->json('data'))->firstWhere('id', $this->teacherId);
+    expect($listed['employee_id'])->toBe('EMP-001');
+});

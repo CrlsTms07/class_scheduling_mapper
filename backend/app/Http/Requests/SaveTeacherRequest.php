@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Teacher;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SaveTeacherRequest extends FormRequest
 {
@@ -19,6 +21,7 @@ class SaveTeacherRequest extends FormRequest
     {
         return [
             'personnel_type' => ['required', Rule::in(['teaching', 'non_teaching'])],
+            'employee_id' => ['nullable', 'string', 'max:20', 'regex:/^[0-9A-Za-z-]+$/'],
             'first_name' => ['required', 'string', 'max:60'],
             'middle_name' => ['nullable', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:60'],
@@ -49,6 +52,45 @@ class SaveTeacherRequest extends FormRequest
             'qualifications.*.degree_level' => 'level',
             'qualifications.*.degree' => 'degree',
             'qualifications.*.year_completed' => 'year completed',
+            'employee_id' => 'employee ID',
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['employee_id.regex' => 'The employee ID can have only letters, numbers and dashes.'];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('employee_id')) {
+            $id = trim((string) $this->input('employee_id'));
+            $this->merge(['employee_id' => $id === '' ? null : $id]);
+        }
+    }
+
+    /**
+     * One employee ID per person, in any letter case.
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            $id = $this->input('employee_id');
+            if ($id === null || $validator->errors()->has('employee_id')) {
+                return;
+            }
+
+            $editing = $this->route('teacher');
+            $owner = Teacher::whereRaw('LOWER(employee_id) = LOWER(?)', [$id])
+                ->when($editing, fn ($query) => $query->whereKeyNot($editing->id))
+                ->first();
+
+            if ($owner) {
+                $validator->errors()->add('employee_id', "This employee ID already belongs to {$owner->printedName()}.");
+            }
+        }];
     }
 }

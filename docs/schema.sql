@@ -161,8 +161,10 @@ CREATE TABLE teachers (
     max_subjects     SMALLINT NOT NULL DEFAULT 5 CHECK (max_subjects BETWEEN 0 AND 8),
     max_hours_per_week SMALLINT NOT NULL DEFAULT 30 CHECK (max_hours_per_week BETWEEN 1 AND 60),  -- Load Distribution
     display_name     VARCHAR(80),              -- name printed on schedules, e.g. 'Rhalf T. Tagaduar'
-    is_active        BOOLEAN NOT NULL DEFAULT true
+    is_active        BOOLEAN NOT NULL DEFAULT true,
+    employee_id      VARCHAR(20)               -- DepEd employee number; the key of the master-data import
 );
+CREATE UNIQUE INDEX teachers_employee_id_unique ON teachers (LOWER(employee_id));
 
 CREATE TABLE teacher_qualifications (      -- educational qualification
     id               BIGSERIAL PRIMARY KEY,

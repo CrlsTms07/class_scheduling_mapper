@@ -85,6 +85,20 @@ export function depEdEmailError(email) {
 }
 
 /**
+ * An employee ID is optional; when given, only letters, numbers and dashes, up to 20 characters.
+ * The server also checks that no one else has it.
+ * @param {string} value
+ * @returns {string | null}
+ */
+export function employeeIdError(value) {
+  const id = (value ?? "").trim();
+  if (!id) return null;
+  if (id.length > 20) return "Use at most 20 characters";
+  if (!/^[0-9A-Za-z-]+$/.test(id)) return "Use only letters, numbers and dashes";
+  return null;
+}
+
+/**
  * The password rules: 8 to 64 characters, with lower and upper case, a number and a symbol.
  * @param {string} password
  * @returns {string | null}

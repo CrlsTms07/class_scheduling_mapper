@@ -16,6 +16,7 @@ import { api, errorMessage } from "@/api/client.js";
 import { changeRecord, getRecords } from "@/api/records.js";
 import { load, watch } from "@/state/cache.js";
 import { termState } from "@/state/term.js";
+import { employeeIdError } from "@/lib/forms.js";
 import { DAY_NAMES } from "@/lib/schedule.js";
 import { timeRange } from "@/lib/time.js";
 
@@ -82,6 +83,7 @@ export async function render(container, { query }) {
       title: teacher ? `Edit ${teacher.printed_name}` : "Add a teacher",
       description: `Personnel record. Tasks are for ${term.name}.`,
       fields: [
+        { name: "employee_id", label: "Employee ID", value: teacher?.employee_id ?? "", help: "The DepEd employee number. Imports match teachers by it.", check: (value) => employeeIdError(value) },
         { name: "first_name", label: "First name", required: true, value: teacher?.first_name },
         { name: "middle_name", label: "Middle name", value: teacher?.middle_name ?? "" },
         { name: "last_name", label: "Last name", required: true, value: teacher?.last_name },
@@ -99,7 +101,7 @@ export async function render(container, { query }) {
       submitLabel: teacher ? "Save changes" : "Add teacher",
       onSubmit: async (values) => {
         const id = (/** @type {any} */ value) => (value === "" || value === null ? null : Number(value));
-        const body = { ...values, middle_name: values.middle_name || null, suffix: values.suffix || null, display_name: values.display_name || null, department_id: id(values.department_id), designation_id: id(values.designation_id), task_ids: values.task_ids.map(Number), qualifications: education.read() };
+        const body = { ...values, employee_id: values.employee_id.trim() || null, middle_name: values.middle_name || null, suffix: values.suffix || null, display_name: values.display_name || null, department_id: id(values.department_id), designation_id: id(values.designation_id), task_ids: values.task_ids.map(Number), qualifications: education.read() };
         await changeRecord(teacher ? `/terms/${term.id}/teachers/${teacher.id}` : `/terms/${term.id}/teachers`, teacher ? "PUT" : "POST", body);
         return `${values.first_name} ${values.last_name} was ${teacher ? "saved" : "added"}.`;
       },

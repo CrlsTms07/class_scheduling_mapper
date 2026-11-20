@@ -76,6 +76,7 @@ class TeacherService
             ->map(fn (Teacher $teacher) => [
                 'id' => $teacher->id,
                 'personnel_type' => $teacher->personnel_type,
+                'employee_id' => $teacher->employee_id,
                 'levels' => $levels->get($teacher->id, []),
                 'first_name' => $teacher->first_name,
                 'middle_name' => $teacher->middle_name,

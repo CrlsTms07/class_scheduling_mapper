@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { presetRows, slotOverlap } from "@/features/setup/time-slots.js";
 import { buildTerms, dayMonthYear, termName } from "@/features/admin/school-years.js";
 import { floorLabel, floorOf, roomsByFloor } from "@/features/schedule/places.js";
-import { depEdEmailError, passwordError, readableNameError } from "./forms.js";
+import { depEdEmailError, employeeIdError, passwordError, readableNameError } from "./forms.js";
 import { roleWithScope } from "./navigation.js";
 import { matchRoute, redirectFor } from "@/router.js";
 import { session } from "@/state/session.js";
@@ -142,3 +142,11 @@ describe("time slots are checked while choosing (no waiting for Save)", () => {
   });
 });
 
+describe("employee ID", () => {
+  it("is optional, and allows letters, numbers and dashes only", () => {
+    expect(employeeIdError("")).toBeNull();
+    expect(employeeIdError(" 4512-301 ")).toBeNull();
+    expect(employeeIdError("45 12")).toBe("Use only letters, numbers and dashes");
+    expect(employeeIdError("1".repeat(21))).toBe("Use at most 20 characters");
+  });
+});
