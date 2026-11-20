@@ -6,6 +6,7 @@ use App\Models\SchoolYear;
 use App\Models\User;
 use App\Services\Import\ImportRows;
 use App\Services\Import\MasterDataImporter;
+use App\Services\Import\RoomImporter;
 use App\Services\Import\SubjectImporter;
 use App\Services\Import\TeacherImporter;
 use Illuminate\Database\QueryException;
@@ -26,6 +27,7 @@ class MasterDataImportService
     public const TYPES = [
         'teachers' => TeacherImporter::class,
         'subjects' => SubjectImporter::class,
+        'rooms' => RoomImporter::class,
     ];
 
     public function __construct(private AuditLogger $audit) {}
