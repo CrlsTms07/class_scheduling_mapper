@@ -18,7 +18,6 @@ use App\Http\Controllers\PublicSchoolController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportSettingsController;
-use App\Http\Controllers\ScheduleImportController;
 use App\Http\Controllers\ScheduleMapController;
 use App\Http\Controllers\SchedulerDashboardController;
 use App\Http\Controllers\SchoolYearController;
@@ -136,7 +135,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/terms/{term}/rooms/{room}/schedule', [ScheduleMapController::class, 'room']);
     Route::post('/terms/{term}/loading/copy', [TeacherLoadingController::class, 'copy']);
     Route::post('/terms/{term}/import-previous', [ImportController::class, 'store']);
-    Route::post('/terms/{term}/schedule-import', [ScheduleImportController::class, 'store']);
     Route::post('/terms/{term}/schedule-copy', [TermCopyController::class, 'store']);
     Route::post('/teachers/quick-add', [TeacherLoadingController::class, 'quickAddTeacher']);
     Route::get('/personnel-options', [TeacherController::class, 'options']);

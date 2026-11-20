@@ -25,31 +25,24 @@ test("lists the sections and starts a schedule from New schedule", async ({ page
   await expect(page.getByRole("heading", { level: 1, name: "Schedule" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Grade 7 – Sample A/ }).first()).toBeVisible();
 
-  // Import and Copy are only in New schedule (team decision, Nov 17, 2026).
-  await expect(page.getByRole("button", { name: "Import from a file" })).toHaveCount(0);
+  // Copy is only in New schedule (team decision, Nov 17, 2026). Schedules are never imported
+  // from a file (beneficiary review, Nov 20, 2026).
   await page.getByRole("button", { name: "New schedule" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("button", { name: /Import from a file/ })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Import from a file/ })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: /Copy another term's schedule/ })).toBeVisible();
 
   await dialog.getByRole("button", { name: /Build it on a timetable/ }).click();
   await expect(page).toHaveURL(/\/schedule\/sections\/\d+/);
 });
 
-test("finds a section by its adviser, and opens the import review", async ({ page }) => {
+test("finds a section by its adviser", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await signIn(page);
   await page.goto("/schedule");
   await page.getByLabel("Search rooms and sections").fill("Teacher Sample 2");
   await expect(page.getByRole("link", { name: /Grade 7 – Sample B/ }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Grade 7 – Sample A/ })).toHaveCount(0);
-
-  await page.getByLabel("Search rooms and sections").fill("");
-  await page.getByRole("button", { name: "New schedule" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: /Import from a file/ }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "Import from a file" })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Review" })).toBeDisabled();
 });
 
 test("gives a subject another teacher, and says so", async ({ page }) => {

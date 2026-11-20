@@ -227,22 +227,3 @@ export async function copySchedule(termId, body) {
   if (!body.preview) invalidate(["terms", termId]);
   return data;
 }
-
-/**
- * Reads a schedule file. With preview, every row is only checked; with setUp, what the file names
- * but the system lacks (sections, subjects, teachers, rooms, bell schedules) is set up from it.
- * @param {number} termId
- * @param {{ file: File, preview: boolean, setUp: boolean }} input
- */
-export async function importSchedule(termId, { file, preview, setUp }) {
-  const body = new FormData();
-  body.append("file", file);
-  body.append("preview", preview ? "1" : "0");
-  body.append("set_up", setUp ? "1" : "0");
-  const { data } = /** @type {{ data: any }} */ (await api(`/terms/${termId}/schedule-import`, { method: "POST", body }));
-  if (!preview) {
-    if (setUp) invalidate([]);
-    else invalidate(["terms", termId]);
-  }
-  return data;
-}

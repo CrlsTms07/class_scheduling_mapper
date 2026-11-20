@@ -100,7 +100,6 @@ export const SCHEDULE_GUIDE = [
           "By section: choose who teaches each subject of each section.",
           "By teacher (Load Distribution): check that no one carries too much. Each overload says how to fix it.",
         ],
-        tip: "Shortcut: on the Schedule page, Import reads the school's Excel class program and fills in the steps above for you.",
       },
     ],
   },
