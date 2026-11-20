@@ -117,6 +117,14 @@ npm run test:e2e                  # Playwright; only against a throwaway databas
   Profile, the guide and the Guest view with QR codes. Tests: 100 Vitest and 44 Playwright (sizes 360×640,
   844×390, 1366×768). It was built as `frontend-v2/`; on Nov 18, 2026 the React app was removed (still in the
   Git history, commit `51a4cca`) and the folder was renamed `frontend/`.
+- **Beneficiary review (team decisions, Nov 21, 2026, see `docs/client-notes.md`):** the schedule import from
+  Excel was removed (schedules are made in the system, never imported). **Master-data import** (Admin only):
+  teachers, subjects, rooms and sections from an Excel template (`GET /api/imports/{type}/template.xlsx`,
+  `POST /api/school-years/{id}/imports/{type}?mode=preview|commit`, `App\Services\MasterDataImportService` and
+  `App\Services\Import\*`); preview and import run the same checks, and every row says new, update, skip or error
+  with the fix. `teachers.employee_id` is the teacher key. **Setup Guide** (`/setup`, Admin): ten steps in order with
+  status, counts, prerequisites and import buttons (`frontend/src/features/setup-guide/`, panel in
+  `components/import-panel.js`).
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
 - **Deployment:** Render (one Docker service for Laravel and the web app) with a Supabase database (Neon as a
   fallback). Steps, including

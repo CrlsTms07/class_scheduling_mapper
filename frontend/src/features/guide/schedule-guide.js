@@ -90,7 +90,8 @@ export const SCHEDULE_GUIDE = [
         title: "Teachers",
         roles: SCHEDULERS,
         where: { label: "Teachers", to: "/teachers" },
-        what: ["Add the teaching personnel with their shift and maximum hours a week."],
+        what: ["Add the teaching personnel with their employee ID, department, shift and maximum hours a week."],
+        tip: "Shortcut for the Admin: the Setup Guide imports whole lists of teachers, subjects, rooms and sections from an Excel template, and checks every row before saving.",
       },
       {
         title: "Teacher loading",

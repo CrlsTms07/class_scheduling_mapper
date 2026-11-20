@@ -266,6 +266,28 @@ Based on a reference prototype the team reviewed (removed from the repo on Nov 1
 - **Role badge with the department:** "GLC · JHS" or "MT · SHS" under the user's name. A Chairperson still sees
   every teacher, since teachers move between Junior and Senior High.
 
+## Team decisions (Nov 21, 2026), after the beneficiary's review (docs/paper/Update_Info for changes.pdf)
+
+- **No schedule import:** "Why import if the system is for making schedules?" The schedule import from Excel
+  (`POST /terms/{term}/schedule-import`, `ScheduleImportService`, `ClassProgramReader`) and "Import from a file" in
+  New schedule were removed. Schedules are made by hand or copied from another term.
+- **Master-data import instead** (Admin only), so teachers, subjects, rooms and sections are not typed one by one
+  every year. Each has an Excel template with the exact headers, one example row and a "How to fill in" sheet.
+  The upload is checked row by row first (new, update, skip or error, with the fix, e.g. "Row 12: department
+  "TLE-ICTT" does not exist."); a key twice in one file is an error; the user chooses Skip or Update for records
+  already in the system; nothing is saved until Import, and the import runs the same checks in one transaction.
+  Records can still be added and edited on their own pages.
+- **Imports are XLSX; a PDF is accepted but answered with "use the Excel template"** until a PDF reader is approved.
+  Exports stay PDF and CSV.
+- **Employee ID** (`teachers.employee_id`, unique in any letter case) is the teacher key of the import, and a field
+  on the Teachers form. A teacher encoded by hand with the same name and no ID gets the ID instead of a second record.
+  A row with a DepEd email gives an active Teacher account (Google sign-in or Forgot password).
+- **Setup Guide** (`/setup`, Admin menu after Dashboard): the steps before a schedule, in order, each with its status,
+  count, what it needs first ("Add teachers first (Step 4).") and a button to its page or its import. Teacher Loading
+  is its own step, since plotting needs it. Step 10 offers the existing "Copy from another term".
+- **Later (after the evaluation, before the December defense):** teacher specialization (`teacher_subjects`, from the
+  beneficiary's ERD) with "qualified first" in the class dialog's teacher list; reading PDF imports.
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade
