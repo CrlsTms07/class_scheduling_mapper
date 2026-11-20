@@ -116,7 +116,7 @@ export async function downloadFile(path) {
   }
 
   const disposition = response.headers.get("Content-Disposition") ?? "";
-  const fileName = disposition.match(/filename="([^"]+)"/)?.[1] ?? "download";
+  const fileName = disposition.match(/filename="?([^";]+)"?/)?.[1] ?? "download";
   const url = URL.createObjectURL(await response.blob());
 
   const link = document.createElement("a");
