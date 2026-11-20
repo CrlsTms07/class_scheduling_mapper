@@ -36,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         // Only the Admin sets what the printed forms are made from.
         Gate::define('manage-reports', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
 
+        // Teachers, subjects, rooms and sections from the Excel template (team decision, Nov 21, 2026).
+        Gate::define('import-master-data', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
+
         Gate::define('view-admin-dashboard', fn (User $user) => $user->hasRole(User::ROLE_ADMIN));
         // The Admin can plot too, so the Admin follows the same steps of making a schedule.
         Gate::define('view-scheduler-dashboard', fn (User $user) => $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher']));

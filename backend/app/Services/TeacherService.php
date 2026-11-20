@@ -251,12 +251,18 @@ class TeacherService
     /**
      * Only teaching personnel can have subjects or be advisers.
      */
+    /**
+     * An advisory or teacher loading: then the person must stay teaching personnel.
+     */
+    public function hasTeachingWork(Teacher $teacher): bool
+    {
+        return DB::table('sections')->where('adviser_id', $teacher->id)->orWhere('co_adviser_id', $teacher->id)->exists()
+            || DB::table('section_subjects')->where('teacher_id', $teacher->id)->exists();
+    }
+
     private function stopIfTeachingWork(Teacher $teacher): void
     {
-        $hasWork = DB::table('sections')->where('adviser_id', $teacher->id)->orWhere('co_adviser_id', $teacher->id)->exists()
-            || DB::table('section_subjects')->where('teacher_id', $teacher->id)->exists();
-
-        if ($hasWork) {
+        if ($this->hasTeachingWork($teacher)) {
             throw ValidationException::withMessages([
                 'personnel_type' => 'This person has an advisory or teacher loading, so they must stay as teaching personnel.',
             ]);
