@@ -62,14 +62,12 @@ describe("menu (design audit, Must fix #2)", () => {
   it("follows the setup steps in order, and stays short", () => {
     const groups = navigationFor("super_admin");
     expect(groups.map(({ label }) => label)).toEqual(["Main", "Setup", "Admin"]);
-    expect(groups[1].items.map(({ name }) => name)).toEqual(["1 · Rooms & Buildings", "2 · Time Slots", "3 · Subjects", "4 · Sections", "5 · Teachers", "6 · Teacher Loading"]);
-    // 14 with the Admin's Setup Guide (team decision, Nov 21, 2026).
-    expect(groups[0].items.map(({ name }) => name)).toEqual(["Dashboard", "Setup Guide", "Schedule", "Approvals", "Reports"]);
-    expect(groups.flatMap(({ items }) => items)).toHaveLength(14);
+    expect(groups[1].items.map(({ name }) => name)).toEqual(["1 · Teachers", "2 · Subjects", "3 · Sections", "4 · Rooms & Buildings", "5 · Time Slots", "6 · Teacher Loading"]);
+    expect(groups[0].items.map(({ name }) => name)).toEqual(["Dashboard", "Schedule", "Approvals", "Reports"]);
+    expect(groups.flatMap(({ items }) => items)).toHaveLength(13);
   });
 
   it("shows a teacher only their own records", () => {
-    expect(navigationFor("glc").flatMap(({ items }) => items).map(({ name }) => name)).not.toContain("Setup Guide");
     expect(navigationFor("teacher").flatMap(({ items }) => items).map(({ name }) => name)).toEqual(["Dashboard", "My Schedule", "My Profile"]);
   });
 

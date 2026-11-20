@@ -48,10 +48,10 @@ test("dashboards fit each role", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await signIn(page, "admin@deped.gov.ph");
   await expect(page.getByText("Accounts to activate")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Making the schedule" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Steps to make the schedule" })).toBeVisible();
 
   await signIn(page, "glc@deped.gov.ph");
-  await expect(page.getByRole("region", { name: "Making the schedule" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Steps to make the schedule" })).toBeVisible();
   await expect(page.getByText("Waiting for approval")).toBeVisible();
 
   await signIn(page, "teacher@deped.gov.ph");
@@ -177,8 +177,6 @@ test("the school years, report settings, guide, rooms and buildings open", async
   await page.getByRole("tab", { name: "Signatories" }).click();
   await expect(page.getByRole("button", { name: "Add signatory" })).toBeVisible();
 
-  await page.goto("/guide");
-  await expect(page.getByRole("heading", { level: 1, name: "How to make a schedule" })).toBeVisible();
   await page.goto("/schedule");
   await page.getByRole("tab", { name: "Sample Building" }).click();
   await page.getByRole("link", { name: "View building" }).click();
@@ -188,7 +186,7 @@ test("the school years, report settings, guide, rooms and buildings open", async
 });
 
 const PAGES = [
-  ["admin@deped.gov.ph", ["/dashboard", "/buildings", "/time-slots", "/subjects", "/sections", "/teachers", "/users", "/school-years", "/report-settings", "/guide"]],
+  ["admin@deped.gov.ph", ["/dashboard", "/buildings", "/time-slots", "/subjects", "/sections", "/teachers", "/users", "/school-years", "/report-settings"]],
   ["teacher@deped.gov.ph", ["/dashboard", "/my-schedule", "/my-profile"]],
 ];
 

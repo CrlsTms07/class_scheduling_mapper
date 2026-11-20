@@ -65,7 +65,6 @@ const NAVIGATION = [
     label: "Main",
     items: [
       { name: "Dashboard", path: "/dashboard", icon: "dashboard", roles: EVERYONE },
-      { name: "Setup Guide", path: "/setup", icon: "clipboard", roles: ADMIN },
       { name: "Schedule", path: "/schedule", icon: "calendar-check", roles: STAFF },
       { name: "Approvals", path: "/approvals", icon: "circle-check", roles: ADMIN },
       { name: "Reports", path: "/reports", icon: "folder", roles: STAFF },
@@ -74,11 +73,11 @@ const NAVIGATION = [
   {
     label: "Setup",
     items: [
-      { name: "1 · Rooms & Buildings", path: "/buildings", icon: "building", roles: STAFF },
-      { name: "2 · Time Slots", path: "/time-slots", icon: "clock", roles: STAFF },
-      { name: "3 · Subjects", path: "/subjects", icon: "book", roles: STAFF },
-      { name: "4 · Sections", path: "/sections", icon: "team", roles: STAFF },
-      { name: "5 · Teachers", path: "/teachers", icon: "users", roles: STAFF },
+      { name: "1 · Teachers", path: "/teachers", icon: "users", roles: STAFF },
+      { name: "2 · Subjects", path: "/subjects", icon: "book", roles: STAFF },
+      { name: "3 · Sections", path: "/sections", icon: "team", roles: STAFF },
+      { name: "4 · Rooms & Buildings", path: "/buildings", icon: "building", roles: STAFF },
+      { name: "5 · Time Slots", path: "/time-slots", icon: "clock", roles: STAFF },
       { name: "6 · Teacher Loading", path: "/teacher-loading", icon: "clipboard", roles: STAFF },
     ],
   },

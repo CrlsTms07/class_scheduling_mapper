@@ -1,8 +1,9 @@
 // @ts-check
 /**
  * The dashboard: what each role needs first.
- * - Admin: what waits for them, the school's setup, and how far each grade is.
- * - Chairperson and Master Teacher: their next steps and the six setup steps in order.
+ * - Admin: what waits for them, the same seven steps (with the school year, accounts and report
+ *   settings around them), and how far each grade is.
+ * - Chairperson and Master Teacher: their next steps and the seven steps, in the Setup menu's order.
  * - Teacher: the next class, today's classes and the week's teaching time.
  * The setup steps show on phones too (design audit, Must fix #8).
  */
@@ -30,36 +31,51 @@ function tile({ label, value, note, to, tone = "text-accent" }) {
   return to ? h("a", { href: to, class: "card block p-4 hover:border-brand" }, body) : h("div", { class: "card p-4" }, body);
 }
 
-/** What each setup step is, where it is done, and how far along it is. */
+/** What each step is, where it is done, and how far along it is. Same order and names as the Setup menu. */
 function describeStep(/** @type {any} */ step) {
   const counts = step.counts;
   switch (step.key) {
-    case "rooms": return { title: "Rooms & Buildings", detail: "The buildings and rooms classes are held in.", to: "/buildings", status: `${plural(counts.buildings, "building")} · ${plural(counts.rooms, "room")} in use` };
-    case "bell": return { title: "Bell schedule", detail: "The periods and breaks of your department, like Monday – Thursday and Friday.", to: "/time-slots", status: counts.ready === counts.departments && counts.departments > 0 ? plural(counts.patterns, "bell schedule") : "Not set up yet" };
-    case "subjects": return { title: "Subjects & Sections", detail: "Subjects and activities of your grade levels, and your sections.", to: "/subjects", status: `${plural(counts.subjects, "subject")} · ${plural(counts.activities, "activity", "activities")} · ${plural(counts.sections, "section")}` };
-    case "teachers": return { title: "Teachers", detail: "Teaching personnel, with their shift and how much they may carry.", to: "/teachers", status: plural(counts.teachers, "teacher") };
-    case "loading": return { title: "Teacher Loading", detail: "Who teaches each subject of each section, and each teacher's hours a week.", to: "/teacher-loading", status: `${counts.loaded} of ${counts.needed} subjects have a teacher${counts.over_hours ? ` · ${counts.over_hours} overloaded` : ""}` };
-    default: return { title: "Plot", detail: "Place each section's subjects and activities on its weekly schedule, then submit.", to: "/schedule", status: `${counts.started} of ${counts.sections} started · ${counts.submitted} submitted` };
+    case "teachers": return { title: "Teachers", detail: "Teaching personnel, each in a department.", to: "/teachers", status: plural(counts.teachers, "active teacher") };
+    case "subjects": return { title: "Subjects", detail: "The subjects of your grade levels this school year, and activities like Flag Ceremony.", to: "/subjects", status: `${plural(counts.subjects, "subject")} · ${plural(counts.activities, "activity", "activities")}` };
+    case "sections": return { title: "Sections", detail: "This year's sections, each with its adviser.", to: "/sections", status: `${plural(counts.sections, "section")}${counts.without_adviser ? ` · ${counts.without_adviser} without an adviser` : ""}` };
+    case "rooms": return { title: "Rooms & Buildings", detail: "The buildings and rooms classes are held in.", to: "/buildings", status: `${plural(counts.buildings, "building")} · ${plural(counts.rooms, "room")}` };
+    case "bell": return { title: "Time Slots", detail: "The class hours of your department: periods and breaks, like Monday – Thursday and Friday.", to: "/time-slots", status: counts.ready === counts.departments && counts.departments > 0 ? plural(counts.patterns, "bell schedule") : "Not set up yet" };
+    case "loading": return { title: "Teacher Loading", detail: "Who teaches each subject of each section.", to: "/teacher-loading", status: `${counts.loaded} of ${counts.needed} subjects have a teacher` };
+    default: return { title: "Make the schedule", detail: "Place each section's classes, then submit for approval.", to: "/schedule", status: `${counts.started} of ${counts.sections} started · ${counts.submitted} submitted` };
   }
 }
 
-/** The six steps of making a schedule, in order; the next one stands out. */
-function stepsList(/** @type {any[]} */ steps) {
+/**
+ * The one list of steps (the Setup menu's order); the next one stands out. The Admin also sees what
+ * comes before (school year, accounts) and before printing (report settings), unnumbered.
+ * @param {any[]} steps
+ * @param {{ before?: any[], after?: any[] }} [extra]  the Admin's own items
+ */
+function stepsList(steps, { before = [], after = [] } = {}) {
   const nextIndex = steps.findIndex(({ done }) => !done);
+  const extraItem = (/** @type {any} */ item) => h("li", null, h(
+    "a",
+    { href: item.to, class: "card flex items-start gap-3 p-3 hover:border-brand" },
+    h("span", { class: `flex size-8 shrink-0 items-center justify-center rounded-full ${item.done ? "bg-success text-white" : "bg-surface-muted"}` }, item.done ? icon("check") : icon(item.icon, "size-4")),
+    h("span", { class: "min-w-0" }, h("span", { class: "block font-medium" }, item.title), h("span", { class: "block text-small text-muted-foreground" }, item.detail)),
+  ));
   return h(
     "section",
-    { "aria-label": "Making the schedule", class: "space-y-2" },
-    h("h2", { class: "font-semibold text-accent" }, "Making the schedule"),
+    { "aria-label": "Steps to make the schedule", class: "space-y-2" },
+    h("h2", { class: "font-semibold text-accent" }, "Steps to make the schedule"),
+    h("p", { class: "text-small text-muted-foreground" }, "The same steps, in the same order, as the Setup menu. Do the highlighted one next."),
+    before.length ? h("ul", { class: "space-y-2", "aria-label": "Before you start" }, before.map(extraItem)) : null,
     h("ol", { class: "space-y-2" }, steps.map((step, index) => {
       const { title, detail, to, status } = describeStep(step);
       const isNext = index === nextIndex;
       return h("li", null, h(
         "a",
-        { href: to, class: `card flex items-start gap-3 p-3 hover:border-brand ${isNext ? "border-2 border-brand" : ""}` },
+        { href: to, class: `card flex items-start gap-3 p-3 hover:border-brand ${isNext ? "border-2 border-brand" : ""}`, "aria-current": isNext ? "step" : undefined },
         h("span", { class: `flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${step.done ? "bg-success text-white" : isNext ? "bg-brand text-white" : "bg-surface-muted"}` }, step.done ? icon("check") : String(index + 1)),
         h("span", { class: "min-w-0" }, h("span", { class: "block font-medium" }, `${index + 1}. ${title}`), h("span", { class: "block text-small text-muted-foreground" }, detail), h("span", { class: `block text-small font-medium ${step.done ? "text-success" : isNext ? "text-brand" : "text-muted-foreground"}` }, isNext ? `Next: ${status}` : status)),
       ));
     })),
+    after.length ? h("ul", { class: "space-y-2", "aria-label": "Before printing" }, after.map(extraItem)) : null,
   );
 }
 
@@ -88,6 +104,23 @@ function overloaded(/** @type {any[]} */ teachers) {
   );
 }
 
+/**
+ * The Admin's own items around the steps: the school year and the schedulers' accounts first, the
+ * printed forms' settings last. (Time slots and sections are already steps.)
+ * @param {any[]} checklist
+ */
+function adminExtras(checklist) {
+  const item = (/** @type {string} */ key) => checklist.find((entry) => entry.key === key) ?? { done: false, detail: "" };
+  const printing = [item("school_profile"), item("signatories")];
+  return {
+    before: [
+      { title: "School year and terms", detail: item("calendar").detail, done: item("calendar").done, to: "/school-years", icon: "calendar" },
+      { title: "Accounts of the Chairpersons and Master Teacher", detail: item("schedulers").detail, done: item("schedulers").done, to: "/users", icon: "users" },
+    ],
+    after: [{ title: "Before printing: Report Settings", detail: printing.map(({ detail }) => detail).join(" · "), done: printing.every(({ done }) => done), to: "/report-settings", icon: "printer" }],
+  };
+}
+
 /** @type {import("@/router.js").RenderPage} */
 export async function render(container) {
   const user = session.user;
@@ -104,8 +137,6 @@ export async function render(container) {
   try {
     if (role === "super_admin") {
       const [admin, steps] = await Promise.all([getAdminDashboard(term.id), getSchedulerDashboard(term.id)]);
-      const doneCount = admin.checklist.filter((/** @type {any} */ item) => item.done).length;
-      const links = { calendar: "/school-years", school_profile: "/report-settings", time_slots: "/time-slots", sections: "/sections", signatories: "/report-settings", schedulers: "/users" };
       replace(
         container,
         h(
@@ -118,14 +149,7 @@ export async function render(container) {
             tile({ label: "Flags to check", value: admin.flags.total, note: admin.flags.total ? `${admin.flags.urgent} urgent, in ${plural(admin.flags.sections, "section")}` : "Nothing to check", to: "/reports?tab=validation" }),
             tile({ label: "Accounts to activate", value: admin.pending_accounts, note: "sign-ups waiting", to: "/users", tone: admin.pending_accounts ? "text-brand" : "text-accent" }),
           ),
-          h(
-            "details",
-            { class: "card", open: doneCount < admin.checklist.length },
-            h("summary", { class: "flex min-h-11 cursor-pointer items-center gap-2 p-3 font-medium" }, h("span", { class: "text-accent" }, "School setup"), h("span", { class: "text-sm text-muted-foreground" }, `${doneCount} of ${admin.checklist.length} done`)),
-            h("ul", { class: "divide-y border-t" }, admin.checklist.map((/** @type {any} */ item) => h("li", null, h("a", { href: links[/** @type {keyof typeof links} */ (item.key)] ?? "/dashboard", class: "flex items-start gap-3 p-3 hover:bg-surface-muted" }, h("span", { class: `mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${item.done ? "bg-success text-white" : "bg-surface-muted"}` }, item.done ? icon("check", "size-3.5") : ""), h("span", null, h("span", { class: "block text-sm font-medium" }, item.title), h("span", { class: "block text-small text-muted-foreground" }, item.detail)))))),
-            h("div", { class: "border-t p-3" }, h("a", { href: "/setup", class: "btn btn-outline w-full sm:w-auto" }, icon("clipboard"), "Open the Setup Guide (step by step, with imports)")),
-          ),
-          h("div", { class: "grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" }, stepsList(steps.steps), overloaded(admin.overloaded_teachers)),
+          h("div", { class: "grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" }, stepsList(steps.steps, adminExtras(admin.checklist)), overloaded(admin.overloaded_teachers)),
           progressList(admin.progress),
         ),
       );

@@ -63,7 +63,7 @@ async function differences(page, path) {
 }
 
 const PUBLIC = ["/", "/login", "/signup", "/forgot-password", "/guest"];
-const SIGNED_IN = ["/dashboard", "/schedule", "/subjects", "/teachers", "/sections", "/time-slots", "/buildings", "/report-settings", "/reports", "/approvals", "/users", "/school-years", "/guide"];
+const SIGNED_IN = ["/dashboard", "/schedule", "/subjects", "/teachers", "/sections", "/time-slots", "/buildings", "/report-settings", "/reports", "/approvals", "/users", "/school-years"];
 
 for (const [width, height] of [[1366, 768], [390, 844]]) {
   test(`light and dark keep every size and place at ${width}×${height}`, async ({ page }) => {

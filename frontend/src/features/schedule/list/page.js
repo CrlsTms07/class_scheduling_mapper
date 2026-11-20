@@ -49,7 +49,6 @@ export async function render(container, { navigate }) {
         description: `Build the weekly timetable of each section: subjects, teachers, rooms and times. ${term.name}, SY ${term.school_year.name}.`,
         crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Schedule" }],
         actions: [
-          h("a", { href: "/guide", class: "btn btn-outline" }, icon("book"), "How to make a schedule"),
           h("button", { type: "button", class: "btn btn-primary", onclick: () => openNewScheduleDialog({ term, otherTerms, sections, navigate }) }, icon("calendar-plus"), "New schedule"),
         ],
       }),

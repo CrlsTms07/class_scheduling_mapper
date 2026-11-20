@@ -64,8 +64,9 @@ class SchedulerDashboardService
     }
 
     /**
-     * The steps of making a schedule, from the start, each with how far along it is:
-     * 1 Rooms, 2 Bell schedule, 3 Subjects and sections, 4 Teachers, 5 Load Distribution, 6 Plot.
+     * The steps of making a schedule, in the order of the Setup menu, each with how far along it is
+     * (one order everywhere, after the beneficiary's review, Nov 21, 2026): 1 Teachers, 2 Subjects,
+     * 3 Sections, 4 Rooms, 5 Time Slots (bell schedule), 6 Teacher Loading, 7 Plot and submit.
      *
      * @param  array<int, int>  $scope
      * @return array<int, array{key: string, done: bool, counts: array<string, int>}>
@@ -124,30 +125,36 @@ class SchedulerDashboardService
         $patterns = DayPattern::where('school_year_id', $term->school_year_id)->whereIn('level', $levels)->withCount('timeSlots')->get();
         $bellLevels = $patterns->where('time_slots_count', '>', 0)->pluck('level')->unique();
 
+        $rooms = [
+            'key' => 'rooms',
+            'done' => Room::where('is_active', true)->visibleTo($user)->exists(),
+            'counts' => [
+                'rooms' => Room::where('is_active', true)->visibleTo($user)->count(),
+                'buildings' => Building::visibleTo($user)->count(),
+            ],
+        ];
+
         return [
+            ['key' => 'teachers', 'done' => $teachers > 0, 'counts' => ['teachers' => $teachers]],
             [
-                'key' => 'rooms',
-                'done' => Room::where('is_active', true)->visibleTo($user)->exists(),
+                'key' => 'subjects',
+                'done' => $subjects->isNotEmpty(),
                 'counts' => [
-                    'rooms' => Room::where('is_active', true)->visibleTo($user)->count(),
-                    'buildings' => Building::visibleTo($user)->count(),
+                    'subjects' => $subjects->count(),
+                    'activities' => Activity::where('school_year_id', $term->school_year_id)->visibleTo($user)->count(),
                 ],
             ],
+            [
+                'key' => 'sections',
+                'done' => $models->isNotEmpty() && $models->every(fn (Section $section) => $section->adviser_id !== null),
+                'counts' => ['sections' => $models->count(), 'without_adviser' => $models->whereNull('adviser_id')->count()],
+            ],
+            $rooms,
             [
                 'key' => 'bell',
                 'done' => $levels->isNotEmpty() && $levels->diff($bellLevels)->isEmpty(),
                 'counts' => ['patterns' => $patterns->count(), 'departments' => $levels->count(), 'ready' => $bellLevels->count()],
             ],
-            [
-                'key' => 'subjects',
-                'done' => $subjects->isNotEmpty() && $models->isNotEmpty(),
-                'counts' => [
-                    'subjects' => $subjects->count(),
-                    'activities' => Activity::where('school_year_id', $term->school_year_id)->visibleTo($user)->count(),
-                    'sections' => $models->count(),
-                ],
-            ],
-            ['key' => 'teachers', 'done' => $teachers > 0, 'counts' => ['teachers' => $teachers]],
             [
                 'key' => 'loading',
                 'done' => $needed > 0 && $loaded >= $needed,

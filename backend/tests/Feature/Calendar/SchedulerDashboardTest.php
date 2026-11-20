@@ -142,15 +142,16 @@ it('gives the Admin the same steps, for every grade level', function () {
     $this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)
         ->assertOk()
         ->assertJsonPath('data.has_scope', true)
-        ->assertJsonCount(6, 'data.steps');
+        ->assertJsonCount(7, 'data.steps');
 });
 
-it('starts the steps with rooms and the bell schedule of the department', function () {
+it('lists the steps in the order of the Setup menu', function () {
     $steps = collect($this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)->json('data.steps'));
 
-    expect($steps->pluck('key')->all())->toBe(['rooms', 'bell', 'subjects', 'teachers', 'loading', 'plot'])
-        ->and($steps[0]['counts'])->toHaveKeys(['rooms', 'buildings'])
-        ->and($steps[1]['counts'])->toHaveKeys(['patterns', 'departments', 'ready']);
+    expect($steps->pluck('key')->all())->toBe(['teachers', 'subjects', 'sections', 'rooms', 'bell', 'loading', 'plot'])
+        ->and($steps[2]['counts'])->toHaveKeys(['sections', 'without_adviser'])
+        ->and($steps[3]['counts'])->toHaveKeys(['rooms', 'buildings'])
+        ->and($steps[4]['counts'])->toHaveKeys(['patterns', 'departments', 'ready']);
 });
 
 it('needs a bell schedule only for a department that has sections, like the setup checklist', function () {

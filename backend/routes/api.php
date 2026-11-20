@@ -9,7 +9,6 @@ use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\ClassProgramController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ImportController;
-use App\Http\Controllers\MasterDataImportController;
 use App\Http\Controllers\ManagedSectionController;
 use App\Http\Controllers\MyRecordsController;
 use App\Http\Controllers\NotificationController;
@@ -33,7 +32,6 @@ use App\Http\Controllers\TermCopyController;
 use App\Http\Controllers\TimeSlotController;
 use App\Http\Controllers\UserActivationController;
 use App\Http\Controllers\UserController;
-use App\Services\MasterDataImportService;
 use App\Services\TeacherService;
 use Illuminate\Support\Facades\Route;
 
@@ -138,10 +136,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/terms/{term}/loading/copy', [TeacherLoadingController::class, 'copy']);
     Route::post('/terms/{term}/import-previous', [ImportController::class, 'store']);
     Route::post('/terms/{term}/schedule-copy', [TermCopyController::class, 'store']);
-    Route::get('/imports/{type}/template.xlsx', [MasterDataImportController::class, 'template'])
-        ->whereIn('type', array_keys(MasterDataImportService::TYPES));
-    Route::post('/school-years/{schoolYear}/imports/{type}', [MasterDataImportController::class, 'store'])
-        ->whereIn('type', array_keys(MasterDataImportService::TYPES));
     Route::post('/teachers/quick-add', [TeacherLoadingController::class, 'quickAddTeacher']);
     Route::get('/personnel-options', [TeacherController::class, 'options']);
     Route::post('/personnel-options/{type}', [TeacherController::class, 'storeOption'])
