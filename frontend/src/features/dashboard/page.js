@@ -123,6 +123,7 @@ export async function render(container) {
             { class: "card", open: doneCount < admin.checklist.length },
             h("summary", { class: "flex min-h-11 cursor-pointer items-center gap-2 p-3 font-medium" }, h("span", { class: "text-accent" }, "School setup"), h("span", { class: "text-sm text-muted-foreground" }, `${doneCount} of ${admin.checklist.length} done`)),
             h("ul", { class: "divide-y border-t" }, admin.checklist.map((/** @type {any} */ item) => h("li", null, h("a", { href: links[/** @type {keyof typeof links} */ (item.key)] ?? "/dashboard", class: "flex items-start gap-3 p-3 hover:bg-surface-muted" }, h("span", { class: `mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${item.done ? "bg-success text-white" : "bg-surface-muted"}` }, item.done ? icon("check", "size-3.5") : ""), h("span", null, h("span", { class: "block text-sm font-medium" }, item.title), h("span", { class: "block text-small text-muted-foreground" }, item.detail)))))),
+            h("div", { class: "border-t p-3" }, h("a", { href: "/setup", class: "btn btn-outline w-full sm:w-auto" }, icon("clipboard"), "Open the Setup Guide (step by step, with imports)")),
           ),
           h("div", { class: "grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" }, stepsList(steps.steps), overloaded(admin.overloaded_teachers)),
           progressList(admin.progress),

@@ -35,6 +35,7 @@ export const ROUTES = [
   { path: "/accept-terms", layout: "gate", title: "Before you continue", page: () => import("@/features/auth/account-pages.js").then((module) => ({ render: module.renderAcceptTerms })) },
   { path: "/change-password", layout: "gate", title: "Choose your own password", page: () => import("@/features/auth/account-pages.js").then((module) => ({ render: module.renderChangePassword })) },
   { path: "/dashboard", layout: "app", roles: ROLES.EVERYONE, title: "Dashboard", page: () => import("@/features/dashboard/page.js") },
+  { path: "/setup", layout: "app", roles: ROLES.ADMIN, title: "Setup Guide", page: () => import("@/features/setup-guide/page.js") },
   { path: "/schedule", layout: "app", roles: ROLES.STAFF, title: "Schedule", page: () => import("@/features/schedule/list/page.js") },
   { path: "/schedule/rooms/:roomId", layout: "app", roles: ROLES.STAFF, title: "Room schedule", page: () => import("@/features/schedule/places.js").then((module) => ({ render: module.renderRoom })) },
   { path: "/schedule/buildings/:buildingId", layout: "app", roles: ROLES.STAFF, title: "Building", page: () => import("@/features/schedule/places.js").then((module) => ({ render: module.renderBuilding })) },

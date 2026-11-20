@@ -65,6 +65,7 @@ const NAVIGATION = [
     label: "Main",
     items: [
       { name: "Dashboard", path: "/dashboard", icon: "dashboard", roles: EVERYONE },
+      { name: "Setup Guide", path: "/setup", icon: "clipboard", roles: ADMIN },
       { name: "Schedule", path: "/schedule", icon: "calendar-check", roles: STAFF },
       { name: "Approvals", path: "/approvals", icon: "circle-check", roles: ADMIN },
       { name: "Reports", path: "/reports", icon: "folder", roles: STAFF },
