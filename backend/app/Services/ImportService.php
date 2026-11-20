@@ -32,7 +32,7 @@ class ImportService
     {
         $result = [
             'copied' => 0, 'already_set' => 0, 'no_section' => 0, 'no_subject' => 0,
-            'not_offered' => 0, 'teacher_unavailable' => 0, 'sections' => 0, 'missing' => [],
+            'not_offered' => 0, 'teacher_unavailable' => 0, 'full_load' => 0, 'sections' => 0, 'missing' => [],
         ];
 
         DB::beginTransaction();
@@ -54,6 +54,8 @@ class ImportService
                 ->map(fn (SectionSubject $row) => "{$row->section_id}|{$row->subject_id}")
                 ->flip();
             $sectionsCopied = [];
+            $loads = DB::table('section_subjects')->where('term_id', $term->id)
+                ->selectRaw('teacher_id, COUNT(*) AS assigned')->groupBy('teacher_id')->pluck('assigned', 'teacher_id')->all();
 
             foreach ($sources as $source) {
                 $section = $targets->get("{$source->section->grade_level_id}|{$source->section->name}");
@@ -65,6 +67,8 @@ class ImportService
                     $existing->has("{$section->id}|{$subject->id}") => 'already_set',
                     ! $this->isOffered($subject, $term, $section) => 'not_offered',
                     $source->teacher->personnel_type !== 'teaching' || ! $source->teacher->is_active => 'teacher_unavailable',
+                    // Full load (5 subjects a term): left without a teacher here.
+                    (int) ($loads[$source->teacher_id] ?? 0) >= $source->teacher->max_subjects => 'full_load',
                     default => 'copied',
                 };
 
@@ -77,6 +81,7 @@ class ImportService
                 }
 
                 if ($outcome === 'copied') {
+                    $loads[$source->teacher_id] = (int) ($loads[$source->teacher_id] ?? 0) + 1;
                     SectionSubject::create([
                         'term_id' => $term->id,
                         'section_id' => $section->id,

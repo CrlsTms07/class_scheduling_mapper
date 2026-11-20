@@ -157,6 +157,8 @@ class TeacherLoadingService
             $this->ensureOffered($term, $section, $subject);
         }
 
+        $this->stopIfFullLoad($term, $teacherId);
+
         try {
             DB::transaction(function () use ($existing, $term, $section, $subject, $teacherId, $user) {
                 if ($existing) {
@@ -240,11 +242,11 @@ class TeacherLoadingService
      * term already has is never overwritten, and only active teaching personnel carry over.
      *
      * @param  array<int, int>|null  $sectionIds  only these sections, when given
-     * @return array{copied: int, already_set: int, not_offered: int, teacher_unavailable: int}
+     * @return array{copied: int, already_set: int, not_offered: int, teacher_unavailable: int, full_load: int}
      */
     public function copyFromTerm(SchoolTerm $term, SchoolTerm $from, ?array $sectionIds, User $user): array
     {
-        $result = ['copied' => 0, 'already_set' => 0, 'not_offered' => 0, 'teacher_unavailable' => 0];
+        $result = ['copied' => 0, 'already_set' => 0, 'not_offered' => 0, 'teacher_unavailable' => 0, 'full_load' => 0];
 
         return DB::transaction(function () use ($term, $from, $sectionIds, $user, $result) {
             $sections = Section::visibleTo($user)
@@ -263,6 +265,7 @@ class TeacherLoadingService
                 ->get()
                 ->map(fn (SectionSubject $row) => "{$row->section_id}|{$row->subject_id}")
                 ->flip();
+            $loads = $this->loadsIn($term);
 
             foreach ($sources as $source) {
                 $section = $sections[$source->section_id];
@@ -271,12 +274,14 @@ class TeacherLoadingService
                     $existing->has("{$source->section_id}|{$source->subject_id}") => 'already_set',
                     ! $this->isOfferedTo($source->subject, $term, $section) => 'not_offered',
                     $source->teacher->personnel_type !== 'teaching' || ! $source->teacher->is_active => 'teacher_unavailable',
+                    ($loads[$source->teacher_id] ?? 0) >= $source->teacher->max_subjects => 'full_load',
                     default => 'copied',
                 };
 
                 $result[$outcome]++;
 
                 if ($outcome === 'copied') {
+                    $loads[$source->teacher_id] = ($loads[$source->teacher_id] ?? 0) + 1;
                     SectionSubject::create([
                         'term_id' => $term->id,
                         'section_id' => $source->section_id,
@@ -294,6 +299,42 @@ class TeacherLoadingService
 
             return $result;
         });
+    }
+
+    /**
+     * How many subjects each teacher already has in this term.
+     *
+     * @return array<int, int>
+     */
+    public function loadsIn(SchoolTerm $term): array
+    {
+        return DB::table('section_subjects')
+            ->where('term_id', $term->id)
+            ->selectRaw('teacher_id, COUNT(*) AS assigned')
+            ->groupBy('teacher_id')
+            ->pluck('assigned', 'teacher_id')
+            ->map(fn ($count) => (int) $count)
+            ->all();
+    }
+
+    /**
+     * A teacher carries at most max_subjects (5) subjects a term: the next one is refused with
+     * "Full load" (beneficiary review, Nov 21, 2026; it was only a flag before).
+     */
+    private function stopIfFullLoad(SchoolTerm $term, int $teacherId): void
+    {
+        $teacher = Teacher::find($teacherId);
+        if (! $teacher) {
+            return;
+        }
+
+        $assigned = $this->loadsIn($term)[$teacherId] ?? 0;
+
+        if ($assigned >= $teacher->max_subjects) {
+            throw ValidationException::withMessages([
+                'teacher_id' => "Full load: {$teacher->printedName()} already has {$assigned} subjects this term, the most a teacher can carry. Choose another teacher.",
+            ]);
+        }
     }
 
     private function isOfferedTo(Subject $subject, SchoolTerm $term, Section $section): bool

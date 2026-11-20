@@ -187,11 +187,19 @@ class DemoDataSeeder extends Seeder
             ]);
         }
 
+        // Every teacher belongs to a department (beneficiary review, Nov 21, 2026).
+        $departmentId = null;
+        foreach (['Mathematics', 'Science', 'English', 'Filipino', 'Araling Panlipunan', 'TLE', 'MAPEH', 'Values Education'] as $name) {
+            $id = DB::table('departments')->where('name', $name)->value('id') ?? DB::table('departments')->insertGetId(['name' => $name]);
+            $departmentId ??= $id;
+        }
+
         $teacherIds = [];
         foreach (array_keys(self::GRADE_7_SUBJECTS) as $index => $subject) {
             $teacherIds[] = DB::table('teachers')->insertGetId([
                 'first_name' => 'Teacher',
                 'last_name' => 'Sample '.($index + 1),
+                'department_id' => $departmentId,
             ]);
         }
 

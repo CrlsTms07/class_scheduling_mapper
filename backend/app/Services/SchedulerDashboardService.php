@@ -91,22 +91,6 @@ class SchedulerDashboardService
             ->whereIn('section_id', $models->pluck('id'))
             ->count();
 
-        $teacherIds = DB::table('section_subjects')
-            ->where('term_id', $term->id)
-            ->whereIn('section_id', $models->pluck('id'))
-            ->distinct()
-            ->pluck('teacher_id');
-        $overHours = DB::table('section_subjects')
-            ->join('subjects', 'subjects.id', '=', 'section_subjects.subject_id')
-            ->join('teachers', 'teachers.id', '=', 'section_subjects.teacher_id')
-            ->where('section_subjects.term_id', $term->id)
-            ->whereIn('section_subjects.teacher_id', $teacherIds)
-            ->groupBy('teachers.id', 'teachers.max_hours_per_week')
-            ->havingRaw('SUM(subjects.minutes_per_week) > teachers.max_hours_per_week * 60')
-            ->select('teachers.id')
-            ->get()
-            ->count();
-
         $teachers = Teacher::where('personnel_type', 'teaching')->where('is_active', true)->count();
         $started = $sections->where('status', '<>', 'not_started')->count();
         $submitted = $sections->whereIn('status', ['pending', 'approved'])->count();
@@ -158,7 +142,7 @@ class SchedulerDashboardService
             [
                 'key' => 'loading',
                 'done' => $needed > 0 && $loaded >= $needed,
-                'counts' => ['loaded' => $loaded, 'needed' => $needed, 'over_hours' => $overHours],
+                'counts' => ['loaded' => $loaded, 'needed' => $needed],
             ],
             [
                 'key' => 'plot',

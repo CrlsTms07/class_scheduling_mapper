@@ -122,7 +122,7 @@ export async function render(container, { query, navigate }) {
       try {
         if (choice.way === "same") {
           const done = await copyLoading(term.id, { from_term_id: choice.fromId, section_id: choice.wholeScope || !section ? null : section.id });
-          toast.success([`${plural(done.copied, "subject")} copied.`, done.already_set ? `${done.already_set} already had a teacher and stay as they are.` : "", done.not_offered ? `${done.not_offered} are not taken this ${termWord(term)}.` : "", done.teacher_unavailable ? `${done.teacher_unavailable} had a teacher who is no longer active.` : ""].filter(Boolean).join(" "));
+          toast.success([`${plural(done.copied, "subject")} copied.`, done.already_set ? `${done.already_set} already had a teacher and stay as they are.` : "", done.not_offered ? `${done.not_offered} are not taken this ${termWord(term)}.` : "", done.teacher_unavailable ? `${done.teacher_unavailable} had a teacher who is no longer active.` : "", done.full_load ? `${done.full_load} were left without a teacher because the teacher already has a full load.` : ""].filter(Boolean).join(" "));
           close();
           return;
         }
@@ -135,6 +135,7 @@ export async function render(container, { query, navigate }) {
               h("p", { class: "font-medium" }, `${plural(reviewed.copied, "subject")} with a teacher will be copied, in ${plural(reviewed.sections, "section")}.`),
               reviewed.already_set ? h("p", null, `${plural(reviewed.already_set, "subject")} already have a teacher here and stay as they are.`) : null,
               reviewed.teacher_unavailable ? h("p", null, `${plural(reviewed.teacher_unavailable, "subject")} had a teacher who is no longer active.`) : null,
+              reviewed.full_load ? h("p", null, `${plural(reviewed.full_load, "subject")} will have no teacher, because the teacher already has a full load.`) : null,
               reviewed.missing.map((/** @type {string} */ line) => h("p", null, line)),
             ),
           );
@@ -174,7 +175,10 @@ export async function render(container, { query, navigate }) {
     const options = [
       { value: "", label: "No teacher yet" },
       ...(row.teacher_id && !current ? [{ value: row.teacher_id, label: row.teacher ?? "" }] : []),
-      ...loading.teachers.map((teacher) => ({ value: teacher.id, label: teacher.name, hint: `${teacher.assigned} of ${teacher.limit} subjects${teacher.assigned >= teacher.limit && teacher.id !== row.teacher_id ? " · full" : ""}` })),
+      ...loading.teachers.map((teacher) => {
+        const isFull = teacher.assigned >= teacher.limit && teacher.id !== row.teacher_id;
+        return { value: teacher.id, label: teacher.name, hint: isFull ? `Full load (${teacher.assigned} of ${teacher.limit} subjects)` : `${teacher.assigned} of ${teacher.limit} subjects`, disabled: isFull };
+      }),
     ];
 
     const save = async (/** @type {number | null} */ teacherId, /** @type {string} */ name) => {
@@ -224,7 +228,7 @@ export async function render(container, { query, navigate }) {
               try {
                 const teacher = await quickAddTeacher({ first_name: parts.slice(0, -1).join(" "), last_name: parts[parts.length - 1] });
                 await save(teacher.id, teacher.name);
-                toast.info("Complete the new teacher's details later on the Teachers page.");
+                toast.info("Complete the new teacher's details, like the department, later on the Teachers page.");
               } catch (error) {
                 toast.error(error);
               }
@@ -233,7 +237,7 @@ export async function render(container, { query, navigate }) {
         }),
       ),
       row.locked_reason ? h("p", { class: "flex items-start gap-2 text-small text-warning" }, icon("lock", "size-4 shrink-0"), row.locked_reason) : null,
-      current && current.assigned > current.limit ? h("p", { class: "text-small text-warning" }, `${current.name} is over their limit: ${current.assigned} of ${current.limit}. This shows as a flag on the schedule.`) : null,
+      current && current.assigned > current.limit ? h("p", { class: "text-small text-warning" }, `${current.name} has more than a full load: ${current.assigned} of ${current.limit} subjects. Give one of them to another teacher.`) : null,
       warning ? h("p", { class: "text-small text-warning" }, warning) : null,
     );
   };
@@ -284,33 +288,34 @@ export async function render(container, { query, navigate }) {
       return;
     }
 
+    const isFull = (/** @type {any} */ teacher) => teacher.assigned >= teacher.limit;
     const bar = (/** @type {any} */ teacher) =>
       h(
         "div",
         { class: "space-y-1" },
-        h("div", { class: "h-2 w-full rounded-full bg-surface-muted", role: "meter", "aria-label": `${teacher.name}: ${teacher.hours_per_week} of ${teacher.max_hours} hours a week`, "aria-valuenow": String(teacher.hours_per_week), "aria-valuemin": "0", "aria-valuemax": String(teacher.max_hours) }, h("div", { class: `h-2 rounded-full ${teacher.is_over_hours ? "bg-danger" : "bg-teal-600"}`, style: { width: `${Math.min(100, (teacher.hours_per_week / teacher.max_hours) * 100)}%` } })),
-        h("p", { class: `text-small ${teacher.is_over_hours ? "font-bold text-danger" : "text-muted-foreground"}` }, `${teacher.hours_per_week} of ${teacher.max_hours} hours a week`),
+        h("div", { class: "h-2 w-full rounded-full bg-surface-muted", role: "meter", "aria-label": `${teacher.name}: ${teacher.assigned} of ${teacher.limit} subjects`, "aria-valuenow": String(teacher.assigned), "aria-valuemin": "0", "aria-valuemax": String(teacher.limit) }, h("div", { class: `h-2 rounded-full ${teacher.is_overloaded ? "bg-danger" : isFull(teacher) ? "bg-amber-500" : "bg-teal-600"}`, style: { width: `${Math.min(100, (teacher.assigned / teacher.limit) * 100)}%` } })),
+        h("p", { class: `text-small ${teacher.is_overloaded ? "font-bold text-danger" : "text-muted-foreground"}` }, `${teacher.assigned} of ${teacher.limit} subjects · ${teacher.hours_per_week} hours a week`),
       );
     const status = (/** @type {any} */ teacher) =>
       h("div", { class: "flex flex-wrap gap-1" },
-        teacher.is_over_hours ? h("span", { class: "badge bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100" }, "Over the hours") : null,
-        teacher.is_overloaded ? h("span", { class: "badge bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100" }, `${teacher.assigned} of ${teacher.limit} subjects`) : null,
-        !teacher.is_over_hours && !teacher.is_overloaded ? h("span", { class: "badge bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100" }, "OK") : null,
+        teacher.is_overloaded ? h("span", { class: "badge bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100" }, "Over the limit") : null,
+        !teacher.is_overloaded && isFull(teacher) ? h("span", { class: "badge bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100" }, "Full load") : null,
+        !isFull(teacher) ? h("span", { class: "badge bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100" }, "OK") : null,
       );
     const fix = (/** @type {any} */ teacher) =>
-      teacher.is_over_hours || teacher.is_overloaded
-        ? h("div", { class: "mt-2 space-y-1 rounded-lg border border-danger/30 p-2 text-small" }, h("p", { class: "font-medium text-danger" }, "How to fix"), h("ul", { class: "list-disc space-y-0.5 pl-4" }, h("li", null, "Give one of these subjects to another teacher: open its section below and choose another teacher."), h("li", null, "Or, if the load is right, raise their limit on the Teachers page."), h("li", null, "If the hours look too high for everyone, check the subject's minutes per week on the Subjects page.")))
+      teacher.is_overloaded
+        ? h("div", { class: "mt-2 space-y-1 rounded-lg border border-danger/30 p-2 text-small" }, h("p", { class: "font-medium text-danger" }, "How to fix"), h("p", null, "Give one of these subjects to another teacher: open its section below and choose another teacher."))
         : null;
     const loads = (/** @type {any} */ teacher) => h("ul", { class: "space-y-0.5 text-small" }, teacher.loads.map((/** @type {any} */ item) => h("li", null, h("a", { href: `/teacher-loading?section=${item.section_id}`, class: "inline-flex min-h-11 items-center text-brand underline md:min-h-0" }, item.section), `: ${item.subject} (${item.hours_per_week} hrs)`)));
 
     replace(
       content,
-      h("p", { class: "text-sm text-muted-foreground", "aria-live": "polite" }, `${data.summary.teachers} ${data.summary.teachers === 1 ? "teacher" : "teachers"}${data.summary.over_hours > 0 ? `, ${data.summary.over_hours} over their hours a week` : ", none over their hours a week"}. Each teacher's limit is set on the Teachers page.`),
+      h("p", { class: "text-sm text-muted-foreground", "aria-live": "polite" }, `${data.summary.teachers} ${data.summary.teachers === 1 ? "teacher" : "teachers"}. A teacher carries at most 5 subjects a term; the hours a week are counted from the subjects.`),
       // Wide screens: a table. Phones: cards.
       h("div", { class: "hidden overflow-x-auto rounded-xl border md:block" },
         h("table", { class: "w-full text-sm" },
           h("thead", { class: "bg-surface-muted text-left text-small text-muted-foreground" }, h("tr", null, ["Teacher", "Subjects and sections", "Load", "Status"].map((title) => h("th", { scope: "col", class: "p-3 font-medium" }, title)))),
-          h("tbody", null, teachers.map((teacher) => h("tr", { class: `border-t align-top ${teacher.is_over_hours ? "bg-danger/5" : ""}` },
+          h("tbody", null, teachers.map((teacher) => h("tr", { class: `border-t align-top ${teacher.is_overloaded ? "bg-danger/5" : ""}` },
             h("td", { class: "p-3" }, h("p", { class: "font-medium" }, teacher.name), teacher.department ? h("p", { class: "text-small text-muted-foreground" }, teacher.department) : null),
             h("td", { class: "p-3" }, loads(teacher)),
             h("td", { class: "w-56 p-3" }, bar(teacher)),
@@ -318,7 +323,7 @@ export async function render(container, { query, navigate }) {
           ))),
         ),
       ),
-      h("div", { class: "grid gap-3 md:hidden" }, teachers.map((teacher) => h("div", { class: `card space-y-2 p-4 ${teacher.is_over_hours ? "border-danger/40" : ""}` },
+      h("div", { class: "grid gap-3 md:hidden" }, teachers.map((teacher) => h("div", { class: `card space-y-2 p-4 ${teacher.is_overloaded ? "border-danger/40" : ""}` },
         h("div", { class: "flex items-start justify-between gap-2" }, h("div", { class: "min-w-0" }, h("p", { class: "font-semibold text-brand" }, teacher.name), teacher.department ? h("p", { class: "text-small text-muted-foreground" }, teacher.department) : null), status(teacher)),
         bar(teacher), loads(teacher), fix(teacher),
       ))),

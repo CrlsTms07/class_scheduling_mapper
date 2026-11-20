@@ -23,6 +23,7 @@ beforeEach(function () {
     ]);
     $this->teacherId = DB::table('teachers')->insertGetId(['first_name' => 'Ana', 'last_name' => 'Reyes']);
     $this->taskId = DB::table('teaching_tasks')->insertGetId(['name' => 'ICT Coordinator']);
+    $this->departmentId = DB::table('departments')->insertGetId(['name' => 'Mathematics']);
 });
 
 function teacherBody(array $overrides = []): array
@@ -33,8 +34,7 @@ function teacherBody(array $overrides = []): array
         'middle_name' => null,
         'last_name' => 'Cruz',
         'suffix' => null,
-        'display_name' => null,
-        'department_id' => null,
+        'department_id' => DB::table('departments')->value('id'),
         'designation_id' => null,
         'shift' => 'WHOLE_DAY',
         'max_subjects' => 5,
@@ -98,13 +98,19 @@ it('adds a record with no login account, and writes an audit log', function () {
     expect(DB::table('audit_logs')->where('table_name', 'teachers')->where('action', 'create')->exists())->toBeTrue();
 });
 
-it('prints the display name, then first name, middle initial and last name', function () {
+it('prints first name, middle initial and last name, made by the code', function () {
     DB::table('teachers')->where('id', $this->teacherId)->update(['display_name' => 'A. T. Reyes']);
     DB::table('teachers')->insert(['first_name' => 'Ben', 'middle_name' => 'Santos', 'last_name' => 'Cruz']);
 
     $this->getJson("/api/terms/{$this->termId}/teachers")
         ->assertJsonPath('data.0.printed_name', 'Ben S. Cruz')
-        ->assertJsonPath('data.1.printed_name', 'A. T. Reyes');
+        ->assertJsonPath('data.1.printed_name', 'Ana Reyes');
+});
+
+it('needs the department of every teacher', function () {
+    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['department_id' => null]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['department_id' => 'Choose the department. Every teacher belongs to one.']);
 });
 
 it('saves department, designation and qualifications', function () {

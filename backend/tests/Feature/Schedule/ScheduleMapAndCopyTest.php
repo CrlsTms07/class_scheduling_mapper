@@ -210,6 +210,20 @@ describe('copy loading from another term', function () {
         expect(DB::table('section_subjects')->where('term_id', $this->secondTerm)->where('section_id', $outside)->exists())->toBeFalse();
     });
 
+    it('leaves a subject without a teacher when that teacher already has a full load', function () {
+        $other = mapSection($this, 'Hope');
+        mapLoading($this, $this->firstTerm);
+        mapLoading($this, $this->firstTerm, $other);
+        DB::table('teachers')->where('id', $this->teacherId)->update(['max_subjects' => 1]);
+
+        $this->postJson($this->url, ['from_term_id' => $this->firstTerm])
+            ->assertOk()
+            ->assertJsonPath('data.copied', 1)
+            ->assertJsonPath('data.full_load', 1);
+
+        expect(DB::table('section_subjects')->where('term_id', $this->secondTerm)->count())->toBe(1);
+    });
+
     it('never overwrites what the term already has', function () {
         $benId = DB::table('teachers')->insertGetId(['first_name' => 'Ben', 'last_name' => 'Cruz']);
         mapLoading($this, $this->firstTerm);

@@ -26,11 +26,10 @@ class SaveTeacherRequest extends FormRequest
             'middle_name' => ['nullable', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:60'],
             'suffix' => ['nullable', 'string', 'max:10'],
-            'display_name' => ['nullable', 'string', 'max:80'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            // Every teacher belongs to one department (beneficiary review, Nov 21, 2026).
+            'department_id' => ['required', 'integer', 'exists:departments,id'],
             'designation_id' => ['nullable', 'integer', 'exists:designations,id'],
             'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
-            'max_hours_per_week' => ['sometimes', 'integer', 'between:1,60'],
             'is_active' => ['required', 'boolean'],
             'qualifications' => ['present', 'array', 'max:10'],
             'qualifications.*.degree_level' => ['required', 'string', 'max:30'],
@@ -61,7 +60,10 @@ class SaveTeacherRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['employee_id.regex' => 'The employee ID can have only letters, numbers and dashes.'];
+        return [
+            'employee_id.regex' => 'The employee ID can have only letters, numbers and dashes.',
+            'department_id.required' => 'Choose the department. Every teacher belongs to one.',
+        ];
     }
 
     protected function prepareForValidation(): void

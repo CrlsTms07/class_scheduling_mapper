@@ -88,12 +88,10 @@ export async function render(container, { query }) {
         { name: "middle_name", label: "Middle name", value: teacher?.middle_name ?? "" },
         { name: "last_name", label: "Last name", required: true, value: teacher?.last_name },
         { name: "suffix", label: "Suffix", value: teacher?.suffix ?? "" },
-        { name: "display_name", label: "Name on printed forms", value: teacher?.display_name ?? "", help: "Leave empty to use the first name, middle initial and last name." },
         { name: "personnel_type", label: "Personnel", type: "select", required: true, value: teacher?.personnel_type ?? "teaching", options: [{ value: "teaching", label: "Teaching" }, { value: "non_teaching", label: "Non-teaching" }], help: "Only teaching personnel get subjects or an advisory." },
-        { name: "department_id", label: "Department", type: "select", value: teacher?.department_id ?? "", options: [{ value: "", label: "None" }, ...options.departments.map((/** @type {any} */ item) => ({ value: item.id, label: item.name }))], onCreate: addOption("departments") },
+        { name: "department_id", label: "Department", type: "select", required: true, value: teacher?.department_id ?? "", help: "Every teacher belongs to one department.", options: [...options.departments.map((/** @type {any} */ item) => ({ value: item.id, label: item.name }))], onCreate: addOption("departments") },
         { name: "designation_id", label: "Designation", type: "select", value: teacher?.designation_id ?? "", options: [{ value: "", label: "None" }, ...options.designations.map((/** @type {any} */ item) => ({ value: item.id, label: item.name }))], onCreate: addOption("designations") },
         { name: "shift", label: "Shift", type: "select", required: true, value: teacher?.shift ?? "WHOLE_DAY", options: Object.entries(SHIFTS).map(([value, label]) => ({ value, label })) },
-        { name: "max_hours_per_week", label: "Most hours a week", type: "number", required: true, min: 1, max: 60, value: teacher?.max_hours_per_week ?? 30, help: "The limit used by Load Distribution. Default 30." },
         { name: "task_ids", label: `Tasks this ${term.school_year.term_label.toLowerCase()}`, type: "multi", wide: true, value: teacher?.task_ids ?? [], options: options.tasks.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), help: "Like ICT Coordinator, SSG Adviser or Lab Manager. Add or remove tasks with Edit lists on the Teachers page." },
         { name: "is_active", label: "Active (can be given subjects)", type: "checkbox", value: teacher?.is_active ?? true },
       ],
@@ -101,7 +99,7 @@ export async function render(container, { query }) {
       submitLabel: teacher ? "Save changes" : "Add teacher",
       onSubmit: async (values) => {
         const id = (/** @type {any} */ value) => (value === "" || value === null ? null : Number(value));
-        const body = { ...values, employee_id: values.employee_id.trim() || null, middle_name: values.middle_name || null, suffix: values.suffix || null, display_name: values.display_name || null, department_id: id(values.department_id), designation_id: id(values.designation_id), task_ids: values.task_ids.map(Number), qualifications: education.read() };
+        const body = { ...values, employee_id: values.employee_id.trim() || null, middle_name: values.middle_name || null, suffix: values.suffix || null, department_id: id(values.department_id), designation_id: id(values.designation_id), task_ids: values.task_ids.map(Number), qualifications: education.read() };
         await changeRecord(teacher ? `/terms/${term.id}/teachers/${teacher.id}` : `/terms/${term.id}/teachers`, teacher ? "PUT" : "POST", body);
         return `${values.first_name} ${values.last_name} was ${teacher ? "saved" : "added"}.`;
       },
@@ -180,7 +178,7 @@ export async function render(container, { query }) {
                 items: shown,
                 columns: [
                   { label: "Name", primary: true, cell: (/** @type {any} */ teacher) => h("a", { href: `/teachers/${teacher.id}`, class: "inline-flex min-h-11 items-center text-brand underline-offset-2 hover:underline" }, teacher.printed_name) },
-                  { label: "Department", cell: (/** @type {any} */ teacher) => teacher.department ?? "–" },
+                  { label: "Department", cell: (/** @type {any} */ teacher) => teacher.department ?? h("span", { class: "badge bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100" }, "No department yet") },
                   { label: "Shift", cell: (/** @type {any} */ teacher) => SHIFTS[/** @type {keyof typeof SHIFTS} */ (teacher.shift)] },
                   { label: "Subjects", cell: (/** @type {any} */ teacher) => (teacher.personnel_type === "teaching" ? `${teacher.assigned} of ${teacher.max_subjects}` : "Non-teaching") },
                   { label: "Advisory", cell: (/** @type {any} */ teacher) => teacher.advisory ?? "–" },

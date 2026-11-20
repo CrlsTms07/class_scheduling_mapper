@@ -85,8 +85,6 @@ class SummaryReportService
                         ->values()
                         ->all(),
                     'hours_per_week' => round($loadedMinutes / 60, 1),
-                    'max_hours' => $teacher->max_hours_per_week,
-                    'is_over_hours' => $loadedMinutes > $teacher->max_hours_per_week * 60,
                     // Hours in another department still count, but show only its name.
                     'loads' => $load
                         ->sortBy(fn (SectionSubject $row) => [$row->section->gradeLevel->grade, $row->section->name, $row->subject->name])
@@ -108,7 +106,6 @@ class SummaryReportService
             'summary' => [
                 'teachers' => $teachers->count(),
                 'overloaded' => $teachers->where('is_overloaded', true)->count(),
-                'over_hours' => $teachers->where('is_over_hours', true)->count(),
             ],
             'teachers' => $teachers->all(),
         ];

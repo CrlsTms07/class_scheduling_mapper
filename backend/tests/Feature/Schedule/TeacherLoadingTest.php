@@ -190,9 +190,15 @@ describe('assigning', function () {
         expect(DB::table('audit_logs')->count())->toBe(0);
     });
 
-    it('allows going over the limit, since that is only a flag', function () {
+    it('refuses a teacher with a full load (5 subjects a term)', function () {
         loadingRow($this, $this->otherSectionId);
+        DB::table('teachers')->where('id', $this->anaId)->update(['max_subjects' => 1]);
 
+        $this->putJson("{$this->url}/{$this->mathId}", ['teacher_id' => $this->anaId])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['teacher_id' => 'Full load: Ana Reyes already has 1 subjects this term']);
+
+        DB::table('teachers')->where('id', $this->anaId)->update(['max_subjects' => 5]);
         $this->putJson("{$this->url}/{$this->mathId}", ['teacher_id' => $this->anaId])
             ->assertOk()
             ->assertJsonPath('data.teachers.1.assigned', 2);

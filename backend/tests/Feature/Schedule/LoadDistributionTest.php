@@ -7,7 +7,8 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Load Distribution: hours per week from the teacher loading, against each teacher's limit.
+ * Load Distribution: hours per week from the teacher loading (shown, not typed), and the limit of
+ * 5 subjects a term. The typed "most hours a week" is gone (beneficiary review, Nov 21, 2026).
  */
 
 beforeEach(function () {
@@ -31,24 +32,17 @@ it('counts the hours a week of each teacher from the loading, plotted or not', f
     $row = loadRow($this, $this->mathTeacher);
 
     expect($row['hours_per_week'])->toBe(13.3)
-        ->and($row['max_hours'])->toBe(30)
-        ->and($row['is_over_hours'])->toBeFalse()
+        ->and($row)->not->toHaveKeys(['max_hours', 'is_over_hours'])
+        ->and($row['is_overloaded'])->toBeFalse()
         ->and($row['loads'])->toHaveCount(2)
         ->and($row['loads'][0])->toMatchArray(['section' => 'Grade 7 – Sample A', 'subject' => 'Enhanced Mathematics', 'hours_per_week' => 6.7]);
 });
 
-it('flags a teacher over their own limit', function () {
-    Teacher::whereKey($this->mathTeacher)->update(['max_hours_per_week' => 12]);
-
+it('counts the subjects against the limit of 5', function () {
     $response = $this->getJson("/api/terms/{$this->termId}/reports/teacher-load")->assertOk();
+    $row = collect($response->json('data.teachers'))->firstWhere('id', $this->mathTeacher);
 
-    expect(collect($response->json('data.teachers'))->firstWhere('id', $this->mathTeacher)['is_over_hours'])->toBeTrue()
-        ->and($response->json('data.summary.over_hours'))->toBe(1);
-});
-
-it('starts every teacher at 30 hours, and keeps the limit sensible', function () {
-    $teacher = Teacher::create(['first_name' => 'New', 'last_name' => 'Teacher'])->refresh();
-
-    expect($teacher->max_hours_per_week)->toBe(30)
-        ->and(fn () => $teacher->update(['max_hours_per_week' => 0]))->toThrow(Illuminate\Database\QueryException::class);
+    expect($row['limit'])->toBe(5)
+        ->and($row['assigned'])->toBe(2)
+        ->and($response->json('data.summary'))->not->toHaveKey('over_hours');
 });

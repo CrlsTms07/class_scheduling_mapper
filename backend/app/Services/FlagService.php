@@ -212,7 +212,7 @@ class FlagService
             ->join('teachers', 'teachers.id', '=', 'teacher_load.teacher_id')
             ->where('teacher_load.term_id', $termId)
             ->where('teacher_load.is_overloaded', true)
-            ->select('teachers.id', 'teachers.first_name', 'teachers.last_name', 'teachers.display_name', 'teacher_load.subject_count', 'teacher_load.max_subjects')
+            ->select('teachers.id', 'teachers.first_name', 'teachers.last_name', 'teacher_load.subject_count', 'teacher_load.max_subjects')
             ->distinct()
             ->get();
 
@@ -220,7 +220,7 @@ class FlagService
             'key' => "teacher_overloaded:{$row->id}:{$row->subject_count}",
             'type' => 'teacher_overloaded',
             'severity' => 'amber',
-            'message' => ($row->display_name ?: "{$row->first_name} {$row->last_name}")." has {$row->subject_count} classes (limit {$row->max_subjects}).",
+            'message' => "{$row->first_name} {$row->last_name} has {$row->subject_count} classes (limit {$row->max_subjects}).",
         ])->all();
     }
 }

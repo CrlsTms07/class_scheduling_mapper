@@ -99,12 +99,12 @@ describe('document contents', function () {
             ->and($this->data['signatories'][1]['position'])->toBe('Class Adviser');
     });
 
-    it('uses the display name when a teacher has one', function () {
-        DB::table('teachers')->where('id', $this->section->adviser_id)->update(['display_name' => 'T. Sample']);
+    it('prints the name made from the record, never a typed "name on printed forms"', function () {
+        DB::table('teachers')->where('id', $this->section->adviser_id)->update(['display_name' => 'T. Sample', 'middle_name' => 'Cruz']);
 
         $data = app(ReportService::class)->classProgramData($this->term, $this->section->fresh());
 
-        expect($data['adviser'])->toBe('T. Sample');
+        expect($data['adviser'])->toBe('Teacher C. Sample 1');
     });
 });
 
