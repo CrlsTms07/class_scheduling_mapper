@@ -17,18 +17,22 @@ import { session } from "@/state/session.js";
 export async function render(container) {
   const isAdmin = session.user?.role === "super_admin";
   const content = h("div", { class: "space-y-5" }, skeletonList(3));
-  const departmentOptions = [{ value: "", label: "Shared by both (like a gym or library)" }, { value: "JHS", label: "Junior High" }, { value: "SHS", label: "Senior High" }];
+  // "Used by": who holds classes in a building (team decision, Nov 21, 2026: kept, with a clearer name).
+  const usedByOptions = [{ value: "JHS", label: "Junior High" }, { value: "SHS", label: "Senior High" }, { value: "BOTH", label: "Both (shared, like a gym or library)" }];
+  /** @type {any[]} */
+  let known = [];
+  const sameName = (/** @type {string} */ a, /** @type {string} */ b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
   const buildingForm = (/** @type {any} */ building = null) =>
     openFormDialog({
       title: building ? `Edit ${building.name}` : "Add a building",
       fields: [
-        { name: "name", label: "Building name", required: true, value: building?.name },
-        ...(isAdmin ? [{ name: "department", label: "Department", type: /** @type {const} */ ("select"), value: building?.department ?? "", options: departmentOptions, help: "A department's building is changed by its own Chairperson or Master Teacher." }] : []),
+        { name: "name", label: "Building name", required: true, value: building?.name, check: (value) => (known.some((other) => other.id !== building?.id && sameName(other.name, value)) ? `${value.trim()} is already in the list.` : null) },
+        ...(isAdmin ? [{ name: "department", label: "Used by", type: /** @type {const} */ ("select"), required: true, value: building ? (building.department ?? "BOTH") : "", options: usedByOptions, help: "Who holds classes here. The Junior High Chairperson sees only Junior High and shared buildings; the Senior High Master Teacher sees only Senior High and shared ones." }] : []),
       ],
       submitLabel: building ? "Save changes" : "Add building",
       onSubmit: async (values) => {
-        const body = isAdmin ? { name: values.name, department: values.department || null } : { name: values.name };
+        const body = isAdmin ? { name: values.name.trim(), department: values.department === "BOTH" ? null : values.department } : { name: values.name.trim() };
         await changeRecord(building ? `/buildings/${building.id}` : "/buildings", building ? "PUT" : "POST", body);
         return building ? `${values.name} was saved.` : `${values.name} was added.`;
       },
@@ -39,7 +43,7 @@ export async function render(container) {
     openFormDialog({
       title: room ? `Edit room ${room.room_number}` : `Add a room to ${building.name}`,
       fields: [
-        { name: "room_number", label: "Room number", required: true, value: room?.room_number },
+        { name: "room_number", label: "Room number", required: true, value: room?.room_number, check: (value) => ((building.rooms ?? []).some((/** @type {any} */ other) => other.id !== room?.id && sameName(String(other.room_number), String(value))) ? `${building.name} already has room ${String(value).trim()}.` : null) },
         { name: "room_name", label: "Room name", value: room?.room_name, help: "Like Science Lab" },
         { name: "capacity", label: "Capacity", type: "number", min: 1, max: 200, value: room?.capacity, help: "How many students fit" },
         { name: "in_charge", label: "In charge", value: room?.in_charge, help: "Who looks after the room" },
@@ -67,6 +71,7 @@ export async function render(container) {
   const draw = async () => {
     try {
       const buildings = await getRecords("/buildings");
+      known = buildings;
       const rooms = buildings.flatMap((/** @type {any} */ building) => building.rooms);
       const tile = (/** @type {string} */ label, /** @type {number} */ value) => h("div", { class: "card p-4" }, h("p", { class: "text-small text-muted-foreground" }, label), h("p", { class: "text-2xl font-bold text-accent" }, String(value)));
       replace(

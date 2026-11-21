@@ -30,6 +30,9 @@ export async function render(container, { query }) {
   /** @type {any} */
   let options = { grade_levels: [], tracks: [], teachers: [], rooms: [] };
 
+  /** This year's sections, to say at once when a name is taken. */
+  /** @type {any[]} */
+  let knownSections = [];
   const sectionForm = async (/** @type {any} */ section = null) => {
     // The choices are loaded first, so a quick tap never opens an empty form.
     options = await getRecords(`/school-years/${year.id}/section-options`);
@@ -45,7 +48,7 @@ export async function render(container, { query }) {
       title: section ? `Edit ${section.label}` : "Add a section",
       description: section?.locked_reason ? `${section.locked_reason} The grade and shift can no longer change.` : `For SY ${year.name}. Sections are encoded again each school year.`,
       fields: [
-        { name: "name", label: "Section name", required: true, value: section?.name, help: "Like Honesty or STEM 11-1" },
+        { name: "name", label: "Section name", required: true, value: section?.name, help: "Like Honesty or STEM 11-1", check: (value, values) => (knownSections.some((/** @type {any} */ other) => other.id !== section?.id && String(other.grade_level_id) === String(values.grade_level_id) && other.name.trim().toLowerCase() === String(value).trim().toLowerCase()) ? "This grade level already has a section with this name." : null) },
         { name: "grade_level_id", label: "Grade level", type: "select", required: true, value: section?.grade_level_id ?? "", disabled: !!section?.locked_reason, options: options.grade_levels.map((/** @type {any} */ grade) => ({ value: grade.id, label: `Grade ${grade.grade}` })) },
         { name: "shift", label: "Shift", type: "select", required: true, value: section?.shift ?? "WHOLE_DAY", disabled: !!section?.locked_reason, options: Object.entries(SHIFTS).map(([value, label]) => ({ value, label })) },
         { name: "track_id", label: "Track (Senior High)", type: "select", value: section?.track_id ?? "", options: [{ value: "", label: "No track" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] },
@@ -80,6 +83,7 @@ export async function render(container, { query }) {
   const draw = async () => {
     try {
       const [sections, loaded] = await Promise.all([getRecords(`/school-years/${year.id}/sections`), getRecords(`/school-years/${year.id}/section-options`)]);
+      knownSections = sections;
       options = loaded;
       const words = ui.search.trim().toLowerCase();
       const grades = [...new Set(sections.map((/** @type {any} */ section) => section.grade))].sort((a, b) => a - b);

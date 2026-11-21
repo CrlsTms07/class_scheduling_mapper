@@ -72,6 +72,7 @@ test("adds a building with a room, a bell schedule from a preset, a subject, a s
   await page.goto("/buildings");
   await page.getByRole("button", { name: "Add building" }).first().click();
   await fill(page, "Building name", "Annex E2E");
+  if (await page.getByRole("dialog").getByRole("button", { name: /^Used by/ }).count()) await choose(page, "Used by", "Junior High");
   await page.getByRole("dialog").getByRole("button", { name: "Add building" }).click();
   await expect(page.getByText("Annex E2E was added.")).toBeVisible();
   await page.getByRole("region", { name: "Annex E2E" }).getByRole("button", { name: "Add room" }).click();
