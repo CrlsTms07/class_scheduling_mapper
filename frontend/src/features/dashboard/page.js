@@ -1,9 +1,9 @@
 // @ts-check
 /**
  * The dashboard: what each role needs first.
- * - Admin: what waits for them, the same seven steps (with the school year, accounts and report
+ * - Admin: what waits for them, the same six steps (with the school year, accounts and report
  *   settings around them), and how far each grade is.
- * - Chairperson and Master Teacher: their next steps and the seven steps, in the Setup menu's order.
+ * - Chairperson and Master Teacher: their next steps and the six steps, in the Setup menu's order.
  * - Teacher: the next class, today's classes and the week's teaching time.
  * The setup steps show on phones too (design audit, Must fix #8).
  */
@@ -39,7 +39,6 @@ function describeStep(/** @type {any} */ step) {
     case "subjects": return { title: "Subjects", detail: "The subjects of your grade levels this school year, and activities like Flag Ceremony.", to: "/subjects", status: `${plural(counts.subjects, "subject")} · ${plural(counts.activities, "activity", "activities")}` };
     case "sections": return { title: "Sections", detail: "This year's sections, each with its adviser.", to: "/sections", status: `${plural(counts.sections, "section")}${counts.without_adviser ? ` · ${counts.without_adviser} without an adviser` : ""}` };
     case "rooms": return { title: "Rooms & Buildings", detail: "The buildings and rooms classes are held in.", to: "/buildings", status: `${plural(counts.buildings, "building")} · ${plural(counts.rooms, "room")}` };
-    case "bell": return { title: "Time Slots", detail: "The class hours of your department: periods and breaks, like Monday – Thursday and Friday.", to: "/time-slots", status: counts.ready === counts.departments && counts.departments > 0 ? plural(counts.patterns, "bell schedule") : "Not set up yet" };
     case "loading": return { title: "Teacher Loading", detail: "Who teaches each subject of each section.", to: "/teacher-loading", status: `${counts.loaded} of ${counts.needed} subjects have a teacher` };
     default: return { title: "Make the schedule", detail: "Place each section's classes, then submit for approval.", to: "/schedule", status: `${counts.started} of ${counts.sections} started · ${counts.submitted} submitted` };
   }
@@ -160,7 +159,6 @@ export async function render(container) {
       const data = await getSchedulerDashboard(term.id);
       const nextWords = {
         revise: ["Revise what the Admin rejected", "Read the remarks, fix the schedule, then submit it again."],
-        no_bell_schedule: ["Set up the bell schedule", "Add the periods and breaks of your department in Time Slots. Nothing can be plotted until then."],
         add_loading: ["Add teacher loading", "Choose who teaches each subject of these sections."],
         plot: ["Start plotting", "The loading is ready, so subjects can now be placed on the schedule."],
         submit: ["Finish and submit", "Fill the remaining slots, check the flags, then submit for approval."],
@@ -181,7 +179,7 @@ export async function render(container) {
           data.next_steps.length
             ? h("section", { "aria-label": "Next steps", class: "space-y-2" }, h("h2", { class: "font-semibold text-accent" }, "Next steps"), h("ul", { class: "grid gap-3 lg:grid-cols-2" }, data.next_steps.map((/** @type {any} */ step) => {
                 const [title, detail] = nextWords[/** @type {keyof typeof nextWords} */ (step.key)] ?? [step.key, ""];
-                return h("li", { class: "card space-y-2 p-4" }, h("p", { class: "font-medium" }, title), h("p", { class: "text-small text-muted-foreground" }, detail), h("div", { class: "flex flex-wrap gap-2" }, step.key === "no_bell_schedule" ? h("a", { href: "/time-slots", class: "btn btn-outline" }, "Open Time Slots") : step.sections.slice(0, 6).map((/** @type {any} */ section) => h("a", { href: step.key === "add_loading" ? `/teacher-loading?section=${section.id}` : `/schedule/sections/${section.id}`, class: "btn btn-outline" }, section.label))));
+                return h("li", { class: "card space-y-2 p-4" }, h("p", { class: "font-medium" }, title), h("p", { class: "text-small text-muted-foreground" }, detail), h("div", { class: "flex flex-wrap gap-2" }, step.sections.slice(0, 6).map((/** @type {any} */ section) => h("a", { href: step.key === "add_loading" ? `/teacher-loading?section=${section.id}` : `/schedule/sections/${section.id}`, class: "btn btn-outline" }, section.label))));
               })))
             : null,
           h("div", { class: "grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" }, stepsList(data.steps), overloaded(data.overloaded_teachers)),

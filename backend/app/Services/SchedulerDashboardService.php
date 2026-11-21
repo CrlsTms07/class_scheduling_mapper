@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Activity;
 use App\Models\Building;
-use App\Models\DayPattern;
 use App\Models\Room;
 use App\Models\SchoolTerm;
 use App\Models\Section;
@@ -66,7 +65,8 @@ class SchedulerDashboardService
     /**
      * The steps of making a schedule, in the order of the Setup menu, each with how far along it is
      * (one order everywhere, after the beneficiary's review, Nov 21, 2026): 1 Teachers, 2 Subjects,
-     * 3 Sections, 4 Rooms, 5 Time Slots (bell schedule), 6 Teacher Loading, 7 Plot and submit.
+     * 3 Sections, 4 Rooms, 5 Teacher Loading, 6 Plot and submit. The class times are chosen while
+     * plotting, so the bell schedule is not a step of its own.
      *
      * @param  array<int, int>  $scope
      * @return array<int, array{key: string, done: bool, counts: array<string, int>}>
@@ -95,20 +95,6 @@ class SchedulerDashboardService
         $started = $sections->where('status', '<>', 'not_started')->count();
         $submitted = $sections->whereIn('status', ['pending', 'approved'])->count();
 
-        // The bell schedules of the departments in the user's scope (JHS, SHS), with their periods.
-        // Like the Admin's setup checklist, only a department that has sections needs one; before any
-        // section exists, every department in scope is counted.
-        $levels = DB::table('grade_levels')->whereIn('id', $scope)->distinct()->pluck('level');
-        $levelsWithSections = DB::table('sections')
-            ->join('grade_levels', 'grade_levels.id', '=', 'sections.grade_level_id')
-            ->where('sections.school_year_id', $term->school_year_id)
-            ->whereIn('sections.grade_level_id', $scope)
-            ->distinct()
-            ->pluck('grade_levels.level');
-        $levels = $levelsWithSections->isNotEmpty() ? $levelsWithSections : $levels;
-        $patterns = DayPattern::where('school_year_id', $term->school_year_id)->whereIn('level', $levels)->withCount('timeSlots')->get();
-        $bellLevels = $patterns->where('time_slots_count', '>', 0)->pluck('level')->unique();
-
         $rooms = [
             'key' => 'rooms',
             'done' => Room::where('is_active', true)->visibleTo($user)->exists(),
@@ -134,11 +120,6 @@ class SchedulerDashboardService
                 'counts' => ['sections' => $models->count(), 'without_adviser' => $models->whereNull('adviser_id')->count()],
             ],
             $rooms,
-            [
-                'key' => 'bell',
-                'done' => $levels->isNotEmpty() && $levels->diff($bellLevels)->isEmpty(),
-                'counts' => ['patterns' => $patterns->count(), 'departments' => $levels->count(), 'ready' => $bellLevels->count()],
-            ],
             [
                 'key' => 'loading',
                 'done' => $needed > 0 && $loaded >= $needed,
@@ -166,13 +147,12 @@ class SchedulerDashboardService
                 $section['status'] === 'rejected' => 'revise',
                 $section['status'] === 'draft' => 'submit',
                 $section['status'] !== 'not_started' => 'none',
-                ! DayPattern::forSection($models[$section['id']])->exists() => 'no_bell_schedule',
                 ! in_array($section['id'], $loadedSectionIds, true) => 'add_loading',
                 default => 'plot',
             };
         });
 
-        return collect(['revise', 'no_bell_schedule', 'add_loading', 'plot', 'submit'])
+        return collect(['revise', 'add_loading', 'plot', 'submit'])
             ->filter(fn (string $key) => $grouped->has($key))
             ->map(fn (string $key) => [
                 'key' => $key,

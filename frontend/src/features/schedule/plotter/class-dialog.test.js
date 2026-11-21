@@ -13,6 +13,7 @@ vi.mock("@/api/schedule.js", () => ({
   getTeacherChoices: vi.fn(async () => []),
   placeActivity: vi.fn(async () => ({})),
   quickAddTeacher: vi.fn(async () => ({ id: 99, name: "New Teacher" })),
+  resolvePeriod: vi.fn(async () => ({ 5: 11 })),
 }));
 
 const api = await import("@/api/schedule.js");
@@ -103,5 +104,29 @@ describe("the Add / Edit class dialog", () => {
     expect(full?.textContent).toContain("Full");
     expect(full?.textContent).toContain("Teacher Sample 1 is teaching Grade 7 – Sample A.");
     expect(document.querySelector("dialog")?.textContent).toContain("6:30 AM – 7:10 AM is not offered. Friday: Teacher Sample 1 is teaching Grade 7 – Sample A.");
+  });
+
+  it("starts by typing the time when the section has no class hours yet (no Time Slots setup first)", async () => {
+    openClassDialog({ plotter: { ...PLOTTER, patterns: [] }, termId: 1, target: { day: 1, loadingId: 50 } });
+    await flush();
+    await flush();
+
+    const text = document.querySelector("dialog")?.textContent ?? "";
+    expect(text).toContain("Start time");
+    expect(text).toContain("End time");
+    expect(text).not.toContain("Time Slots page");
+    expect(button("Choose a period instead")).toBeUndefined();
+  });
+
+  it("can switch from the periods to typing a time, and back", async () => {
+    openClassDialog({ plotter: PLOTTER, termId: 1, target: { day: 5, loadingId: 50 } });
+    await flush();
+    await flush();
+
+    click(/** @type {HTMLElement} */ ([...document.querySelectorAll("dialog button")].find((item) => item.textContent?.includes("Type another time"))));
+    expect(document.querySelector("dialog")?.textContent).toContain("Start time");
+
+    click(/** @type {HTMLElement} */ ([...document.querySelectorAll("dialog button")].find((item) => item.textContent?.includes("Choose a period instead"))));
+    expect(document.querySelectorAll("dialog [role=radio]").length).toBeGreaterThan(0);
   });
 });

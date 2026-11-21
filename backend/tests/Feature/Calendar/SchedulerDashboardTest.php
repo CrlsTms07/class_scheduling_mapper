@@ -91,13 +91,13 @@ it('puts each section at the first thing it needs', function () {
         ->and($data['next_steps'][3]['sections'][0]['id'])->toBe($draft);
 });
 
-it('says when the Admin still has to set the bell schedule', function () {
+it('lets a section with no bell schedule be plotted: its times are typed while plotting', function () {
     DB::table('day_patterns')->delete();
     schedulerSection($this, 'Honesty');
 
-    $this->actingAs($this->glc)->getJson($this->url)
-        ->assertJsonPath('data.next_steps.0.key', 'no_bell_schedule')
-        ->assertJsonPath('data.next_steps.0.sections.0.label', 'Grade 7 – Honesty');
+    $keys = collect($this->actingAs($this->glc)->getJson($this->url)->json('data.next_steps'))->pluck('key');
+    expect($keys)->not->toContain('no_bell_schedule')
+        ->and($keys)->toContain('add_loading');
 });
 
 it('counts only the grade levels of this user', function () {
@@ -142,33 +142,15 @@ it('gives the Admin the same steps, for every grade level', function () {
     $this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)
         ->assertOk()
         ->assertJsonPath('data.has_scope', true)
-        ->assertJsonCount(7, 'data.steps');
+        ->assertJsonCount(6, 'data.steps');
 });
 
 it('lists the steps in the order of the Setup menu', function () {
     $steps = collect($this->actingAs(User::factory()->create()->assignRole('super_admin'))->getJson($this->url)->json('data.steps'));
 
-    expect($steps->pluck('key')->all())->toBe(['teachers', 'subjects', 'sections', 'rooms', 'bell', 'loading', 'plot'])
+    expect($steps->pluck('key')->all())->toBe(['teachers', 'subjects', 'sections', 'rooms', 'loading', 'plot'])
         ->and($steps[2]['counts'])->toHaveKeys(['sections', 'without_adviser'])
-        ->and($steps[3]['counts'])->toHaveKeys(['rooms', 'buildings'])
-        ->and($steps[4]['counts'])->toHaveKeys(['patterns', 'departments', 'ready']);
-});
-
-it('needs a bell schedule only for a department that has sections, like the setup checklist', function () {
-    $admin = User::factory()->create()->assignRole('super_admin');
-
-    // No section yet: Junior High has a bell schedule, Senior High does not.
-    $bell = fn () => collect($this->actingAs($admin)->getJson($this->url)->json('data.steps'))->firstWhere('key', 'bell');
-    expect($bell()['done'])->toBeFalse();
-
-    // Only Junior High has sections, and its bell schedule is ready.
-    schedulerSection($this, 'Honesty');
-    expect($bell()['done'])->toBeTrue()
-        ->and($bell()['counts']['departments'])->toBe(1);
-
-    // A Senior High section needs its own bell schedule too.
-    schedulerSection($this, 'STEM', 11);
-    expect($bell()['done'])->toBeFalse();
+        ->and($steps[3]['counts'])->toHaveKeys(['rooms', 'buildings']);
 });
 
 it('needs a sign-in', function () {

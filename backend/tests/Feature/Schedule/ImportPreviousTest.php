@@ -114,7 +114,7 @@ it('stays inside the grade levels of the user', function () {
 it('shows the steps on the dashboard, with their progress', function () {
     $steps = collect($this->getJson("/api/terms/{$this->active->id}/my-dashboard")->assertOk()->json('data.steps'))->keyBy('key');
 
-    expect($steps->keys()->all())->toBe(['teachers', 'subjects', 'sections', 'rooms', 'bell', 'loading', 'plot'])
+    expect($steps->keys()->all())->toBe(['teachers', 'subjects', 'sections', 'rooms', 'loading', 'plot'])
         ->and($steps['subjects']['done'])->toBeTrue()
         ->and($steps['subjects']['counts'])->toMatchArray(['activities' => 2])
         ->and($steps['sections']['counts'])->toMatchArray(['sections' => 2])

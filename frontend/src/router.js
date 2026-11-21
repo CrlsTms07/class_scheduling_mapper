@@ -42,7 +42,7 @@ export const ROUTES = [
   { path: "/approvals", layout: "app", roles: ROLES.ADMIN, title: "Approvals", page: () => import("@/features/approvals/page.js") },
   { path: "/reports", layout: "app", roles: ROLES.STAFF, title: "Reports", page: () => import("@/features/reports/page.js") },
   { path: "/buildings", layout: "app", roles: ROLES.STAFF, title: "Rooms & Buildings", page: () => import("@/features/setup/buildings.js") },
-  { path: "/time-slots", layout: "app", roles: ROLES.STAFF, title: "Time Slots", page: () => import("@/features/setup/time-slots.js") },
+  { path: "/time-slots", layout: "app", roles: ROLES.STAFF, title: "Class Hours", page: () => import("@/features/setup/time-slots.js") },
   { path: "/subjects", layout: "app", roles: ROLES.STAFF, title: "Subjects", page: () => import("@/features/setup/subjects.js") },
   { path: "/sections", layout: "app", roles: ROLES.STAFF, title: "Sections", page: () => import("@/features/setup/sections.js") },
   { path: "/teachers/:teacherId", layout: "app", roles: ROLES.STAFF, title: "Teacher", page: () => import("@/features/setup/teachers.js").then((module) => ({ render: module.renderDetail })) },

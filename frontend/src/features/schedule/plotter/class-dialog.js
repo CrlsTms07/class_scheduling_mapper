@@ -5,10 +5,15 @@
  * fields at once (UI requirement 2), its dropdowns can be searched (UI requirement 3), it offers
  * only the periods that fit the subject and are free (UI requirement 6), and typed times are
  * 12-hour (UI requirement 5).
+ *
+ * The time is chosen here, while making the schedule (beneficiary review, Nov 21, 2026): pick a
+ * period, or type the start and end. A typed time becomes a period of the section's bell schedule
+ * (a day with none gets one), so no time slots have to be set up first.
  */
 import { h, replace } from "@/lib/dom.js";
 import { openDialog, confirmAction, setBusy } from "@/components/dialog.js";
 import { searchableSelect } from "@/components/searchable-select.js";
+import { timePicker } from "@/components/time-picker.js";
 import { toast } from "@/components/toast.js";
 import { icon } from "@/components/icons.js";
 import { errorMessage } from "@/api/client.js";
@@ -21,8 +26,10 @@ import {
   getTeacherChoices,
   placeActivity,
   quickAddTeacher,
+  resolvePeriod,
 } from "@/api/schedule.js";
 import { DAY_NAMES, defaultDays, entryAt, fittingPeriods, hasSubject, isActivity, isLocked, minutesLeft, minutesText, slotTimeLabel } from "@/lib/schedule.js";
+import { minutesBetween } from "@/lib/time.js";
 
 /**
  * @typedef {import("@/lib/schedule.js").Plotter} Plotter
@@ -51,7 +58,7 @@ export function openClassDialog({ plotter, termId, target }) {
   const isCurrentLocked = current ? isLocked(current) : false;
   const dayName = DAY_NAMES[target.day];
 
-  /** @type {{ kind: "subject" | "activity", loadingId: number | null, teacherId: number | null, roomId: number | null, slotId: number | null, days: number[], free: import("@/lib/schedule.js").FreePeriod[] | null }} */
+  /** @type {{ kind: "subject" | "activity", loadingId: number | null, teacherId: number | null, roomId: number | null, slotId: number | null, days: number[], typing: boolean, free: import("@/lib/schedule.js").FreePeriod[] | null }} */
   const state = {
     kind: isActivity(current) ? "activity" : "subject",
     loadingId: target.loadingId ?? current?.section_subject_id ?? null,
@@ -59,6 +66,8 @@ export function openClassDialog({ plotter, termId, target }) {
     roomId: current?.room_id ?? plotter.section.home_room_id,
     slotId: tappedSlot?.id ?? null,
     days: isEditing ? [target.day] : [],
+    // No period tapped and no bell schedule yet: start by typing the time.
+    typing: !tappedSlot && plotter.patterns.length === 0,
     free: null,
   };
 
@@ -74,7 +83,7 @@ export function openClassDialog({ plotter, termId, target }) {
   const removeButton = /** @type {HTMLButtonElement} */ (h("button", { type: "button", class: "btn btn-outline text-danger", onclick: () => remove() }, icon("trash"), "Remove from selected days"));
 
   const title = isEditing ? `Edit class · ${dayName}` : tappedSlot ? `Add class · ${dayName}` : `Add class · ${dayName}`;
-  const description = tappedSlot ? `${plotter.section.label} · ${slotTimeLabel(tappedSlot)} · ${tappedSlot.minutes} mins` : `${plotter.section.label}. Choose one of the periods of the bell schedule.`;
+  const description = tappedSlot ? `${plotter.section.label} · ${slotTimeLabel(tappedSlot)} · ${tappedSlot.minutes} mins` : `${plotter.section.label}. Choose a period, or type the start and end time.`;
 
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let recheck;
@@ -260,7 +269,36 @@ export function openClassDialog({ plotter, termId, target }) {
     });
   };
 
+  /** The typed time: checked while it is chosen (the end must be after the start). */
+  const typedError = h("p", { class: "field-error", role: "alert", hidden: true });
+  const checkTyped = () => {
+    const start = startPicker.getValue();
+    const end = endPicker.getValue();
+    const message = start && end && minutesBetween(start, end) <= 0 ? "The end time must be after the start time." : "";
+    typedError.textContent = message;
+    typedError.hidden = !message;
+    return !message;
+  };
+  const startPicker = timePicker({ label: "Start time", onChange: () => checkTyped() });
+  const endPicker = timePicker({ label: "End time", onChange: () => checkTyped() });
+
+  const drawTyping = () => {
+    replace(
+      periodsArea,
+      h("p", { class: "field-label" }, "Time"),
+      h("div", { class: "flex flex-wrap gap-4" }, startPicker, endPicker),
+      typedError,
+      h("p", { class: "field-help" }, "A new time becomes a period of the bell schedule, so the conflict rules and the Class Program still work. It must not overlap a period or a break."),
+      plotter.patterns.length > 0 ? h("button", { type: "button", class: "btn btn-quiet px-0 text-brand", onclick: () => { state.typing = false; drawPeriods(); } }, icon("arrow-left"), "Choose a period instead") : null,
+    );
+    drawDays(null);
+  };
+
   const drawPeriods = () => {
+    if (state.typing) {
+      drawTyping();
+      return;
+    }
     const subject = /** @type {import("@/lib/schedule.js").Loading} */ (loading());
     const options = fits();
     const shownDay = (/** @type {{ freeDays: number[] }} */ fit) => fit.freeDays.includes(target.day);
@@ -310,9 +348,7 @@ export function openClassDialog({ plotter, termId, target }) {
     replace(
       periodsArea,
       header,
-      plotter.patterns.length === 0
-        ? h("p", { class: "rounded-lg bg-surface-muted p-3 text-sm" }, "This section has no bell schedule yet. Add its periods on the Time Slots page first.", " ", h("a", { href: "/time-slots", class: "inline-flex min-h-11 items-center font-medium text-brand underline" }, "Open Time Slots"))
-        : left <= 0
+      left <= 0
           ? h("p", { class: "rounded-lg bg-surface-muted p-3 text-sm" }, "This subject already has all its minutes. Choose another subject, or remove one of its classes first.")
           : [
               options.length === 0 ? h("p", { role: "status", class: "rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, "No period is free for this subject now: each one below says why. Try another room or teacher, or free a period first.") : null,
@@ -345,6 +381,7 @@ export function openClassDialog({ plotter, termId, target }) {
                 }),
               ),
             ],
+      left > 0 ? h("button", { type: "button", class: "btn btn-quiet px-0 text-brand", onclick: () => { state.typing = true; drawPeriods(); } }, icon("clock"), "Type another time") : null,
     );
 
     const chosen = options.find(({ slot }) => slot.id === state.slotId) ?? null;
@@ -571,14 +608,36 @@ export function openClassDialog({ plotter, termId, target }) {
         return;
       }
 
-      // The chosen period and its days.
+      // The period of each chosen day: a period from the list, or a typed time.
       /** @type {Map<number, number[]>} slot id => days */
       const placements = new Map();
-      if (!state.slotId || state.days.length === 0) {
-        showError("Choose a period and at least one day.");
-        return;
+      if (state.typing) {
+        const start = startPicker.getValue();
+        const end = endPicker.getValue();
+        if (!start || !end) {
+          showError("Choose the start and end time.");
+          return;
+        }
+        if (!checkTyped()) {
+          showError("The end time must be after the start time.");
+          return;
+        }
+        if (state.days.length === 0) {
+          showError("Choose at least one day.");
+          return;
+        }
+        const slots = await resolvePeriod(termId, sectionId, { days: state.days, start_time: start, end_time: end });
+        for (const day of state.days) {
+          const slotId = slots[String(day)];
+          placements.set(slotId, [...(placements.get(slotId) ?? []), day]);
+        }
+      } else {
+        if (!state.slotId || state.days.length === 0) {
+          showError("Choose a period and at least one day.");
+          return;
+        }
+        placements.set(state.slotId, state.days);
       }
-      placements.set(state.slotId, state.days);
 
       if (chosenTeacherId() && chosenTeacherId() !== subject.teacher_id) {
         await changeTeacher(termId, sectionId, { subjectId: subject.subject_id, teacherId: /** @type {number} */ (chosenTeacherId()) });

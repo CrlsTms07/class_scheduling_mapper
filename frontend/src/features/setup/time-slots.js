@@ -1,6 +1,8 @@
 // @ts-check
 /**
- * Step 2 of the setup: Time Slots, the bell schedules. A bell schedule groups days that share the
+ * Class Hours (was Time Slots), optional: the bell schedules. They are made by themselves from the
+ * times typed while plotting (beneficiary review, Nov 21, 2026); this page is for changing them.
+ * A bell schedule groups days that share the
  * same periods and breaks (like Monday – Thursday, and Friday) for a department and shift.
  * Times are typed in 12-hour form (UI requirement 5).
  */
@@ -161,7 +163,7 @@ export async function render(container) {
     h(
       "div",
       { class: "space-y-5 p-4 sm:p-6" },
-      pageHeader({ icon: "clock", title: "Time Slots", description: `Step 2 of the setup: the bell schedules of SY ${year.name}.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Time Slots" }], actions: h("button", { type: "button", class: "btn btn-primary", onclick: () => patternForm({ mode: "create" }) }, icon("plus"), "Add bell schedule") }),
+      pageHeader({ icon: "clock", title: "Class Hours", description: `Optional: the periods and breaks of SY ${year.name}. They are also made by themselves when you type a class time while plotting.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Time Slots" }], actions: h("button", { type: "button", class: "btn btn-primary", onclick: () => patternForm({ mode: "create" }) }, icon("plus"), "Add bell schedule") }),
       content,
     ),
   );

@@ -77,8 +77,9 @@ const NAVIGATION = [
       { name: "2 · Subjects", path: "/subjects", icon: "book", roles: STAFF },
       { name: "3 · Sections", path: "/sections", icon: "team", roles: STAFF },
       { name: "4 · Rooms & Buildings", path: "/buildings", icon: "building", roles: STAFF },
-      { name: "5 · Time Slots", path: "/time-slots", icon: "clock", roles: STAFF },
-      { name: "6 · Teacher Loading", path: "/teacher-loading", icon: "clipboard", roles: STAFF },
+      { name: "5 · Teacher Loading", path: "/teacher-loading", icon: "clipboard", roles: STAFF },
+      // Not a step: class times are chosen while plotting (beneficiary review, Nov 21, 2026).
+      { name: "Class Hours", path: "/time-slots", icon: "clock", roles: STAFF },
     ],
   },
   {

@@ -22,6 +22,7 @@ use App\Http\Controllers\ScheduleMapController;
 use App\Http\Controllers\SchedulerDashboardController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
+use App\Http\Controllers\SectionPeriodController;
 use App\Http\Controllers\SectionRoomController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
@@ -198,6 +199,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::prefix('/terms/{term}/sections/{section}')->group(function () {
         Route::get('/plotter', [PlotterController::class, 'show']);
         Route::get('/free-periods', [PlotterController::class, 'freePeriods']);
+        // A typed start and end time (beneficiary review, Nov 21, 2026): the period it matches, or a new one.
+        Route::post('/periods', [SectionPeriodController::class, 'store']);
         Route::put('/slots/{timeSlot}', [PlotterController::class, 'assign']);
         Route::delete('/slots/{timeSlot}', [PlotterController::class, 'clear']);
         Route::post('/slots/{timeSlot}/move', [PlotterController::class, 'move']);

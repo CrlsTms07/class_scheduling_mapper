@@ -117,8 +117,8 @@ export async function render(container, { params }) {
           ? h(
               "div",
               { class: "card space-y-2 p-4" },
-              h("p", { class: "text-sm" }, "There is no bell schedule for this section's department and shift yet. Add a class by typing its time, and the bell schedule starts from it, or set it up on the Time Slots page."),
-              h("div", { class: "flex flex-wrap gap-2" }, canEdit ? h("button", { type: "button", class: "btn btn-primary", onclick: () => openClassDialog({ plotter, termId, target: { day: 1 } }) }, icon("plus"), "Add a class by time") : null, h("a", { href: "/time-slots", class: "btn btn-outline" }, icon("clock"), "Open Time Slots")),
+              h("p", { class: "text-sm" }, "This section has no class times yet. Add its first class by choosing the start and end time; the class hours are made from it."),
+              h("div", { class: "flex flex-wrap gap-2" }, canEdit ? h("button", { type: "button", class: "btn btn-primary", onclick: () => openClassDialog({ plotter, termId, target: { day: 1 } }) }, icon("plus"), "Add a class by time") : null, h("a", { href: "/time-slots", class: "btn btn-outline" }, icon("clock"), "Class Hours (optional)")),
             )
           : null;
 
