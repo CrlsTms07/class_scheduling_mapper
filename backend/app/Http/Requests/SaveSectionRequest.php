@@ -36,6 +36,7 @@ class SaveSectionRequest extends FormRequest
             'name' => ['required', 'string', 'max:60'],
             'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
             'track_id' => ['nullable', 'integer', 'exists:tracks,id'],
+            'strand' => ['nullable', 'string', 'max:120'],
             'adviser_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'co_adviser_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'home_room_id' => ['nullable', 'integer', 'exists:rooms,id'],
@@ -109,6 +110,10 @@ class SaveSectionRequest extends FormRequest
 
         if ($level === 'JHS' && $this->filled('track_id')) {
             $validator->errors()->add('track_id', 'Only Senior High sections have a track.');
+        }
+
+        if ($level === 'JHS' && $this->filled('strand')) {
+            $validator->errors()->add('strand', 'Only Senior High sections have a strand.');
         }
     }
 

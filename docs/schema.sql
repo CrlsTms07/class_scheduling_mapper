@@ -236,6 +236,7 @@ CREATE TABLE sections (
     class_size       SMALLINT CHECK (class_size >= 0),
     UNIQUE (school_year_id, grade_level_id, name),
     co_adviser_id    BIGINT REFERENCES teachers(id) ON DELETE RESTRICT,  -- optional, named on the public schedule
+    strand           VARCHAR(120),                                       -- SHS only, printed after the track
     CHECK (co_adviser_id <> adviser_id),
     UNIQUE (school_year_id, adviser_id)                                  -- 1 advisory per year
 );

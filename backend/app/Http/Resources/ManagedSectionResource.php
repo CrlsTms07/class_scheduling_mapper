@@ -26,6 +26,7 @@ class ManagedSectionResource extends JsonResource
             'shift' => $this->shift,
             'track_id' => $this->track_id,
             'track' => $this->track?->name,
+            'strand' => $this->strand,
             'adviser_id' => $this->adviser_id,
             'adviser' => $this->adviser?->printedName(),
             'co_adviser_id' => $this->co_adviser_id,

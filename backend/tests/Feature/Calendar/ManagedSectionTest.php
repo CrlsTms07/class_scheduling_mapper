@@ -110,6 +110,16 @@ it('creates an SHS section with a track and no home room', function () {
         ->assertJsonPath('data.track', 'Academic');
 });
 
+it('keeps the strand of a Senior High section, and refuses one for Junior High', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody([
+        'grade_level_id' => sectionGradeId(11), 'track_id' => $this->trackId, 'shift' => 'AM', 'strand' => 'Arts, Social Science and Humanities',
+    ]))->assertCreated()->assertJsonPath('data.strand', 'Arts, Social Science and Humanities');
+
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['name' => 'Junior', 'strand' => 'STEM']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['strand' => 'Only Senior High sections have a strand.']);
+});
+
 it('takes a co-adviser, who may advise another section', function () {
     DB::table('sections')->insert([
         'school_year_id' => $this->yearId, 'grade_level_id' => sectionGradeId(8), 'name' => 'Other', 'adviser_id' => $this->teacherId,
