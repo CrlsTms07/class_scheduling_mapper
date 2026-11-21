@@ -26,7 +26,7 @@ class SaveTeacherRequest extends FormRequest
             // Every teacher belongs to one department (beneficiary review, Nov 21, 2026).
             'department_id' => ['required', 'integer', 'exists:departments,id'],
             'designation_id' => ['required', 'integer', 'exists:designations,id'],
-            'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
+            'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY', 'PART_TIME'])],
             'is_active' => ['required', 'boolean'],
             'task_ids' => ['present', 'array'],
             'task_ids.*' => ['integer', 'distinct', 'exists:teaching_tasks,id'],

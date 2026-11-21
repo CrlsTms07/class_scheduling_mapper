@@ -6,7 +6,7 @@
  * focus is class scheduling). Departments and designations are added, renamed and deleted right in
  * their dropdowns.
  */
-import { defaultShift, shiftOptions } from "@/lib/shifts.js";
+import { SHIFT_LABELS, defaultShift, shiftOptions } from "@/lib/shifts.js";
 import { session } from "@/state/session.js";
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
@@ -23,7 +23,7 @@ import { termState } from "@/state/term.js";
 import { DAY_NAMES } from "@/lib/schedule.js";
 import { timeRange } from "@/lib/time.js";
 
-const SHIFTS = { WHOLE_DAY: "Whole day", AM: "Morning (AM)", PM: "Afternoon (PM)" };
+const SHIFTS = SHIFT_LABELS;
 const LEVEL_TABS = [["", "All"], ["JHS", "Junior High"], ["SHS", "Senior High"], ["none", "No classes yet"]];
 
 /** @type {import("@/router.js").RenderPage} */

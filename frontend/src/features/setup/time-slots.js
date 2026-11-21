@@ -224,7 +224,7 @@ export async function render(container) {
           "div",
           { class: "flex flex-col gap-2 sm:flex-row" },
           levels.length > 1 ? h("div", { role: "tablist", "aria-label": "Department", class: "grid grid-cols-2 gap-2 sm:w-64" }, levels.map((level) => h("button", { type: "button", role: "tab", "aria-selected": String(ui.level === level), class: toggle(ui.level === level), onclick: () => { ui.level = level; draw(); } }, level === "JHS" ? "Junior High" : "Senior High"))) : null,
-          h("div", { role: "tablist", "aria-label": "Shift", class: `grid gap-2 ${Object.keys(shifts).length === 2 ? "grid-cols-2 sm:w-64" : "grid-cols-3 sm:w-96"}` }, Object.entries(shifts).map(([key, label]) => h("button", { type: "button", role: "tab", "aria-selected": String(ui.shift === key), class: toggle(ui.shift === key), onclick: () => { ui.shift = key; draw(); } }, label))),
+          h("div", { role: "tablist", "aria-label": "Shift", class: `grid gap-2 ${Object.keys(shiftChoices(session.user?.role, ui.level)).length === 2 ? "grid-cols-2 sm:w-64" : "grid-cols-2 sm:grid-cols-4 sm:w-[32rem]"}` }, Object.entries(shiftChoices(session.user?.role, ui.level)).map(([key, label]) => h("button", { type: "button", role: "tab", "aria-selected": String(ui.shift === key), class: toggle(ui.shift === key), onclick: () => { ui.shift = key; draw(); } }, label))),
         ),
         shown.length === 0
           ? emptyState({ title: "No bell schedule here yet", text: "Add one for these days, then fill it with a preset or add its periods one by one.", action: h("button", { type: "button", class: "btn btn-primary", onclick: () => patternForm({ mode: "create" }) }, icon("plus"), "Add bell schedule") })

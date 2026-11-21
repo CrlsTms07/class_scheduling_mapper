@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;   -- needed for conflict constraints
 CREATE TYPE timerange AS RANGE (subtype = time);
 
 CREATE TYPE school_level    AS ENUM ('JHS', 'SHS');
-CREATE TYPE shift_type      AS ENUM ('AM', 'PM', 'WHOLE_DAY');
+CREATE TYPE shift_type      AS ENUM ('AM', 'PM', 'WHOLE_DAY', 'PART_TIME');  -- PART_TIME: Senior High only
 CREATE TYPE account_status  AS ENUM ('pending', 'active', 'inactive');
 CREATE TYPE personnel_type  AS ENUM ('teaching', 'non_teaching');
 CREATE TYPE subject_type    AS ENUM ('core', 'elective', 'other');

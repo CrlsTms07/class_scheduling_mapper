@@ -28,7 +28,7 @@ class SaveDayPatternRequest extends FormRequest
     {
         return [
             'level' => [Rule::requiredIf(! $this->isEditing()), Rule::in(['JHS', 'SHS'])],
-            'shift' => [Rule::requiredIf(! $this->isEditing()), Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
+            'shift' => [Rule::requiredIf(! $this->isEditing()), Rule::in(['AM', 'PM', 'WHOLE_DAY', 'PART_TIME'])],
             'name' => ['required', 'string', 'max:40'],
             'days' => ['required', 'array', 'min:1', 'max:5'],
             'days.*' => ['integer', 'between:1,5', 'distinct'],
@@ -37,7 +37,12 @@ class SaveDayPatternRequest extends FormRequest
 
     public function after(): array
     {
-        return [fn (Validator $validator) => $this->validateAgainstOtherPatterns($validator)];
+        return [
+            function (\Illuminate\Validation\Validator $validator) {
+                if ($this->input('shift') === 'PART_TIME' && $this->input('level', $this->route('dayPattern')?->level) === 'JHS') {
+                    $validator->errors()->add('shift', 'The part-time shift is for Senior High only.');
+                }
+            },fn (Validator $validator) => $this->validateAgainstOtherPatterns($validator)];
     }
 
     /**

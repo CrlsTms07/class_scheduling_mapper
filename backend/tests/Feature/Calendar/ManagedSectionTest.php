@@ -120,6 +120,14 @@ it('keeps the strand of a Senior High section, and refuses one for Junior High',
         ->assertJsonValidationErrors(['strand' => 'Only Senior High sections have a strand.']);
 });
 
+it('allows the part-time shift for Senior High only', function () {
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['grade_level_id' => sectionGradeId(11), 'shift' => 'PART_TIME', 'name' => 'Part']))
+        ->assertCreated();
+    $this->postJson("/api/school-years/{$this->yearId}/sections", sectionBody(['shift' => 'PART_TIME', 'name' => 'Junior Part']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['shift' => 'The part-time shift is for Senior High only.']);
+});
+
 it('takes a co-adviser, who may advise another section', function () {
     DB::table('sections')->insert([
         'school_year_id' => $this->yearId, 'grade_level_id' => sectionGradeId(8), 'name' => 'Other', 'adviser_id' => $this->teacherId,

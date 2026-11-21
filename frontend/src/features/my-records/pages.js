@@ -3,6 +3,7 @@
  * My Schedule (approved classes only, PDF and CSV) and My Profile, for teachers and for a
  * Chairperson or Master Teacher with a personnel record.
  */
+import { SHIFT_LABELS } from "@/lib/shifts.js";
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
 import { downloadButtons } from "@/components/download-buttons.js";
@@ -56,7 +57,7 @@ export async function renderMyProfile(container) {
   replace(container, skeletonPage());
   try {
     const profile = await getMyProfile(term.id);
-    const shifts = { AM: "Morning (AM)", PM: "Afternoon (PM)", WHOLE_DAY: "Whole day" };
+    const shifts = SHIFT_LABELS;
     const row = (/** @type {string} */ label, /** @type {string | null | undefined} */ value) => [h("dt", { class: "text-sm text-muted-foreground" }, label), h("dd", { class: "text-sm font-medium sm:col-span-2" }, value || "–")];
     replace(
       container,

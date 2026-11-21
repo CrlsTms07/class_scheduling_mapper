@@ -4,7 +4,7 @@
  * shift, adviser (one advisory per teacher a year), co-adviser, home room and class size.
  * A Chairperson or Master Teacher encodes the sections of their own grade levels.
  */
-import { defaultShift, shiftOptions } from "@/lib/shifts.js";
+import { SHIFT_LABELS, defaultShift, shiftOptions } from "@/lib/shifts.js";
 import { session } from "@/state/session.js";
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
@@ -18,7 +18,7 @@ import { changeRecord, getRecords } from "@/api/records.js";
 import { watch } from "@/state/cache.js";
 import { termState } from "@/state/term.js";
 
-const SHIFTS = { WHOLE_DAY: "Whole day", AM: "Morning (AM)", PM: "Afternoon (PM)" };
+const SHIFTS = SHIFT_LABELS;
 
 /** @type {import("@/router.js").RenderPage} */
 export async function render(container, { query }) {
@@ -60,7 +60,7 @@ export async function render(container, { query }) {
       fields: [
         { name: "name", label: "Section name", required: true, value: section?.name, help: "Like Honesty or STEM 11-1", check: (value, values) => (knownSections.some((/** @type {any} */ other) => other.id !== section?.id && String(other.grade_level_id) === String(values.grade_level_id) && other.name.trim().toLowerCase() === String(value).trim().toLowerCase()) ? "This grade level already has a section with this name." : null) },
         { name: "grade_level_id", label: "Grade level", type: "select", required: true, value: section?.grade_level_id ?? "", disabled: !!section?.locked_reason, options: options.grade_levels.map((/** @type {any} */ grade) => ({ value: grade.id, label: `Grade ${grade.grade}` })) },
-        { name: "shift", label: "Shift", type: "select", required: true, value: section?.shift ?? defaultShift(session.user?.role), disabled: !!section?.locked_reason, options: shiftOptions(session.user?.role, section?.shift) },
+        { name: "shift", label: "Shift", type: "select", required: true, value: section?.shift ?? defaultShift(session.user?.role), disabled: !!section?.locked_reason, options: shiftOptions(session.user?.role, section?.shift), check: (/** @type {any} */ value, /** @type {any} */ values) => (value === "PART_TIME" && levelOf(values.grade_level_id) === "JHS" ? "The part-time shift is for Senior High only." : null) },
         ...(hasShs ? [{ name: "track_id", label: "Track", type: /** @type {const} */ ("select"), help: "For Senior High only, like Academic or TechPro.", check: (/** @type {any} */ value, /** @type {any} */ values) => (value && levelOf(values.grade_level_id) === "JHS" ? "Only Senior High sections have a track. Choose No track." : null), value: section?.track_id ?? "", options: [{ value: "", label: "No track" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] }] : []),
         ...(hasShs ? [{ name: "strand", label: "Strand", value: section?.strand ?? "", help: "For Senior High only, like Arts, Social Science and Humanities. Printed after the track.", check: (/** @type {any} */ value, /** @type {any} */ values) => (String(value ?? "").trim() && levelOf(values.grade_level_id) === "JHS" ? "Only Senior High sections have a strand. Leave it empty." : String(value ?? "").length > 120 ? "Use at most 120 characters." : null) }] : []),
         { name: "adviser_id", label: "Adviser", type: "select", value: section?.adviser_id ?? "", options: teacherOptions("adviser"), help: "A teacher advises one section a year.", check: (value, values) => (value && value === values.co_adviser_id ? "The adviser and co-adviser must be different people." : null) },

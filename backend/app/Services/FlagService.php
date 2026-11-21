@@ -174,7 +174,7 @@ class FlagService
                     'key' => "teacher_shift:{$entry->id}",
                     'type' => 'teacher_shift',
                     'severity' => 'amber',
-                    'message' => "{$entry->teacher->printedName()} has the {$entry->teacher->shift} shift, but teaches on {$when}.",
+                    'message' => "{$entry->teacher->printedName()} has the ".(['AM' => 'morning', 'PM' => 'afternoon', 'PART_TIME' => 'part-time'][$entry->teacher->shift] ?? $entry->teacher->shift)." shift, but teaches on {$when}.",
                 ];
             }
         }

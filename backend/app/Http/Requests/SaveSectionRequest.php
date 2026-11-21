@@ -34,7 +34,7 @@ class SaveSectionRequest extends FormRequest
         return [
             'grade_level_id' => ['required', 'integer', 'exists:grade_levels,id'],
             'name' => ['required', 'string', 'max:60'],
-            'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY'])],
+            'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY', 'PART_TIME'])],
             'track_id' => ['nullable', 'integer', 'exists:tracks,id'],
             'strand' => ['nullable', 'string', 'max:120'],
             'adviser_id' => ['nullable', 'integer', 'exists:teachers,id'],
@@ -110,6 +110,10 @@ class SaveSectionRequest extends FormRequest
 
         if ($level === 'JHS' && $this->filled('track_id')) {
             $validator->errors()->add('track_id', 'Only Senior High sections have a track.');
+        }
+
+        if ($level === 'JHS' && $this->input('shift') === 'PART_TIME') {
+            $validator->errors()->add('shift', 'The part-time shift is for Senior High only.');
         }
 
         if ($level === 'JHS' && $this->filled('strand')) {
