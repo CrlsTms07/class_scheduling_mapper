@@ -114,13 +114,12 @@ test("adds a building with a room, a bell schedule from a preset, a subject, a s
   await fill(page, "First name", "Rosa");
   await fill(page, "Last name", "Bautista");
   await choose(page, "Department", "Mathematics");
-  await page.getByRole("dialog").getByRole("button", { name: "Add a degree" }).click();
-  await page.getByRole("dialog").getByLabel("Degree", { exact: true }).fill("BSEd Mathematics");
+  await choose(page, "Designation", "Teacher I");
   await page.getByRole("dialog").getByRole("button", { name: "Add teacher" }).click();
   await expect(page.getByText("Rosa Bautista was added.")).toBeVisible();
   await page.getByRole("link", { name: /Bautista/ }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: /Bautista/ })).toBeVisible();
-  await expect(page.getByText("BSEd Mathematics")).toBeVisible();
+  await expect(page.getByText("Teacher I · Mathematics")).toBeVisible();
 });
 
 test("a new sign-up is activated by the Admin", async ({ page }) => {

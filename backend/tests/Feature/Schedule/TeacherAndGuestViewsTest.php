@@ -136,7 +136,7 @@ describe('My Profile', function () {
     it('shows the person\'s own record, with tasks of the term', function () {
         $this->actingAs($this->account);
         $departmentId = DB::table('departments')->insertGetId(['name' => 'Mathematics']);
-        $designationId = DB::table('designations')->insertGetId(['name' => 'Teacher I']);
+        $designationId = DB::table('designations')->where('name', 'Teacher I')->value('id');
         DB::table('teachers')->where('id', $this->teacherId)->update(['department_id' => $departmentId, 'designation_id' => $designationId]);
         DB::table('teacher_qualifications')->insert(['teacher_id' => $this->teacherId, 'degree_level' => 'Bachelor', 'degree' => 'BSEd']);
         $taskId = DB::table('teaching_tasks')->insertGetId(['name' => 'ICT Coordinator']);

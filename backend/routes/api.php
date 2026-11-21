@@ -141,6 +141,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/personnel-options', [TeacherController::class, 'options']);
     Route::post('/personnel-options/{type}', [TeacherController::class, 'storeOption'])
         ->whereIn('type', array_keys(TeacherService::OPTION_TABLES));
+    Route::put('/personnel-options/{type}/{id}', [TeacherController::class, 'renameOption'])
+        ->whereIn('type', array_keys(TeacherService::OPTION_TABLES))
+        ->whereNumber('id');
     Route::delete('/personnel-options/{type}/{id}', [TeacherController::class, 'destroyOption'])
         ->whereIn('type', array_keys(TeacherService::OPTION_TABLES))
         ->whereNumber('id');

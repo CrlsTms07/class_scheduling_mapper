@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 /**
- * Fixed values the system cannot run without: the four roles and Grades 7 to 12.
+ * Fixed values the system cannot run without: the four roles, Grades 7 to 12, and DepEd's
+ * teacher designations (a teacher's designation is required since Nov 21, 2026; more can be added).
  */
 class ReferenceDataSeeder extends Seeder
 {
@@ -22,6 +23,12 @@ class ReferenceDataSeeder extends Seeder
                 ['grade' => $grade],
                 ['level' => $grade <= 10 ? 'JHS' : 'SHS'],
             );
+        }
+
+        $designations = ['Teacher I', 'Teacher II', 'Teacher III', 'Master Teacher I', 'Master Teacher II', 'Master Teacher III', 'Master Teacher IV',
+            'Head Teacher I', 'Head Teacher II', 'Head Teacher III', 'Head Teacher IV', 'Head Teacher V', 'Head Teacher VI'];
+        foreach ($designations as $name) {
+            DB::table('designations')->updateOrInsert(['name' => $name]);
         }
     }
 }

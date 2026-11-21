@@ -164,7 +164,7 @@ describe('deleting a personnel option', function () {
 
     it('keeps a department or designation in use', function () {
         $department = DB::table('departments')->insertGetId(['name' => 'Math']);
-        $designation = DB::table('designations')->insertGetId(['name' => 'Teacher I']);
+        $designation = DB::table('designations')->where('name', 'Teacher I')->value('id');
         DB::table('teachers')->where('id', $this->teacherId)->update(['department_id' => $department, 'designation_id' => $designation]);
 
         $this->deleteJson("/api/personnel-options/departments/{$department}")->assertUnprocessable()->assertJsonValidationErrors('option');

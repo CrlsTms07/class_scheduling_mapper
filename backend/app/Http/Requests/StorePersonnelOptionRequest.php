@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 
 /**
- * A new department, designation or teaching task, added from the teacher form.
+ * A department, designation or teaching task, added or renamed from the teacher form.
  */
 class StorePersonnelOptionRequest extends FormRequest
 {
@@ -24,9 +24,11 @@ class StorePersonnelOptionRequest extends FormRequest
     {
         $table = TeacherService::OPTION_TABLES[$this->route('type')];
 
-        return ['name' => ['required', 'string', 'max:60', new ReadableName, function (string $attribute, mixed $value, \Closure $fail) use ($table) {
+        $renaming = $this->route('id');
+
+        return ['name' => ['required', 'string', 'max:60', new ReadableName, function (string $attribute, mixed $value, \Closure $fail) use ($table, $renaming) {
             // "Science" and "science" are the same name.
-            if (DB::table($table)->whereRaw('LOWER(name) = LOWER(?)', [trim((string) $value)])->exists()) {
+            if (DB::table($table)->whereRaw('LOWER(name) = LOWER(?)', [trim((string) $value)])->when($renaming, fn ($query) => $query->where('id', '<>', (int) $renaming))->exists()) {
                 $fail('This already exists in the list.');
             }
         }]];

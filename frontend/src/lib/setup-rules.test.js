@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { presetRows, slotOverlap } from "@/features/setup/time-slots.js";
 import { buildTerms, dayMonthYear, termName } from "@/features/admin/school-years.js";
 import { floorLabel, floorOf, roomsByFloor } from "@/features/schedule/places.js";
-import { depEdEmailError, employeeIdError, passwordError, readableNameError } from "./forms.js";
+import { depEdEmailError, passwordError, readableNameError } from "./forms.js";
 import { roleWithScope } from "./navigation.js";
 import { matchRoute, redirectFor } from "@/router.js";
 import { session } from "@/state/session.js";
@@ -139,14 +139,5 @@ describe("time slots are checked while choosing (no waiting for Save)", () => {
   it("adds minutes between periods in a preset, but not before a break", () => {
     const rows = presetRows({ rows: 4, start: "07:00", periodMinutes: 60, gapMinutes: 10, recess: { after: 2, minutes: 20 }, lunch: { after: 0, minutes: 0 } });
     expect(rows?.map((row) => `${row.start_time}-${row.end_time}`)).toEqual(["07:00-08:00", "08:10-09:10", "09:10-09:30", "09:30-10:30"]);
-  });
-});
-
-describe("employee ID", () => {
-  it("is optional, and allows letters, numbers and dashes only", () => {
-    expect(employeeIdError("")).toBeNull();
-    expect(employeeIdError(" 4512-301 ")).toBeNull();
-    expect(employeeIdError("45 12")).toBe("Use only letters, numbers and dashes");
-    expect(employeeIdError("1".repeat(21))).toBe("Use at most 20 characters");
   });
 });

@@ -55,7 +55,7 @@ export const privacyNotice = (schoolEmail) => [
     title: "2. What is collected",
     points: [
       "Account: your name, official DepEd email, password (kept only as a secure hash, never readable), role and grade levels.",
-      "Teaching information: your personnel record (department, designation, shift, qualifications and teaching tasks), subjects, loading, advisory and schedules.",
+      "Teaching information: your personnel record (department, designation, shift and teaching tasks), subjects, loading, advisory and schedules.",
       "Activity: sign-ins and the changes you make (for example, a schedule submitted or approved), kept for accountability.",
       "No student names or student records are collected.",
     ],

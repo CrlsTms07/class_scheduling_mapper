@@ -35,7 +35,7 @@ function teacherBody(array $overrides = []): array
         'last_name' => 'Cruz',
         'suffix' => null,
         'department_id' => DB::table('departments')->value('id'),
-        'designation_id' => null,
+        'designation_id' => DB::table('designations')->value('id'),
         'shift' => 'WHOLE_DAY',
         'max_subjects' => 5,
         'is_active' => true,
@@ -113,35 +113,32 @@ it('needs the department of every teacher', function () {
         ->assertJsonValidationErrors(['department_id' => 'Choose the department. Every teacher belongs to one.']);
 });
 
-it('saves department, designation and qualifications', function () {
+it('saves department and designation, which are required', function () {
     $departmentId = $this->postJson('/api/personnel-options/departments', ['name' => 'Math'])->assertCreated()->json('data.id');
-    $designationId = $this->postJson('/api/personnel-options/designations', ['name' => 'Teacher I'])->assertCreated()->json('data.id');
+    $designationId = DB::table('designations')->where('name', 'Teacher I')->value('id');
 
-    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody([
-        'department_id' => $departmentId,
-        'designation_id' => $designationId,
-        'qualifications' => [
-            ['degree_level' => 'Bachelor', 'degree' => 'BSEd', 'major' => 'Math', 'school' => 'CvSU', 'year_completed' => 2015],
-            ['degree_level' => 'Master', 'degree' => 'MAEd'],
-        ],
-    ]))->assertCreated();
+    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['department_id' => $departmentId, 'designation_id' => $designationId]))->assertCreated();
 
     $this->getJson("/api/terms/{$this->termId}/teachers")
         ->assertJsonPath('data.0.department', 'Math')
-        ->assertJsonPath('data.0.designation', 'Teacher I')
-        ->assertJsonCount(2, 'data.0.qualifications')
-        ->assertJsonPath('data.0.qualifications.0.major', 'Math')
-        ->assertJsonPath('data.0.qualifications.1.degree', 'MAEd');
+        ->assertJsonPath('data.0.designation', 'Teacher I');
+
+    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['designation_id' => null]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['designation_id' => 'Choose the designation']);
 });
 
-it('replaces qualifications when saved again', function () {
-    $body = teacherBody(['first_name' => 'Ana', 'last_name' => 'Reyes']);
-    $url = "/api/terms/{$this->termId}/teachers/{$this->teacherId}";
+it('renames a department in place, and refuses a name already in the list', function () {
+    $math = $this->postJson('/api/personnel-options/departments', ['name' => 'Filipno'])->assertCreated()->json('data.id');
+    $this->postJson('/api/personnel-options/departments', ['name' => 'Science'])->assertCreated();
 
-    $this->putJson($url, [...$body, 'qualifications' => [['degree_level' => 'Bachelor', 'degree' => 'BSEd']]])->assertOk();
-    $this->putJson($url, [...$body, 'qualifications' => [['degree_level' => 'Master', 'degree' => 'MAEd']]])->assertOk();
+    $this->putJson("/api/personnel-options/departments/{$math}", ['name' => 'Filipino'])->assertOk()->assertJsonPath('data.name', 'Filipino');
+    $this->putJson("/api/personnel-options/departments/{$math}", ['name' => 'filipino'])->assertOk();
+    $this->putJson("/api/personnel-options/departments/{$math}", ['name' => 'science'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['name' => 'This already exists in the list.']);
 
-    expect(DB::table('teacher_qualifications')->where('teacher_id', $this->teacherId)->pluck('degree')->all())->toBe(['MAEd']);
+    expect(DB::table('departments')->where('id', $math)->value('name'))->toBe('filipino');
 });
 
 it('keeps teaching tasks per term', function () {
@@ -164,12 +161,10 @@ it('rejects bad records', function (array $overrides, string $field) {
 })->with([
     'no first name' => [['first_name' => ''], 'first_name'],
     'no last name' => [['last_name' => ''], 'last_name'],
-    'unknown type' => [['personnel_type' => 'guest'], 'personnel_type'],
+    'no designation' => [['designation_id' => null], 'designation_id'],
     'unknown shift' => [['shift' => 'NIGHT'], 'shift'],
     'unknown department' => [['department_id' => 999], 'department_id'],
     'unknown task' => [['task_ids' => [999]], 'task_ids.0'],
-    'qualification without a degree' => [['qualifications' => [['degree_level' => 'Bachelor', 'degree' => '']]], 'qualifications.0.degree'],
-    'impossible year' => [['qualifications' => [['degree_level' => 'Bachelor', 'degree' => 'BSEd', 'year_completed' => 1800]]], 'qualifications.0.year_completed'],
 ]);
 
 it('refuses a repeated option', function () {
@@ -220,20 +215,14 @@ it('refuses to delete a record in use, and says why', function (callable $setUp,
     'loading' => [fn ($test) => teacherLoading($test), 'teacher loading'],
 ]);
 
-it('keeps someone with an advisory or loading as teaching personnel', function () {
-    teacherLoading($this);
-
-    $this->putJson("/api/terms/{$this->termId}/teachers/{$this->teacherId}", teacherBody([
-        'first_name' => 'Ana', 'last_name' => 'Reyes', 'personnel_type' => 'non_teaching',
-    ]))
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['personnel_type' => 'must stay']);
-});
-
-it('lets someone with no work become non-teaching', function () {
+it('keeps only teaching personnel: non-teaching staff are out of scope (Nov 21, 2026)', function () {
     $this->putJson("/api/terms/{$this->termId}/teachers/{$this->teacherId}", teacherBody([
         'first_name' => 'Ana', 'last_name' => 'Reyes', 'personnel_type' => 'non_teaching',
     ]))->assertOk();
+    DB::table('teachers')->insert(['first_name' => 'Staff', 'last_name' => 'Only', 'personnel_type' => 'non_teaching']);
+
+    expect(DB::table('teachers')->where('id', $this->teacherId)->value('personnel_type'))->toBe('teaching')
+        ->and(collect($this->getJson("/api/terms/{$this->termId}/teachers")->json('data'))->pluck('last_name')->all())->toBe(['Reyes']);
 });
 
 it('offers only teaching, active people as advisers on the Sections form', function () {
@@ -267,28 +256,4 @@ it('refuses a track name typed at random or already there in other letters', fun
     $this->postJson('/api/tracks', ['name' => 'vrtgbgvrv'])->assertUnprocessable();
     $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertCreated();
     $this->postJson('/api/tracks', ['name' => 'techpro'])->assertUnprocessable()->assertJsonPath('errors.name.0', 'This track already exists.');
-});
-
-it('saves an employee ID, unique in any letter case', function () {
-    DB::table('teachers')->where('id', $this->teacherId)->update(['employee_id' => 'EMP-001']);
-
-    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['employee_id' => ' emp-001 ']))
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['employee_id' => 'This employee ID already belongs to Ana Reyes.']);
-
-    $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['employee_id' => '45 12']))
-        ->assertJsonValidationErrors(['employee_id' => 'only letters, numbers and dashes']);
-
-    $id = $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['employee_id' => ' 4512301 ']))
-        ->assertCreated()->json('data.id');
-    expect(DB::table('teachers')->where('id', $id)->value('employee_id'))->toBe('4512301');
-
-    // Saving a teacher again keeps its own ID; an empty one is stored as none.
-    $this->putJson("/api/terms/{$this->termId}/teachers/{$this->teacherId}", teacherBody(['first_name' => 'Ana', 'last_name' => 'Reyes', 'employee_id' => 'EMP-001']))
-        ->assertOk();
-    $this->putJson("/api/terms/{$this->termId}/teachers/{$id}", teacherBody(['employee_id' => '']))->assertOk();
-    expect(DB::table('teachers')->where('id', $id)->value('employee_id'))->toBeNull();
-
-    $listed = collect($this->getJson("/api/terms/{$this->termId}/teachers")->json('data'))->firstWhere('id', $this->teacherId);
-    expect($listed['employee_id'])->toBe('EMP-001');
 });

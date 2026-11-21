@@ -70,13 +70,14 @@ class TeacherService
             ->groupBy('teacher_id')
             ->map(fn ($rows) => $rows->pluck('level')->unique()->sort()->values()->all());
 
-        return Teacher::orderBy('last_name')
+        // Teaching personnel only (team decision, Nov 21, 2026).
+        return Teacher::where('personnel_type', 'teaching')
+            ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
             ->map(fn (Teacher $teacher) => [
                 'id' => $teacher->id,
                 'personnel_type' => $teacher->personnel_type,
-                'employee_id' => $teacher->employee_id,
                 'levels' => $levels->get($teacher->id, []),
                 'first_name' => $teacher->first_name,
                 'middle_name' => $teacher->middle_name,
@@ -223,6 +224,24 @@ class TeacherService
     /**
      * A misspelled department, designation or task can go, but not one that is in use.
      */
+    /**
+     * Renames a department, designation or task (fixes a typo everywhere it is used).
+     *
+     * @return array{id: int, name: string}
+     */
+    public function renameOption(string $type, int $id, string $name, User $user): array
+    {
+        $table = self::OPTION_TABLES[$type];
+        $row = DB::table($table)->where('id', $id)->first();
+        abort_unless($row, 404);
+
+        $name = trim($name);
+        DB::table($table)->where('id', $id)->update(['name' => $name]);
+        $this->audit->log($user, 'update', $table, $id, ['name' => $row->name], ['name' => $name]);
+
+        return ['id' => $id, 'name' => $name];
+    }
+
     public function deleteOption(string $type, int $id, User $user): void
     {
         $table = self::OPTION_TABLES[$type];
@@ -274,19 +293,6 @@ class TeacherService
      */
     private function saveDetails(Teacher $teacher, SchoolTerm $term, array $data): void
     {
-        DB::table('teacher_qualifications')->where('teacher_id', $teacher->id)->delete();
-
-        foreach ($data['qualifications'] as $qualification) {
-            DB::table('teacher_qualifications')->insert([
-                'teacher_id' => $teacher->id,
-                'degree_level' => $qualification['degree_level'],
-                'degree' => $qualification['degree'],
-                'major' => $qualification['major'] ?? null,
-                'school' => $qualification['school'] ?? null,
-                'year_completed' => $qualification['year_completed'] ?? null,
-            ]);
-        }
-
         DB::table('teacher_tasks')->where('teacher_id', $teacher->id)->where('term_id', $term->id)->delete();
 
         foreach ($data['task_ids'] as $taskId) {

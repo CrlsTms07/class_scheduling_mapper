@@ -200,6 +200,7 @@ class DemoDataSeeder extends Seeder
                 'first_name' => 'Teacher',
                 'last_name' => 'Sample '.($index + 1),
                 'department_id' => $departmentId,
+                'designation_id' => DB::table('designations')->where('name', 'Teacher I')->value('id'),
             ]);
         }
 

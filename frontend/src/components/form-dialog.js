@@ -29,6 +29,8 @@ import { toast } from "./toast.js";
  * @property {(value: any, values: Record<string, any>) => string | null} [check]  an extra rule
  * @property {(typed: string) => Promise<{ value: string | number, label: string }>} [onCreate]  select: adds what was typed
  * @property {boolean} [localCreate]  select: what was typed is only used in this form (saved with it), so no "was added" message
+ * @property {(option: { value: string | number, label: string }, name: string) => Promise<void>} [onRename]  select: renames a choice in the list
+ * @property {(option: { value: string | number, label: string }) => Promise<void>} [onDelete]  select: deletes a choice from the list
  *
  * @typedef {object} FormOptions
  * @property {string} title
@@ -100,6 +102,22 @@ export function buildField(spec, onEdit = () => {}) {
               } catch (error) {
                 toast.error(error);
               }
+            },
+          }
+        : undefined,
+      manage: spec.onRename && spec.onDelete
+        ? {
+            rename: async (option, name) => {
+              await /** @type {NonNullable<FieldSpec["onRename"]>} */ (spec.onRename)(option, name);
+              choices = choices.map((item) => (String(item.value) === String(option.value) ? { ...item, label: name } : item));
+              select.setOptions(choices);
+              toast.success(`${option.label} is now ${name}.`);
+            },
+            remove: async (option) => {
+              await /** @type {NonNullable<FieldSpec["onDelete"]>} */ (spec.onDelete)(option);
+              choices = choices.filter((item) => String(item.value) !== String(option.value));
+              select.setOptions(choices);
+              toast.success(`${option.label} was deleted.`);
             },
           }
         : undefined,
