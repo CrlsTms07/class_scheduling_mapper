@@ -322,7 +322,7 @@ export function openClassDialog({ plotter, termId, target }) {
         "div",
         { class: "flex flex-wrap items-baseline justify-between gap-2" },
         h("p", { class: "field-label" }, "Period"),
-        h("p", { class: "field-help" }, left > 0 ? `${subject.subject}: ${left} mins a week still to place.` : `${subject.subject} is complete.`),
+        h("p", { class: "field-help" }, left === Infinity ? `${subject.subject}: ${subject.scheduled_minutes} mins a week on the schedule so far.` : left > 0 ? `${subject.subject}: ${left} mins a week still to place.` : `${subject.subject} is complete.`),
       ),
       tappedSlot && (tappedBusy.length || tooLong)
         ? h(

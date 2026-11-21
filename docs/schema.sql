@@ -199,18 +199,18 @@ CREATE TABLE tracks (                      -- SHS: Academic, TechPro, ...
 CREATE TABLE subjects (                    -- curriculum is per school year (can change yearly)
     id                SERIAL PRIMARY KEY,
     school_year_id    INT NOT NULL REFERENCES school_years(id) ON DELETE RESTRICT,
-    grade_level_id    SMALLINT NOT NULL REFERENCES grade_levels(id) ON DELETE RESTRICT,
+    grade_level_id    SMALLINT REFERENCES grade_levels(id) ON DELETE RESTRICT,     -- NULL = every grade (Nov 21, 2026)
     track_id          INT REFERENCES tracks(id) ON DELETE RESTRICT,  -- NULL = all tracks / JHS
     term_no           SMALLINT,                                      -- NULL = whole year (JHS)
     code              VARCHAR(20),
     name              VARCHAR(100) NOT NULL,
     subject_type      subject_type NOT NULL DEFAULT 'core',
-    minutes_per_week  SMALLINT NOT NULL CHECK (minutes_per_week > 0),  -- Homeroom = 60
+    minutes_per_week  SMALLINT CHECK (minutes_per_week > 0),  -- not typed any more (counted from the schedule)
     is_priority       BOOLEAN NOT NULL DEFAULT false,                  -- PE, Homeroom
     is_active         BOOLEAN NOT NULL DEFAULT true
 );
 CREATE UNIQUE INDEX subjects_unique ON subjects
-    (school_year_id, grade_level_id, COALESCE(track_id, 0), COALESCE(term_no, 0), name);
+    (school_year_id, COALESCE(grade_level_id, 0), COALESCE(track_id, 0), COALESCE(term_no, 0), name);
 
 -- Activities (Flag Ceremony, Catch-up Friday...): they take a period but have no
 -- teacher, room or required minutes. Recess and lunch stay as breaks in time_slots.

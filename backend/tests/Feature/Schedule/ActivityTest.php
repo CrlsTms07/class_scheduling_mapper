@@ -152,9 +152,10 @@ describe('placing an activity', function () {
             ->and(ScheduleEntry::where('section_id', $this->sectionA->id)->whereNotNull('section_subject_id')->pluck('day_of_week')->sort()->values()->all())
             ->toBe([2, 3, 4]);
 
-        // The plotter now counts fewer minutes for Filipino, so it shows as still to place.
+        // The plotter now counts fewer minutes for Filipino (counted from the schedule).
         $filipino = collect($response->json('data.loading'))->firstWhere('subject', 'Filipino');
-        expect($filipino['scheduled_minutes'])->toBeLessThan($filipino['required_minutes']);
+        expect($filipino['scheduled_minutes'])->toBeLessThan(ScheduleEntry::where('section_id', $this->sectionA->id)->count() * 1000)
+            ->and($filipino['required_minutes'])->toBeNull();
     });
 
     it('leaves out a section that is waiting for approval, and says why', function () {

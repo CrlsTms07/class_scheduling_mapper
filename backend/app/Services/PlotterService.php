@@ -138,7 +138,8 @@ class PlotterService
                 'teacher_id' => $loading->teacher_id,
                 'subject' => $loading->subject->name,
                 'is_priority' => $loading->subject->is_priority,
-                'required_minutes' => $loading->subject->minutes_per_week,
+                // No typed minutes any more (Nov 21, 2026): only Homeroom has a limit.
+                'required_minutes' => $loading->subject->isHomeroom() ? (int) config('school.homeroom_minutes') : null,
                 'scheduled_minutes' => (int) ($scheduled[$loading->id] ?? 0),
                 'teacher' => $loading->teacher->printedName(),
             ])

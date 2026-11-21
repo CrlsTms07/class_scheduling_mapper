@@ -78,7 +78,7 @@ describe('submitting', function () {
     });
 
     it('moves draft entries to pending once every flag is acknowledged', function () {
-        entryFor($this, $this->sectionA, 'Filipino');
+        entryFor($this, $this->sectionA, 'Homeroom Guidance');
 
         submitAll($this, $this->sectionA)->assertOk();
 
@@ -86,7 +86,7 @@ describe('submitting', function () {
     });
 
     it('is blocked while a flag is not acknowledged, and says which', function () {
-        entryFor($this, $this->sectionA, 'Filipino');
+        entryFor($this, $this->sectionA, 'Homeroom Guidance');
 
         $this->postJson(plotterUrl($this, $this->sectionA).'/submit', ['acknowledged_flags' => []])
             ->assertUnprocessable()
@@ -97,7 +97,7 @@ describe('submitting', function () {
     });
 
     it('remembers acknowledgements, with who and why', function () {
-        entryFor($this, $this->sectionA, 'Filipino');
+        entryFor($this, $this->sectionA, 'Homeroom Guidance');
 
         $keys = allFlagKeys($this, $this->sectionA);
 
@@ -114,7 +114,7 @@ describe('submitting', function () {
     });
 
     it('needs a new acknowledgement when the problem changes', function () {
-        $entry = entryFor($this, $this->sectionA, 'Filipino');
+        $entry = entryFor($this, $this->sectionA, 'Homeroom Guidance');
         $before = allFlagKeys($this, $this->sectionA);
 
         DB::table('schedule_flag_acknowledgements')->insert(array_map(fn ($key) => [
@@ -123,10 +123,10 @@ describe('submitting', function () {
 
         expect(allFlagKeys($this, $this->sectionA))->toBe([]);
 
-        $entry->update(['end_time' => '09:00']);
+        $entry->update(['end_time' => '09:30']);
 
         $filipino = collect($this->getJson(plotterUrl($this, $this->sectionA).'/plotter')->json('data.flags'))
-            ->first(fn ($flag) => str_contains($flag['message'], 'Filipino'));
+            ->first(fn ($flag) => str_contains($flag['message'], 'Homeroom Guidance'));
 
         expect($filipino['acknowledged'])->toBeFalse();
     });
@@ -304,7 +304,7 @@ describe('reviewing', function () {
     })->with(['section', 'grade_level']);
 
     it('shows every section with its status, counts and flags', function () {
-        entryFor($this, $this->sectionA, 'Filipino', ['status' => 'pending']);
+        entryFor($this, $this->sectionA, 'Homeroom Guidance', ['status' => 'pending']);
 
         $data = $this->getJson("/api/terms/{$this->termId}/approvals")->assertOk()->json('data');
         $sampleA = collect($data)->firstWhere('name', 'Sample A');

@@ -339,20 +339,19 @@ describe('plotter data', function () {
         $data = $this->getJson("/api/terms/{$this->termId}/sections/{$this->sectionA->id}/plotter")->json('data');
         $math = collect($data['loading'])->firstWhere('subject', 'Enhanced Mathematics');
 
+        // Minutes are counted from the schedule, never typed (beneficiary review, Nov 21, 2026).
         expect($math['scheduled_minutes'])->toBe(320)
-            ->and($math['required_minutes'])->toBe(400)
+            ->and($math['required_minutes'])->toBeNull()
             ->and($data['status'])->toBe('draft');
     });
 
-    it('flags a subject under its minutes in amber', function () {
+    it('no longer flags a subject for its minutes, since minutes are not typed', function () {
         assign($this, $this->sectionA, slotOf('Monday – Thursday', 3), mathInSlot($this->sectionA))->assertOk();
 
         $data = $this->getJson("/api/terms/{$this->termId}/sections/{$this->sectionA->id}/plotter")->json('data');
-        $flag = collect($data['flags'])->first(fn ($flag) => str_contains($flag['message'], 'Enhanced Mathematics'));
 
-        expect($flag['type'])->toBe('minutes_under')
-            ->and($flag['severity'])->toBe('amber')
-            ->and($flag['message'])->toContain('320 of 400');
+        expect(collect($data['flags'])->first(fn ($flag) => str_contains($flag['message'], 'Enhanced Mathematics')))->toBeNull()
+            ->and(collect($data['loading'])->firstWhere('subject', 'Homeroom Guidance')['required_minutes'])->toBe(60);
     });
 
     it('flags Homeroom over 60 minutes in red', function () {
@@ -367,7 +366,7 @@ describe('plotter data', function () {
 
         expect($flag['type'])->toBe('minutes_over')
             ->and($flag['severity'])->toBe('red')
-            ->and($flag['message'])->toContain('80 of 60');
+            ->and($flag['message'])->toBe('Homeroom Guidance has 20 minutes too many a week (80 scheduled, at most 60).');
     });
 
     it('flags a section without an adviser', function () {

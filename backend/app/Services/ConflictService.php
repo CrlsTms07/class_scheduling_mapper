@@ -87,7 +87,7 @@ class ConflictService
             ->join('subjects', 'subjects.id', '=', 'section_subjects.subject_id')
             ->where('section_subjects.term_id', $termId)
             ->groupBy('section_subjects.teacher_id')
-            ->selectRaw('section_subjects.teacher_id, SUM(subjects.minutes_per_week) AS minutes')
+            ->selectRaw('section_subjects.teacher_id, COUNT(*) AS minutes')
             ->pluck('minutes', 'teacher_id');
 
         return Teacher::where('personnel_type', 'teaching')

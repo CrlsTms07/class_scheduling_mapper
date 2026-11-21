@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Step 5 of the setup: Teachers (teaching and non-teaching personnel), with qualifications and
+ * Step 1 of the setup: Teachers (teaching and non-teaching personnel), with qualifications and
  * teaching-related tasks per term, and a page for each teacher with their classes. A personnel
  * record may exist without an account. Only teaching personnel get subjects or an advisory.
  */
@@ -136,7 +136,7 @@ export async function render(container, { query }) {
     h(
       "div",
       { class: "space-y-5 p-4 sm:p-6" },
-      pageHeader({ icon: "users", title: "Teachers", description: `Step 5 of the setup: teaching and non-teaching personnel, ${term.name}, SY ${term.school_year.name}.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Teachers" }], actions: [h("button", { type: "button", class: "btn btn-outline", onclick: editLists }, icon("pencil"), "Edit lists"), h("button", { type: "button", class: "btn btn-primary", onclick: () => teacherForm() }, icon("plus"), "Add teacher")] }),
+      pageHeader({ icon: "users", title: "Teachers", description: `Step 1 of the setup: teaching and non-teaching personnel, ${term.name}, SY ${term.school_year.name}.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Teachers" }], actions: [h("button", { type: "button", class: "btn btn-outline", onclick: editLists }, icon("pencil"), "Edit lists"), h("button", { type: "button", class: "btn btn-primary", onclick: () => teacherForm() }, icon("plus"), "Add teacher")] }),
       content,
     ),
   );

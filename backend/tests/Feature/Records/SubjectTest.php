@@ -268,3 +268,43 @@ describe('once a subject has teacher loading', function () {
 it('lets a scheduler add a track for their subjects', function () {
     $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertCreated();
 });
+
+describe('name only (beneficiary review, Nov 21, 2026)', function () {
+    it('adds a subject with no grade and no minutes, for every grade', function () {
+        $body = subjectBody(['name' => 'Filipino']);
+        unset($body['grade_level_id'], $body['minutes_per_week']);
+
+        $id = $this->postJson("/api/school-years/{$this->yearId}/subjects", $body)->assertCreated()->json('data.id');
+
+        $subject = DB::table('subjects')->find($id);
+        expect($subject->grade_level_id)->toBeNull()
+            ->and($subject->minutes_per_week)->toBeNull();
+
+        // Any scheduler sees it and may change it, since it is for every grade.
+        $master = User::factory()->create()->assignRole('master_teacher');
+        $master->gradeLevels()->sync([subjectGrade(11)]);
+        $this->actingAs($master);
+        expect(collect($this->getJson("/api/school-years/{$this->yearId}/subjects")->json('data'))->pluck('name'))->toContain('Filipino');
+        $this->putJson("/api/subjects/{$id}", [...$body, 'code' => 'FIL'])->assertOk();
+    });
+
+    it('refuses the same name twice in any letter case', function () {
+        $body = subjectBody(['name' => 'Filipino']);
+        unset($body['grade_level_id'], $body['minutes_per_week']);
+        $this->postJson("/api/school-years/{$this->yearId}/subjects", $body)->assertCreated();
+
+        $this->postJson("/api/school-years/{$this->yearId}/subjects", [...$body, 'name' => 'FILIPINO'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name' => 'This subject is already in the list']);
+    });
+
+    it('keeps an older subject\'s grade when it is saved without one', function () {
+        $id = insertSubject($this, ['name' => 'Math 7']);
+        $body = subjectBody(['name' => 'Math 7', 'code' => 'M7']);
+        unset($body['grade_level_id'], $body['minutes_per_week']);
+
+        $this->putJson("/api/subjects/{$id}", $body)->assertOk();
+
+        expect(DB::table('subjects')->where('id', $id)->value('grade_level_id'))->toBe(subjectGrade(7));
+    });
+});

@@ -43,6 +43,7 @@ class TeacherLoadingService
                 'adviser' => $section->adviser?->printedName(),
             ],
             'rows' => $this->rows($term, $section),
+            'addable' => $this->addable($term, $section),
             'teachers' => $this->teacherChoices($term),
         ];
     }
@@ -75,7 +76,8 @@ class TeacherLoadingService
                     'subject_id' => $subject->id,
                     'subject' => $subject->name,
                     'code' => $subject->code,
-                    'minutes_per_week' => $subject->minutes_per_week,
+                    // Counted from the schedule, never typed (beneficiary review, Nov 21, 2026).
+                    'scheduled_minutes' => (int) $placed->sum(fn (ScheduleEntry $entry) => \App\Support\ScheduleFormat::minutesBetween($entry->start_time, $entry->end_time)),
                     'is_priority' => (bool) $subject->is_priority,
                     'is_active' => (bool) $subject->is_active,
                     'teacher_id' => $item?->teacher_id,
@@ -89,8 +91,9 @@ class TeacherLoadingService
     }
 
     /**
-     * Offered subjects of this grade for this term and track, plus any already loaded,
-     * so old loading stays visible even if the subject has since been withdrawn.
+     * The subjects this section takes: those added to it (with their teacher), plus the offered
+     * subjects made for its grade before Nov 21, 2026. A subject for every grade (no grade) is
+     * listed only once it is added to the section, with "Add subject".
      *
      * @param  array<int, int>  $loadedSubjectIds
      */
@@ -98,13 +101,35 @@ class TeacherLoadingService
     {
         return Subject::query()
             ->where('school_year_id', $section->school_year_id)
-            ->where('grade_level_id', $section->grade_level_id)
             ->where(fn ($query) => $query
                 ->whereIn('id', $loadedSubjectIds)
-                ->orWhere(fn ($offered) => $this->offeredTo($offered, $term, $section)))
+                ->orWhere(fn ($offered) => $offered
+                    ->where('grade_level_id', $section->grade_level_id)
+                    ->where(fn ($inner) => $this->offeredTo($inner, $term, $section))))
             ->orderByDesc('is_priority')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * What "Add subject" offers this section: subjects of the year that are offered now and not
+     * listed yet (one form: subject, section, teacher, as the beneficiary explained).
+     *
+     * @return array<int, array{id: int, name: string, code: string|null}>
+     */
+    private function addable(SchoolTerm $term, Section $section): array
+    {
+        $listed = SectionSubject::where('term_id', $term->id)->where('section_id', $section->id)->pluck('subject_id');
+
+        return Subject::query()
+            ->where('school_year_id', $section->school_year_id)
+            ->whereNull('grade_level_id')
+            ->whereNotIn('id', $listed)
+            ->where(fn ($query) => $this->offeredTo($query, $term, $section))
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(fn (Subject $subject) => ['id' => $subject->id, 'name' => $subject->name, 'code' => $subject->code])
+            ->all();
     }
 
     private function offeredTo($query, SchoolTerm $term, Section $section): void
@@ -355,7 +380,7 @@ class TeacherLoadingService
     private function ensureOffered(SchoolTerm $term, Section $section, Subject $subject): void
     {
         $isOffered = $subject->school_year_id === $section->school_year_id
-            && $subject->grade_level_id === $section->grade_level_id
+            && ($subject->grade_level_id === null || $subject->grade_level_id === $section->grade_level_id)
             && Subject::whereKey($subject->id)
                 ->where(fn ($query) => $this->offeredTo($query, $term, $section))
                 ->exists();

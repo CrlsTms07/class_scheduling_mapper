@@ -99,10 +99,12 @@ describe('flags of a section not started', function () {
 
     it('does once something is placed', function () {
         clearEntry($this, 'draft');
+        DB::table('subjects')->where('name', 'Math 7')->update(['name' => 'Homeroom Guidance']);
+        DB::table('schedule_entries')->update(['start_time' => '07:00', 'end_time' => '08:20']);
 
         $flags = $this->getJson("/api/terms/{$this->termId}/sections/{$this->sectionId}/plotter")->json('data.flags');
 
-        expect(collect($flags)->pluck('type'))->toContain('minutes_under');
+        expect(collect($flags)->pluck('type'))->toContain('minutes_over');
     });
 
     it('still says when there is no adviser', function () {

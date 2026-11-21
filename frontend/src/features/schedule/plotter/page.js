@@ -61,7 +61,8 @@ export async function render(container, { params }) {
     const isColored = isColorCoding();
     const placing = loading.find(({ id }) => id === ui.placingId);
     const viewProps = { plotter, isColored, canEdit, fitting: ui.fitting, onTap };
-    const completeCount = loading.filter((item) => item.scheduled_minutes === item.required_minutes).length;
+    // Placed: on the schedule at least once (Homeroom: its full 60 minutes).
+    const completeCount = loading.filter((item) => (item.required_minutes === null ? item.scheduled_minutes > 0 : item.scheduled_minutes >= item.required_minutes)).length;
 
     const header = h(
       "div",
@@ -129,7 +130,7 @@ export async function render(container, { params }) {
           h(
             "summary",
             { class: "flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 p-3 font-medium" },
-            h("span", null, `Subjects · ${completeCount} of ${loading.length} complete`),
+            h("span", null, `Subjects · ${completeCount} of ${loading.length} placed`),
             icon("chevron-down", "size-4 transition group-open:rotate-180"),
           ),
           h(
@@ -142,7 +143,7 @@ export async function render(container, { params }) {
               loading.map((item) => {
                 const isOn = ui.placingId === item.id;
                 const subjectFlags = flags.filter((flag) => flag.section_subject_id === item.id);
-                const progress = Math.min(100, Math.round((item.scheduled_minutes / Math.max(1, item.required_minutes)) * 100));
+                const progress = item.required_minutes === null ? (item.scheduled_minutes > 0 ? 100 : 0) : Math.min(100, Math.round((item.scheduled_minutes / Math.max(1, item.required_minutes)) * 100));
                 return h(
                   "li",
                   null,

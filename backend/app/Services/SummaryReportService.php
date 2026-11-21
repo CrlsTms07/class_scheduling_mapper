@@ -42,7 +42,7 @@ class SummaryReportService
             ->pluck('section_subjects.teacher_id')
             ->unique();
 
-        // Load Distribution: the hours each loading asks for, plotted or not.
+        // Load Distribution: each teacher's subjects, and the hours they have on the schedule.
         $loadings = SectionSubject::with(['subject', 'section.gradeLevel'])
             ->where('term_id', $term->id)
             ->whereIn('teacher_id', $inScope)
@@ -56,16 +56,20 @@ class SummaryReportService
             ->groupBy('teacher_id')
             ->map(fn ($entries) => $entries->sum(fn (ScheduleEntry $entry) => ScheduleFormat::minutesBetween($entry->start_time, $entry->end_time)));
 
+        // Each loading's minutes on the schedule, for the hours a week shown beside it.
+        $sectionMinutes = DB::table('subject_minutes_check')->where('term_id', $term->id)->pluck('scheduled_minutes', 'section_subject_id');
+
         $departments = DB::table('departments')->pluck('name', 'id');
 
         $teachers = Teacher::whereIn('id', $inScope)
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->map(function (Teacher $teacher) use ($loadings, $minutes, $departments, $user) {
+            ->map(function (Teacher $teacher) use ($loadings, $minutes, $departments, $user, $sectionMinutes) {
                 $load = $loadings->get($teacher->id, collect());
                 $scheduled = (int) $minutes->get($teacher->id, 0);
-                $loadedMinutes = (int) $load->sum(fn (SectionSubject $row) => $row->subject->minutes_per_week);
+                // Hours come from the schedule (subjects have no typed minutes since Nov 21, 2026).
+                $loadedMinutes = $scheduled;
 
                 return [
                     'id' => $teacher->id,
@@ -93,7 +97,7 @@ class SummaryReportService
                             'section_id' => $rows->first()->section->isVisibleTo($user) ? $rows->first()->section_id : null,
                             'section' => $rows->first()->section->labelFor($user),
                             'subject' => $rows->first()->section->isVisibleTo($user) ? $rows->first()->subject->name : 'Other department',
-                            'hours_per_week' => round($rows->sum(fn (SectionSubject $row) => $row->subject->minutes_per_week) / 60, 1),
+                            'hours_per_week' => round($rows->sum(fn (SectionSubject $row) => (int) ($sectionMinutes[$row->id] ?? 0)) / 60, 1),
                         ])
                         ->values()
                         ->all(),

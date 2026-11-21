@@ -127,7 +127,7 @@ class ImportService
             return $subjects->firstWhere('id', $source->id);
         }
 
-        return $subjects->first(fn (Subject $subject) => $subject->grade_level_id === $section->grade_level_id
+        return $subjects->first(fn (Subject $subject) => ($subject->grade_level_id === null || $subject->grade_level_id === $section->grade_level_id)
             && $subject->name === $source->name
             && $subject->track?->name === $source->track?->name);
     }

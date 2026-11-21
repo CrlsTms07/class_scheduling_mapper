@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Step 1 of the setup: Rooms & Buildings. Junior High and Senior High keep their own buildings;
+ * Step 4 of the setup: Rooms & Buildings. Junior High and Senior High keep their own buildings;
  * a shared building (gym, library) is changed by the Admin only (team decision, Nov 13, 2026).
  */
 import { h, replace } from "@/lib/dom.js";
@@ -59,7 +59,7 @@ export async function render(container) {
     h(
       "div",
       { class: "space-y-5 p-4 sm:p-6" },
-      pageHeader({ icon: "building", title: "Rooms & Buildings", description: "Step 1 of the setup: the buildings and rooms classes are held in.", crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Rooms & Buildings" }], actions: h("button", { type: "button", class: "btn btn-primary", onclick: () => buildingForm() }, icon("plus"), "Add building") }),
+      pageHeader({ icon: "building", title: "Rooms & Buildings", description: "Step 4 of the setup: the buildings and rooms classes are held in.", crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Rooms & Buildings" }], actions: h("button", { type: "button", class: "btn btn-primary", onclick: () => buildingForm() }, icon("plus"), "Add building") }),
       content,
     ),
   );

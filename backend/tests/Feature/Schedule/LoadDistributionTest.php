@@ -28,14 +28,22 @@ function loadRow(object $test, int $teacherId): array
         ->firstWhere('id', $teacherId);
 }
 
-it('counts the hours a week of each teacher from the loading, plotted or not', function () {
+it('counts the hours a week of each teacher from the schedule (minutes are not typed)', function () {
+    expect(loadRow($this, $this->mathTeacher)['hours_per_week'])->toEqual(0);
+
+    $loading = SectionSubject::with('section')->where('teacher_id', $this->mathTeacher)->orderBy('id')->first();
+    \App\Models\ScheduleEntry::create([
+        'term_id' => $this->termId, 'section_id' => $loading->section_id, 'section_subject_id' => $loading->id,
+        'teacher_id' => $this->mathTeacher, 'room_id' => $loading->section->home_room_id, 'day_of_week' => 1,
+        'start_time' => '07:00', 'end_time' => '08:20', 'created_by' => User::first()->id,
+    ]);
     $row = loadRow($this, $this->mathTeacher);
 
-    expect($row['hours_per_week'])->toBe(13.3)
+    expect($row['hours_per_week'])->toBe(1.3)
         ->and($row)->not->toHaveKeys(['max_hours', 'is_over_hours'])
         ->and($row['is_overloaded'])->toBeFalse()
         ->and($row['loads'])->toHaveCount(2)
-        ->and($row['loads'][0])->toMatchArray(['section' => 'Grade 7 – Sample A', 'subject' => 'Enhanced Mathematics', 'hours_per_week' => 6.7]);
+        ->and($row['loads'][0])->toMatchArray(['section' => 'Grade 7 – Sample A', 'subject' => 'Enhanced Mathematics']);
 });
 
 it('counts the subjects against the limit of 5', function () {

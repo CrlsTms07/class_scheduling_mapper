@@ -26,4 +26,7 @@ return [
 
     // Every teacher carries at most this many subjects, the same for all (team decision, Nov 12, 2026).
     'max_subjects' => (int) env('SCHOOL_MAX_SUBJECTS', 5),
+    // Homeroom Guidance is limited to 60 minutes a week (CLAUDE.md). Subjects have no typed minutes
+    // any more (beneficiary review, Nov 21, 2026), so this is the only minutes rule left.
+    'homeroom_minutes' => 60,
 ];

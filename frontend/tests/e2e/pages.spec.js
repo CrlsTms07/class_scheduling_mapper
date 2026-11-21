@@ -97,8 +97,8 @@ test("adds a building with a room, a bell schedule from a preset, a subject, a s
   await page.getByRole("dialog").getByRole("button", { name: /^Subject name/ }).click();
   await page.getByLabel("Search subject name").fill("Robotics E2E");
   await page.getByRole("option", { name: 'Use "Robotics E2E"' }).click();
-  await choose(page, "Grade level", "Grade 8");
-  await page.getByRole("dialog").getByRole("spinbutton", { name: /^Minutes per week/ }).fill("120");
+  // Name only: no grade and no minutes (beneficiary review, Nov 21, 2026).
+  await expect(page.getByRole("dialog").getByRole("spinbutton", { name: /^Minutes per week/ })).toHaveCount(0);
   await page.getByRole("dialog").getByRole("button", { name: "Add subject" }).click();
   await expect(page.getByText("Robotics E2E was added.")).toBeVisible();
 

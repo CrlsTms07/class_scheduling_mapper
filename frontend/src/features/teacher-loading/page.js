@@ -37,7 +37,7 @@ export async function render(container, { query, navigate }) {
       pageHeader({
         icon: "clipboard",
         title: "Teacher Loading",
-        description: `Step 6 of the setup: who teaches what in ${term.name}, SY ${term.school_year.name}.`,
+        description: `Step 5 of the setup: who teaches what in ${term.name}, SY ${term.school_year.name}.`,
         crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Teacher Loading" }],
         actions: h("button", { type: "button", class: "btn btn-outline", onclick: () => openCopyTeachersDialog(currentSection) }, icon("copy"), "Copy teachers"),
       }),
@@ -205,7 +205,7 @@ export async function render(container, { query, navigate }) {
           h(
             "div",
             { class: "flex flex-wrap items-center gap-1 pl-4.5 text-small text-muted-foreground" },
-            `${row.minutes_per_week} mins a week`,
+            `${row.scheduled_minutes} mins a week on the schedule`,
             row.is_priority ? h("span", { class: "badge bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100" }, "Priority") : null,
             !row.is_active ? h("span", { class: "badge bg-surface-muted" }, "Not offered") : null,
             row.placed_entries > 0 ? h("span", { class: "badge bg-surface-muted" }, "On the schedule") : null,
@@ -242,6 +242,58 @@ export async function render(container, { query, navigate }) {
     );
   };
 
+  /**
+   * "Add a subject": one form with the subject and its teacher, for this section (beneficiary
+   * review, Nov 21, 2026: subject, section and teacher are joined in one form; the subject has no
+   * grade of its own, it takes the section's).
+   * @param {import("@/api/teacher-loading.js").SectionLoading} loading
+   */
+  const addSubjectForm = (loading) => {
+    if (loading.addable.length === 0) return null;
+    /** @type {{ subjectId: number | null, teacherId: number | null }} */
+    const choice = { subjectId: null, teacherId: null };
+    const addButton = /** @type {HTMLButtonElement} */ (h("button", {
+      type: "button",
+      class: "btn btn-primary",
+      disabled: true,
+      onclick: async () => {
+        if (!choice.subjectId || !choice.teacherId) return;
+        const subject = loading.addable.find(({ id }) => id === choice.subjectId);
+        const teacher = loading.teachers.find(({ id }) => id === choice.teacherId);
+        setBusy(addButton, true, "Adding...");
+        try {
+          await assignTeacher(term.id, loading.section.id, choice.subjectId, choice.teacherId);
+          toast.success(`${subject?.name} was added to ${loading.section.label}, taught by ${teacher?.name}.`);
+          drawSection();
+        } catch (error) {
+          toast.error(error);
+          setBusy(addButton, false);
+        }
+      },
+    }, icon("plus"), "Add"));
+    const ready = () => { addButton.disabled = !(choice.subjectId && choice.teacherId); };
+    return h(
+      "section",
+      { "aria-label": "Add a subject", class: "card space-y-3 p-4" },
+      h("div", null, h("h2", { class: "font-semibold text-accent" }, "Add a subject"), h("p", { class: "text-small text-muted-foreground" }, `A subject ${loading.section.label} takes, with its teacher. The minutes are counted from the schedule.`)),
+      h(
+        "div",
+        { class: "grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end" },
+        searchableSelect({ label: "Subject", placeholder: "Choose a subject", options: loading.addable.map((item) => ({ value: item.id, label: item.name, hint: item.code ?? undefined })), onChange: (value) => { choice.subjectId = Number(value); ready(); } }),
+        searchableSelect({
+          label: "Teacher",
+          placeholder: "Choose a teacher",
+          options: loading.teachers.map((teacher) => {
+            const isFull = teacher.assigned >= teacher.limit;
+            return { value: teacher.id, label: teacher.name, hint: isFull ? `Full load (${teacher.assigned} of ${teacher.limit} subjects)` : `${teacher.assigned} of ${teacher.limit} subjects`, disabled: isFull };
+          }),
+          onChange: (value) => { choice.teacherId = Number(value); ready(); },
+        }),
+        addButton,
+      ),
+    );
+  };
+
   const drawSection = async () => {
     const sections = await getSections(term.id);
     if (sections.length === 0) {
@@ -255,6 +307,7 @@ export async function render(container, { query, navigate }) {
     const loading = await getSectionLoading(term.id, section.id);
     const done = loading.rows.filter(({ teacher_id: teacherId }) => teacherId !== null).length;
     const total = loading.rows.length;
+    const addForm = addSubjectForm(loading);
 
     replace(
       content,
@@ -264,8 +317,9 @@ export async function render(container, { query, navigate }) {
         h("div", { class: "sm:w-96" }, searchableSelect({ label: "Section", value: section.id, options: sections.map((item) => ({ value: item.id, label: `Grade ${item.grade} – ${item.name}`, hint: item.adviser ? `Adviser: ${item.adviser}` : undefined })), onChange: (value) => navigate(`/teacher-loading?section=${value}`) })),
         h("a", { href: `/schedule/sections/${section.id}`, class: "btn btn-outline" }, "Open the schedule", icon("arrow-right")),
       ),
+      addForm,
       total === 0
-        ? emptyState({ title: "No subjects for this section", text: "No subjects are offered to this section yet. Add them on the Subjects page.", action: h("a", { href: "/subjects", class: "btn btn-outline" }, "Open Subjects") })
+        ? emptyState({ title: "No subjects for this section yet", text: loading.addable.length ? "Add each subject this section takes, with its teacher, using Add a subject above." : "There is no subject to add. Add the subjects of the school year on the Subjects page first.", action: loading.addable.length ? null : h("a", { href: "/subjects", class: "btn btn-outline" }, "Open Subjects") })
         : [
             h(
               "div",

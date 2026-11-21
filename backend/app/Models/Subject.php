@@ -11,6 +11,12 @@ class Subject extends Model
 
     protected $guarded = [];
 
+    /** Homeroom Guidance, the one subject with a minutes limit (CLAUDE.md: 60 minutes a week). */
+    public function isHomeroom(): bool
+    {
+        return (bool) preg_match('/home\s*room/i', (string) $this->name);
+    }
+
     public function track(): BelongsTo
     {
         return $this->belongsTo(Track::class);

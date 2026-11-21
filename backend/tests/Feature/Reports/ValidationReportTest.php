@@ -64,20 +64,22 @@ beforeEach(function () {
 });
 
 it('lists the issues of each section, with the summary', function () {
-    $loading = validationLoading($this, $this->sectionId, $this->teacherId, 'Math 7');
+    $loading = validationLoading($this, $this->sectionId, $this->teacherId, 'Homeroom Guidance');
     validationEntry($this, $this->sectionId, $loading, $this->teacherId, 'draft', $this->roomId);
+    DB::table('schedule_entries')->update(['end_time' => '08:20']);
     DB::table('sections')->insert(['school_year_id' => $this->yearId, 'grade_level_id' => validationGrade(7), 'name' => 'Hope']);
 
     $this->getJson($this->url)
         ->assertOk()
         ->assertJsonPath('data.summary.sections', 2)
         ->assertJsonPath('data.summary.sections_with_issues', 2)
-        ->assertJsonPath('data.summary.issues', 2)
-        ->assertJsonPath('data.summary.not_acknowledged', 2)
+        // Homeroom over 60, its 80-minute entry outside the bell schedule, and Hope's missing adviser.
+        ->assertJsonPath('data.summary.issues', 3)
+        ->assertJsonPath('data.summary.not_acknowledged', 3)
         ->assertJsonPath('data.sections.0.label', 'Grade 7 – Honesty')
         ->assertJsonPath('data.sections.0.status_label', 'Draft')
-        ->assertJsonPath('data.sections.0.issues.0.message', 'Math 7 needs 180 more minutes a week (45 of 225 scheduled).')
-        ->assertJsonPath('data.sections.0.issues.0.level', 'To check')
+        ->assertJsonPath('data.sections.0.issues.0.message', 'Homeroom Guidance has 20 minutes too many a week (80 scheduled, at most 60).')
+        ->assertJsonPath('data.sections.0.issues.0.level', 'Urgent')
         ->assertJsonPath('data.sections.1.issues.0.message', 'This section has no adviser.');
 });
 

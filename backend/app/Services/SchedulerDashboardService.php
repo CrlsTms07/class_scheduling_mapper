@@ -76,20 +76,24 @@ class SchedulerDashboardService
         $models = Section::whereIn('id', $sections->pluck('id'))->get();
 
         $subjects = Subject::where('school_year_id', $term->school_year_id)
-            ->whereIn('grade_level_id', $scope)
+            ->where(fn ($query) => $query->whereNull('grade_level_id')->orWhereIn('grade_level_id', $scope))
             ->where('is_active', true)
             ->where(fn ($query) => $query->whereNull('term_no')->orWhere('term_no', $term->term_no))
             ->get();
 
-        // Every subject each section should have this term, against those with a teacher.
+        // What each section should have this term: the subjects made for its grade (before Nov 21,
+        // 2026) plus those added to it. Done when every section has subjects and all have a teacher.
+        $loadedRows = DB::table('section_subjects')
+            ->join('subjects', 'subjects.id', '=', 'section_subjects.subject_id')
+            ->where('section_subjects.term_id', $term->id)
+            ->whereIn('section_subjects.section_id', $models->pluck('id'))
+            ->get(['section_subjects.section_id', 'subjects.grade_level_id']);
         $needed = $models->sum(fn (Section $section) => $subjects
             ->where('grade_level_id', $section->grade_level_id)
             ->filter(fn (Subject $subject) => $subject->track_id === null || $subject->track_id === $section->track_id)
-            ->count());
-        $loaded = DB::table('section_subjects')
-            ->where('term_id', $term->id)
-            ->whereIn('section_id', $models->pluck('id'))
-            ->count();
+            ->count()) + $loadedRows->whereNull('grade_level_id')->count();
+        $loaded = $loadedRows->count();
+        $everySectionLoaded = $models->every(fn (Section $section) => $loadedRows->contains('section_id', $section->id));
 
         $teachers = Teacher::where('personnel_type', 'teaching')->where('is_active', true)->count();
         $started = $sections->where('status', '<>', 'not_started')->count();
@@ -122,7 +126,7 @@ class SchedulerDashboardService
             $rooms,
             [
                 'key' => 'loading',
-                'done' => $needed > 0 && $loaded >= $needed,
+                'done' => $models->isNotEmpty() && $everySectionLoaded && $loaded >= $needed,
                 'counts' => ['loaded' => $loaded, 'needed' => $needed],
             ],
             [

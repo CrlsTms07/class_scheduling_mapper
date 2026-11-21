@@ -31,11 +31,11 @@ class SubjectService
             ->pluck('total', 'subject_id');
 
         return DB::table('subjects')
-            ->join('grade_levels', 'grade_levels.id', '=', 'subjects.grade_level_id')
+            ->leftJoin('grade_levels', 'grade_levels.id', '=', 'subjects.grade_level_id')
             ->leftJoin('tracks', 'tracks.id', '=', 'subjects.track_id')
             ->where('subjects.school_year_id', $year->id)
-            ->whereIn('subjects.grade_level_id', $user->gradeLevelIdsInScope())
-            ->orderBy('grade_levels.grade')
+            // A subject with no grade is for every grade, so every scheduler sees it.
+            ->where(fn ($query) => $query->whereNull('subjects.grade_level_id')->orWhereIn('subjects.grade_level_id', $user->gradeLevelIdsInScope()))
             ->orderBy('subjects.name')
             ->select('subjects.*', 'grade_levels.grade', 'grade_levels.level', 'tracks.name as track')
             ->get()
@@ -102,7 +102,8 @@ class SubjectService
         return DB::transaction(function () use ($subject, $data, $user) {
             if ($this->hasLoading($subject)) {
                 foreach (self::FIXED_ONCE_LOADED as $field) {
-                    if ((string) ($data[$field] ?? '') !== (string) ($subject->{$field} ?? '')) {
+                    // Only what the form sends is compared: the grade is no longer on the form.
+                if (array_key_exists($field, $data) && (string) ($data[$field] ?? '') !== (string) ($subject->{$field} ?? '')) {
                         throw ValidationException::withMessages([
                             $field => 'This cannot change, because this subject already has teacher loading.',
                         ]);

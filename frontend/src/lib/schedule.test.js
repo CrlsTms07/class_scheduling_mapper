@@ -86,6 +86,7 @@ describe("moving a class", () => {
 
 describe("words and colors", () => {
   it("says how much of a subject is placed", () => {
+    expect(minutesText({ ...loading(160), required_minutes: null })).toBe("160 mins a week on the schedule");
     expect(minutesText(loading(160))).toBe("160 of 220 mins · 60 left");
     expect(minutesText(loading(220))).toBe("220 of 220 mins · Complete");
     expect(minutesText(loading(240))).toBe("240 of 220 mins · Over by 20 mins");

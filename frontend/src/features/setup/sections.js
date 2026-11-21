@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Step 4 of the setup: Sections of this school year, each with its grade, track (Senior High),
+ * Step 3 of the setup: Sections of this school year, each with its grade, track (Senior High),
  * shift, adviser (one advisory per teacher a year), co-adviser, home room and class size.
  * A Chairperson or Master Teacher encodes the sections of their own grade levels.
  */
@@ -72,7 +72,7 @@ export async function render(container, { query }) {
     h(
       "div",
       { class: "space-y-5 p-4 sm:p-6" },
-      pageHeader({ icon: "team", title: "Sections", description: `Step 4 of the setup: the sections of SY ${year.name}, with their advisers and rooms.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Sections" }], actions: [h("a", { href: "/reports?tab=advisers", class: "btn btn-outline" }, icon("folder"), "Adviser summary"), h("button", { type: "button", class: "btn btn-primary", onclick: () => sectionForm() }, icon("plus"), "Add section")] }),
+      pageHeader({ icon: "team", title: "Sections", description: `Step 3 of the setup: the sections of SY ${year.name}, with their advisers and rooms.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Sections" }], actions: [h("a", { href: "/reports?tab=advisers", class: "btn btn-outline" }, icon("folder"), "Adviser summary"), h("button", { type: "button", class: "btn btn-primary", onclick: () => sectionForm() }, icon("plus"), "Add section")] }),
       content,
     ),
   );

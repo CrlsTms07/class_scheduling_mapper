@@ -8,7 +8,7 @@ import { timeRange } from "./time.js";
 /**
  * @typedef {{ id: number, period_no: number | null, label: string | null, start_time: string, end_time: string, minutes: number, is_break: boolean }} TimeSlot
  * @typedef {{ id: number, name: string, days: number[], slots: TimeSlot[] }} DayPattern
- * @typedef {{ id: number, subject_id: number, teacher_id: number, subject: string, is_priority: boolean, required_minutes: number, scheduled_minutes: number, teacher: string }} Loading
+ * @typedef {{ id: number, subject_id: number, teacher_id: number, subject: string, is_priority: boolean, required_minutes: number | null, scheduled_minutes: number, teacher: string }} Loading
  * @typedef {{ id: number, day: number, start_time: string, end_time: string, status: "draft" | "pending" | "approved" | "rejected", section_subject_id: number | null, activity_id: number | null, subject: string | null, teacher: string | null, room_id: number | null, room: string | null }} ScheduleEntry
  * @typedef {{ key: string, type: string, severity: "red" | "amber", message: string, blocking: boolean, acknowledged: boolean, section_subject_id?: number }} ScheduleFlag
  * @typedef {"not_started" | "draft" | "pending" | "approved" | "rejected"} ScheduleStatus
@@ -103,18 +103,23 @@ export function patternOfSlot(patterns, slotId) {
 }
 
 /**
- * Minutes of a subject not placed yet (0 when complete or over).
+ * Minutes of a subject not placed yet (0 when complete or over). Subjects have no typed minutes
+ * (beneficiary review, Nov 21, 2026), so with no limit there is always room: Infinity. Only
+ * Homeroom has a limit (60 a week).
  * @param {Loading} loading
  */
 export function minutesLeft(loading) {
+  if (loading.required_minutes === null) return Infinity;
   return Math.max(0, loading.required_minutes - loading.scheduled_minutes);
 }
 
 /**
- * "160 of 220 mins · 60 left", "Complete" or "Over by 20 mins".
+ * "160 mins a week on the schedule", or with a limit (Homeroom): "40 of 60 mins · 20 left",
+ * "Complete" or "Over by 20 mins".
  * @param {Loading} loading
  */
 export function minutesText(loading) {
+  if (loading.required_minutes === null) return `${loading.scheduled_minutes} mins a week on the schedule`;
   const left = loading.required_minutes - loading.scheduled_minutes;
   const placed = `${loading.scheduled_minutes} of ${loading.required_minutes} mins`;
   if (left === 0) return `${placed} · Complete`;

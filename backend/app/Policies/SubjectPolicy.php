@@ -25,7 +25,8 @@ class SubjectPolicy
             ? $subjectOrGradeLevelId->grade_level_id
             : $subjectOrGradeLevelId;
 
+        // A subject with no grade is for every grade (Nov 21, 2026), so every scheduler shares it.
         return $user->hasAnyRole([User::ROLE_ADMIN, 'glc', 'master_teacher'])
-            && in_array($gradeLevelId, $user->gradeLevelIdsInScope());
+            && ($gradeLevelId === null || in_array($gradeLevelId, $user->gradeLevelIdsInScope()));
     }
 }

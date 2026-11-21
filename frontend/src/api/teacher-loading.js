@@ -8,9 +8,9 @@ import { invalidate, load, setData } from "@/state/cache.js";
 
 /**
  * @typedef {"WHOLE_DAY" | "AM" | "PM"} Shift
- * @typedef {{ subject_id: number, subject: string, code: string | null, minutes_per_week: number, is_priority: boolean, is_active: boolean, teacher_id: number | null, teacher: string | null, placed_entries: number, locked_reason: string | null }} LoadingRow
+ * @typedef {{ subject_id: number, subject: string, code: string | null, scheduled_minutes: number, is_priority: boolean, is_active: boolean, teacher_id: number | null, teacher: string | null, placed_entries: number, locked_reason: string | null }} LoadingRow
  * @typedef {{ id: number, name: string, shift: Shift, assigned: number, limit: number }} LoadingTeacher
- * @typedef {{ section: { id: number, label: string, level: "JHS" | "SHS", shift: Shift, track: string | null, adviser: string | null }, rows: LoadingRow[], teachers: LoadingTeacher[] }} SectionLoading
+ * @typedef {{ section: { id: number, label: string, level: "JHS" | "SHS", shift: Shift, track: string | null, adviser: string | null }, rows: LoadingRow[], addable: { id: number, name: string, code: string | null }[], teachers: LoadingTeacher[] }} SectionLoading
  */
 
 /**

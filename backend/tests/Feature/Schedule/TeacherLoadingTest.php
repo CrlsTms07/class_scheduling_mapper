@@ -121,7 +121,7 @@ describe('the list', function () {
             ->assertJsonPath('data.section.label', 'Grade 7 – Honesty')
             ->assertJsonPath('data.rows.0.subject', 'Math 7')
             ->assertJsonPath('data.rows.0.teacher_id', null)
-            ->assertJsonPath('data.rows.0.minutes_per_week', 225)
+            ->assertJsonPath('data.rows.0.scheduled_minutes', 0)
             ->assertJsonPath('data.teachers.1.name', 'Ana Reyes')
             ->assertJsonPath('data.teachers.1.assigned', 1)
             ->assertJsonPath('data.teachers.1.limit', 1);
@@ -375,4 +375,31 @@ it('feeds the plotter, so a new loading can be placed', function () {
     $this->getJson("/api/terms/{$this->termId}/sections/{$this->sectionId}/plotter")
         ->assertOk()
         ->assertJsonPath('data.loading.0.subject', 'Math 7');
+});
+
+describe('adding a subject to a section (subjects are name only, Nov 21, 2026)', function () {
+    it('offers subjects for every grade with "Add subject", and lists one once it has a teacher', function () {
+        $filipino = loadingSubject($this, 'Filipino', ['grade_level_id' => null, 'minutes_per_week' => null]);
+
+        $data = $this->getJson($this->url)->assertOk()->json('data');
+        expect(collect($data['addable'])->pluck('name')->all())->toBe(['Filipino'])
+            ->and(collect($data['rows'])->pluck('subject')->all())->toBe(['Math 7']);
+
+        $this->putJson("{$this->url}/{$filipino}", ['teacher_id' => $this->benId])->assertOk();
+
+        $data = $this->getJson($this->url)->json('data');
+        expect($data['addable'])->toBe([])
+            ->and(collect($data['rows'])->pluck('subject')->all())->toBe(['Filipino', 'Math 7'])
+            ->and(collect($data['rows'])->firstWhere('subject', 'Filipino')['teacher_id'])->toBe($this->benId);
+
+        // Taking its teacher away takes it off the section again.
+        $this->deleteJson("{$this->url}/{$filipino}")->assertOk();
+        expect(collect($this->getJson($this->url)->json('data.rows'))->pluck('subject')->all())->toBe(['Math 7']);
+    });
+
+    it('does not offer a subject of another track or term', function () {
+        loadingSubject($this, 'Term 2 only', ['grade_level_id' => null, 'minutes_per_week' => null, 'term_no' => 2]);
+
+        expect($this->getJson($this->url)->json('data.addable'))->toBe([]);
+    });
 });

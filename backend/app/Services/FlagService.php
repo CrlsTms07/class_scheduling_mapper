@@ -66,21 +66,23 @@ class FlagService
             return [];
         }
 
+        // Subjects have no typed minutes any more (beneficiary review, Nov 21, 2026): the minutes are
+        // counted from the schedule. The one rule left is Homeroom Guidance, at most 60 a week.
+        $limit = (int) config('school.homeroom_minutes');
         $rows = DB::table('subject_minutes_check')
             ->where('term_id', $termId)
             ->where('section_id', $section->id)
-            ->whereColumn('scheduled_minutes', '<>', 'required_minutes')
+            ->whereRaw("subject ~* 'home\\s*room'")
+            ->where('scheduled_minutes', '>', $limit)
             ->orderBy('subject')
             ->get();
 
         return $rows->map(fn ($row) => [
             'key' => "minutes:{$row->section_subject_id}:{$row->scheduled_minutes}",
-            'type' => $row->scheduled_minutes > $row->required_minutes ? 'minutes_over' : 'minutes_under',
-            'severity' => $row->scheduled_minutes > $row->required_minutes ? 'red' : 'amber',
-            // Said as what to do: how many minutes to add or take away.
-            'message' => $row->scheduled_minutes < $row->required_minutes
-                ? "{$row->subject} needs ".($row->required_minutes - $row->scheduled_minutes)." more minutes a week ({$row->scheduled_minutes} of {$row->required_minutes} scheduled)."
-                : "{$row->subject} has ".($row->scheduled_minutes - $row->required_minutes)." minutes too many a week ({$row->scheduled_minutes} of {$row->required_minutes} scheduled).",
+            'type' => 'minutes_over',
+            'severity' => 'red',
+            // Said as what to do: how many minutes to take away.
+            'message' => "{$row->subject} has ".($row->scheduled_minutes - $limit)." minutes too many a week ({$row->scheduled_minutes} scheduled, at most {$limit}).",
             'section_subject_id' => $row->section_subject_id,
         ])->all();
     }

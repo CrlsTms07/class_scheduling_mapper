@@ -1,7 +1,8 @@
 // @ts-check
 /**
- * Step 3 of the setup: Subjects of this school year (per grade, per term for Senior High, with
- * minutes per week), and Activities such as Flag Ceremony. Subjects belong to one school year, so
+ * Step 2 of the setup: Subjects of this school year, names only (beneficiary review, Nov 21, 2026:
+ * no grade and no typed minutes; optional term and track for Senior High), and Activities such as
+ * Flag Ceremony. Subjects belong to one school year, so
  * a new curriculum never changes past schedules.
  */
 import { h, replace } from "@/lib/dom.js";
@@ -28,7 +29,7 @@ export async function render(container) {
     return;
   }
   const isAdmin = session.user?.role === "super_admin";
-  const ui = { search: "", grade: "", term: "" };
+  const ui = { search: "", term: "" };
   const content = h("div", { class: "space-y-5" }, skeletonList(4));
   /** @type {any} */
   let options = { grade_levels: [], tracks: [], terms: [] };
@@ -43,12 +44,10 @@ export async function render(container) {
     const names = [...new Set([...known, ...(subject ? [subject.name] : [])])].sort((a, b) => a.localeCompare(b));
     openFormDialog({
       title: subject ? `Edit ${subject.name}` : "Add a subject",
-      description: subject?.locked_reason ? `${subject.locked_reason} Its grade, track and time of the year can no longer change.` : `For SY ${year.name}. Tracks and types apply to Senior High only.`,
+      description: subject?.locked_reason ? `${subject.locked_reason} Its track and time of the year can no longer change.` : `For SY ${year.name}. Just the subject: add it to each section, with its teacher, in Teacher Loading. The minutes are counted from the schedule.`,
       fields: [
         { name: "name", label: "Subject name", type: "select", required: true, value: subject?.name ?? "", options: names.map((name) => ({ value: name, label: name })), localCreate: true, onCreate: async (typed) => ({ value: typed.trim(), label: typed.trim() }), help: "Pick a subject already in the list, or type a new name and choose Use." },
         { name: "code", label: "Code", value: subject?.code ?? "" },
-        { name: "grade_level_id", label: "Grade level", type: "select", required: true, value: subject?.grade_level_id ?? "", disabled: !!subject?.locked_reason, options: options.grade_levels.map((/** @type {any} */ grade) => ({ value: grade.id, label: `Grade ${grade.grade} (${grade.level === "JHS" ? "Junior High" : "Senior High"})` })) },
-        { name: "minutes_per_week", label: "Minutes per week", type: "number", required: true, min: 1, max: 3000, value: subject?.minutes_per_week, help: "Homeroom Guidance is 60." },
         { name: "term_no", label: `Taken in which ${year.term_label.toLowerCase()}`, type: "select", value: subject?.term_no ?? "", disabled: !!subject?.locked_reason, options: [{ value: "", label: "Whole year" }, ...options.terms.map((/** @type {any} */ term) => ({ value: term.term_no, label: term.name }))] },
         { name: "track_id", label: "Track (Senior High)", type: "select", value: subject?.track_id ?? "", disabled: !!subject?.locked_reason, options: [{ value: "", label: "All tracks" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] },
         { name: "subject_type", label: "Type (Senior High)", type: "select", required: true, value: subject?.subject_type ?? "core", options: Object.entries(TYPES).map(([value, label]) => ({ value, label })) },
@@ -57,16 +56,14 @@ export async function render(container) {
       ],
       submitLabel: subject ? "Save changes" : "Add subject",
       onSubmit: async (values) => {
-        const grade = options.grade_levels.find((/** @type {any} */ item) => item.id === Number(values.grade_level_id));
-        const isSeniorHigh = grade?.level === "SHS";
+        // No grade and no minutes (beneficiary review, Nov 21, 2026): the grade comes from the
+        // section in Teacher Loading, and the minutes from the schedule.
         const body = {
-          grade_level_id: Number(values.grade_level_id),
-          track_id: isSeniorHigh && values.track_id ? Number(values.track_id) : null,
+          track_id: values.track_id ? Number(values.track_id) : null,
           term_no: values.term_no === "" || values.term_no === null ? null : Number(values.term_no),
           code: values.code || null,
           name: values.name,
-          subject_type: isSeniorHigh ? values.subject_type : "core",
-          minutes_per_week: Number(values.minutes_per_week),
+          subject_type: values.subject_type,
           is_priority: values.is_priority,
           is_active: values.is_active,
         };
@@ -121,7 +118,7 @@ export async function render(container) {
     h(
       "div",
       { class: "space-y-5 p-4 sm:p-6" },
-      pageHeader({ icon: "book", title: "Subjects", description: `Step 3 of the setup: the curriculum of SY ${year.name}, for your grade levels.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Subjects" }], actions: [h("button", { type: "button", class: "btn btn-outline", onclick: editTracks }, icon("layers"), "Tracks"), h("button", { type: "button", class: "btn btn-primary", onclick: () => subjectForm() }, icon("plus"), "Add subject")] }),
+      pageHeader({ icon: "book", title: "Subjects", description: `Step 2 of the setup: the subjects of SY ${year.name}, names only. Add each to its sections in Teacher Loading.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Subjects" }], actions: [h("button", { type: "button", class: "btn btn-outline", onclick: editTracks }, icon("layers"), "Tracks"), h("button", { type: "button", class: "btn btn-primary", onclick: () => subjectForm() }, icon("plus"), "Add subject")] }),
       content,
     ),
   );
@@ -131,27 +128,25 @@ export async function render(container) {
       const [subjects, activities] = await Promise.all([getRecords(`/school-years/${year.id}/subjects`), getRecords(`/school-years/${year.id}/activities`)]);
       options = await getRecords(`/school-years/${year.id}/subject-options`);
       const words = ui.search.trim().toLowerCase();
-      const shown = subjects.filter((/** @type {any} */ subject) => (!ui.grade || subject.grade === Number(ui.grade)) && (ui.term === "" || String(subject.term_no ?? "year") === ui.term) && (!words || `${subject.name} ${subject.code ?? ""} ${subject.track ?? ""}`.toLowerCase().includes(words)));
-      const grades = [...new Set(subjects.map((/** @type {any} */ subject) => subject.grade))].sort((a, b) => a - b);
+      const shown = subjects.filter((/** @type {any} */ subject) => (ui.term === "" || String(subject.term_no ?? "year") === ui.term) && (!words || `${subject.name} ${subject.code ?? ""} ${subject.track ?? ""}`.toLowerCase().includes(words)));
 
       replace(
         content,
         h(
           "div",
-          { class: "card grid gap-3 p-3 sm:grid-cols-3" },
+          { class: "card grid gap-3 p-3 sm:grid-cols-2" },
           h("div", { class: "space-y-1" }, h("label", { class: "field-label" }, "Search"), searchInput),
-          searchableSelect({ label: "Grade level", value: ui.grade, options: [{ value: "", label: "All grades" }, ...grades.map((grade) => ({ value: String(grade), label: `Grade ${grade}` }))], onChange: (value) => { ui.grade = String(value); draw(); } }),
           searchableSelect({ label: "When", value: ui.term, options: [{ value: "", label: "Any time" }, { value: "year", label: "Whole year" }, ...options.terms.map((/** @type {any} */ term) => ({ value: String(term.term_no), label: term.name }))], onChange: (value) => { ui.term = String(value); draw(); } }),
         ),
         subjects.length === 0
-          ? emptyState({ title: "No subjects yet", text: `Add the subjects of SY ${year.name}, with their minutes per week.`, action: h("button", { type: "button", class: "btn btn-primary", onclick: () => subjectForm() }, icon("plus"), "Add subject") })
+          ? emptyState({ title: "No subjects yet", text: `Add the subjects of SY ${year.name}: just their names. Then add each to its sections in Teacher Loading.`, action: h("button", { type: "button", class: "btn btn-primary", onclick: () => subjectForm() }, icon("plus"), "Add subject") })
           : shown.length === 0
             ? noMatches({
                 noun: "subject",
                 search: ui.search,
-                filters: [ui.grade ? `Grade ${ui.grade}` : null, ui.term === "year" ? "Whole year" : ui.term ? termName(Number(ui.term)) : null],
+                filters: [ui.term === "year" ? "Whole year" : ui.term ? termName(Number(ui.term)) : null],
                 onClear: () => {
-                  Object.assign(ui, { search: "", grade: "", term: "" });
+                  Object.assign(ui, { search: "", term: "" });
                   searchInput.value = "";
                   draw();
                 },
@@ -161,11 +156,10 @@ export async function render(container) {
                 items: shown,
                 columns: [
                   { label: "Subject", primary: true, cell: (/** @type {any} */ subject) => h("span", null, subject.name, subject.is_priority ? h("span", { class: "badge ml-2 bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100" }, "Priority") : null, subject.is_active ? null : h("span", { class: "badge ml-2 bg-surface-muted" }, "Not offered")) },
-                  { label: "Grade", cell: (/** @type {any} */ subject) => String(subject.grade) },
+                  { label: "Grade", cell: (/** @type {any} */ subject) => (subject.grade ? `Grade ${subject.grade} only` : "Any grade") },
                   { label: "When", cell: (/** @type {any} */ subject) => termName(subject.term_no) },
                   { label: "Track", cell: (/** @type {any} */ subject) => subject.track ?? "–" },
-                  { label: "Type", cell: (/** @type {any} */ subject) => (subject.level === "SHS" ? TYPES[/** @type {keyof typeof TYPES} */ (subject.subject_type)] : "–") },
-                  { label: "Per week", cell: (/** @type {any} */ subject) => `${subject.minutes_per_week} mins` },
+                  { label: "Type", cell: (/** @type {any} */ subject) => TYPES[/** @type {keyof typeof TYPES} */ (subject.subject_type)] },
                 ],
                 actions: (/** @type {any} */ subject) => editButton(subject.name, () => subjectForm(subject)),
               }),
