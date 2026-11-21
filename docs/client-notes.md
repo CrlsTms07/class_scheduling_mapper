@@ -291,6 +291,32 @@ most. These replace the earlier Nov 21 notes (master-data import and Setup Guide
 - **Still to confirm with the beneficiary:** mid-shift (e.g. 10:00–3:00) as a shift of its own; the school ID,
   tagline and address on the school profile form; a minimum length for a term (about 2 months).
 
+## Team decisions (Nov 21, 2026, afternoon), from the team's review of every screen
+
+- **Problems show while working:** every form says what is wrong under the field as soon as it is filled in, and
+  Next or Save waits until it is fixed (school year dates and terms, subject, building, room and section names, the
+  school's contact details, signatories).
+- **Start New School Year:** the name is made from the first day (2026 → 2026-2027, never typed); a school year is
+  one year at most and must not overlap another; each term lies inside it, one after another, at least 2 months.
+  The "Copy" step was removed: subjects, class hours and signatories of the latest year are copied (section names
+  are not). Three steps: Dates, Terms, Review.
+- **Teachers:** teaching personnel only. **Limitation: non-teaching personnel are not part of the system**; its only
+  focus is class scheduling, done by teaching personnel and approved by a higher position. No employee ID (the
+  record's own id is enough) and no education. Department and designation are required and are added, renamed and
+  deleted right in their dropdowns (DepEd designations Teacher I to Head Teacher VI are built in).
+- **Subjects & Class Hours** are one setup step with two tabs. A subject is a name (checked for repeats while
+  typing), edited or deleted from its row. The Senior High details (term, track, type) and the Tracks list are the
+  Admin's only; a Chairperson or Master Teacher just lists names. Minutes stay counted from the schedule.
+- **Activities** are chosen, or typed to add, in the class form while plotting (no separate list on Subjects).
+- **School profile:** the school's name, school ID (301179), region, division, address and logo are built into the
+  system; the Admin only keeps the phone, email and Facebook page up to date. No logo or photo upload.
+- **Signatories:** the same 2×2 block on every form: Prepared by, Conforme (the section's adviser, filled in by the
+  system), Recommending Approval, Approved by; the Admin types each name and position (required).
+- **Buildings:** "Used by" (Junior High, Senior High or Both) replaces "Department", required, with a note on why.
+- **No Excel import:** teachers stay from year to year, and the new school year copies subjects, class hours and
+  signatories, so only sections are encoded each year.
+- **Still to provide:** the DepEd logo (for the top of the forms), if the school wants it beside the ERCIHS logo.
+
 ## Open questions for the client
 
 1. **JHS scheduler (item 12):** One GLC for all of Grades 7–10, or one GLC per grade

@@ -128,6 +128,13 @@ npm run test:e2e                  # Playwright; only against a throwaway databas
   optional "Class Hours" page. Subjects are names only (no grade, no typed minutes; migration
   `2026_11_21_110000_subjects_name_only`): "Add a subject" in Teacher Loading joins subject, section and teacher,
   minutes are counted from the schedule, and the only minutes rule left is Homeroom at most 60.
+- **Screen review (team decisions, Nov 21, 2026, afternoon, see `docs/client-notes.md`):** live checks in every form
+  (`lib/calendar-rules.js` for school years and terms); the school year name comes from its dates; no Copy step;
+  teaching personnel only (non-teaching is a stated limitation); no employee ID or education; departments and
+  designations edited in their dropdowns (`searchableSelect` `manage`); Subjects & Class Hours as one step with
+  Senior High details for the Admin only; activities added in the class form; school details and logo built in
+  (`App\Support\SchoolProfile`, `config/school.php`, `resources/images/ercihs-logo.png`); 4 fixed signatories
+  (`PUT /terms/{term}/signatories/slots`); buildings "Used by".
 - **Back-end:** migrations, seeders, auth, plotter, approvals and JHS Class Program PDF are done.
 - **Deployment:** Render (one Docker service for Laravel and the web app) with a Supabase database (Neon as a
   fallback). Steps, including
@@ -194,9 +201,9 @@ npm run test:e2e                  # Playwright; only against a throwaway databas
 - **Quick-add teacher:** in the plotter's teacher dropdown, typing a name that does not
   exist offers "+ Add new teacher". This creates a minimal teacher record (name only, to
   be completed later). Never store teacher names as free text on schedule entries.
-- Profile includes educational qualifications (`teacher_qualifications`), department,
-  designation, **shift (AM/PM/WHOLE_DAY)**, max subjects (default 5) and
-  teaching-related tasks (ICT/SSG Coordinator, Lab Manager) per term.
+- Profile includes department and designation (both required), **shift (AM/PM/WHOLE_DAY)**, max subjects
+  (5) and teaching-related tasks (ICT/SSG Coordinator, Lab Manager) per term. Teaching personnel only, and no
+  educational qualifications (team decisions, Nov 21, 2026).
 
 ### Sections
 - Encoded once per **school year** (they change yearly) by the **Admin**, or by a GLC or Master Teacher
