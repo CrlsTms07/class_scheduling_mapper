@@ -158,6 +158,7 @@ class TeacherLoadingService
         // plus anyone already teaching a class in this term in their grade levels.
         $own = auth()->user()?->departmentsInScope();
         $departmentLevels = DB::table('departments')->pluck('level', 'id');
+        $departmentNames = DB::table('departments')->pluck('name', 'id');
         $teachingHere = $own === null ? collect() : DB::table('section_subjects')
             ->join('sections', 'sections.id', '=', 'section_subjects.section_id')
             ->where('section_subjects.term_id', $term->id)
@@ -170,19 +171,30 @@ class TeacherLoadingService
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->filter(fn (Teacher $teacher) => $own === null
-                || ($departmentLevels[$teacher->department_id] ?? null) === null
-                || in_array($departmentLevels[$teacher->department_id], $own, true)
-                || $teachingHere->has($teacher->id))
+            // Teachers of the other level may be borrowed (Nov 21, 2026): they come last, marked.
+            ->map(fn (Teacher $teacher) => [$teacher, $own !== null
+                && ($departmentLevels[$teacher->department_id] ?? null) !== null
+                && ! in_array($departmentLevels[$teacher->department_id], $own, true)
+                && ! $teachingHere->has($teacher->id)])
+            ->sortBy(fn (array $pair) => $pair[1] ? 1 : 0)
             ->values()
-            ->map(fn (Teacher $teacher) => [
-                'id' => $teacher->id,
-                'name' => $teacher->printedName(),
-                'shift' => $teacher->shift,
-                'assigned' => (int) ($loads[$teacher->id] ?? 0),
-                'limit' => $teacher->max_subjects,
-            ])
+            ->map(fn (array $pair) => [...$this->teacherChoice($pair[0], $loads, $departmentNames), 'from_level' => $pair[1] ? $departmentLevels[$pair[0]->department_id] : null])
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function teacherChoice(Teacher $teacher, $loads, $departmentNames): array
+    {
+        return [
+            'id' => $teacher->id,
+            'name' => $teacher->printedName(),
+            'shift' => $teacher->shift,
+            'assigned' => (int) ($loads[$teacher->id] ?? 0),
+            'limit' => $teacher->max_subjects,
+            'department' => $departmentNames[$teacher->department_id] ?? null,
+        ];
     }
 
     /**

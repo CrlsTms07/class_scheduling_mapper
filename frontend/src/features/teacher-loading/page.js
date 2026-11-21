@@ -12,7 +12,7 @@ import { searchableSelect } from "@/components/searchable-select.js";
 import { toast } from "@/components/toast.js";
 import { errorMessage } from "@/api/client.js";
 import { getSections, quickAddTeacher } from "@/api/schedule.js";
-import { assignTeacher, copyLoading, getSectionLoading, getTeacherLoad, importPrevious, removeTeacher, shiftWarning } from "@/api/teacher-loading.js";
+import { assignTeacher, copyLoading, getSectionLoading, getTeacherLoad, importPrevious, removeTeacher, shiftWarning, teacherHint } from "@/api/teacher-loading.js";
 import { watch } from "@/state/cache.js";
 import { termState, termWord } from "@/state/term.js";
 
@@ -177,7 +177,7 @@ export async function render(container, { query, navigate }) {
       ...(row.teacher_id && !current ? [{ value: row.teacher_id, label: row.teacher ?? "" }] : []),
       ...loading.teachers.map((teacher) => {
         const isFull = teacher.assigned >= teacher.limit && teacher.id !== row.teacher_id;
-        return { value: teacher.id, label: teacher.name, hint: isFull ? `Full load (${teacher.assigned} of ${teacher.limit} subjects)` : `${teacher.assigned} of ${teacher.limit} subjects`, disabled: isFull };
+        return { value: teacher.id, label: teacher.name, hint: teacherHint(teacher, isFull), disabled: isFull };
       }),
     ];
 
@@ -285,7 +285,7 @@ export async function render(container, { query, navigate }) {
           placeholder: "Choose a teacher",
           options: loading.teachers.map((teacher) => {
             const isFull = teacher.assigned >= teacher.limit;
-            return { value: teacher.id, label: teacher.name, hint: isFull ? `Full load (${teacher.assigned} of ${teacher.limit} subjects)` : `${teacher.assigned} of ${teacher.limit} subjects`, disabled: isFull };
+            return { value: teacher.id, label: teacher.name, hint: teacherHint(teacher, isFull), disabled: isFull };
           }),
           onChange: (value) => { choice.teacherId = Number(value); ready(); },
         }),

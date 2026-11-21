@@ -410,3 +410,23 @@ describe('adding a subject to a section (subjects are name only, Nov 21, 2026)',
         expect($this->getJson($this->url)->json('data.addable'))->toBe([]);
     });
 });
+
+describe('borrowing a teacher of the other level (Nov 21, 2026)', function () {
+    it('lists a Senior High teacher last, marked, and lets the Chairperson give them a subject', function () {
+        $tvl = DB::table('departments')->insertGetId(['name' => 'TVL', 'level' => 'SHS']);
+        $math = DB::table('departments')->insertGetId(['name' => 'Mathematics', 'level' => 'JHS']);
+        DB::table('teachers')->whereIn('id', [$this->anaId, $this->benId])->update(['department_id' => $math]);
+        $carla = DB::table('teachers')->insertGetId(['first_name' => 'Carla', 'last_name' => 'Abad', 'department_id' => $tvl]);
+
+        $teachers = collect($this->getJson($this->url)->json('data.teachers'));
+        expect($teachers->last()['id'])->toBe($carla)
+            ->and($teachers->last()['from_level'])->toBe('SHS')
+            ->and($teachers->last()['department'])->toBe('TVL')
+            ->and($teachers->firstWhere('id', $this->benId)['from_level'])->toBeNull();
+
+        $this->putJson("{$this->url}/{$this->mathId}", ['teacher_id' => $carla])->assertOk();
+
+        // Once teaching here, the teacher is part of the Chairperson's list, not borrowed.
+        expect(collect($this->getJson($this->url)->json('data.teachers'))->firstWhere('id', $carla)['from_level'])->toBeNull();
+    });
+});

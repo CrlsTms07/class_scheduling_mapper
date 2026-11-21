@@ -10,6 +10,7 @@
  * period, or type the start and end. A typed time becomes a period of the section's bell schedule
  * (a day with none gets one), so no time slots have to be set up first.
  */
+import { teacherHint } from "@/api/teacher-loading.js";
 import { h, replace } from "@/lib/dom.js";
 import { openDialog, confirmAction, setBusy } from "@/components/dialog.js";
 import { searchableSelect } from "@/components/searchable-select.js";
@@ -198,7 +199,7 @@ export function openClassDialog({ plotter, termId, target }) {
     if (subject) {
       getTeacherChoices(termId, sectionId)
         .then((teachers) => {
-          teacherOptions = teachers.map((teacher) => ({ value: teacher.id, label: teacher.name, hint: `${teacher.assigned} of ${teacher.limit} subjects` }));
+          teacherOptions = teachers.map((/** @type {any} */ teacher) => ({ value: teacher.id, label: teacher.name, hint: teacherHint(teacher) }));
           if (!teacherOptions.some(({ value }) => value === subject.teacher_id)) teacherOptions.unshift({ value: subject.teacher_id, label: subject.teacher });
           teacherSelect.setOptions(teacherOptions);
         })
