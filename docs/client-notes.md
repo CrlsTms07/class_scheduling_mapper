@@ -268,25 +268,28 @@ Based on a reference prototype the team reviewed (removed from the repo on Nov 1
 
 ## Team decisions (Nov 21, 2026), after the beneficiary's review (docs/paper/Update_Info for changes.pdf)
 
-- **No schedule import:** "Why import if the system is for making schedules?" The schedule import from Excel
-  (`POST /terms/{term}/schedule-import`, `ScheduleImportService`, `ClassProgramReader`) and "Import from a file" in
-  New schedule were removed. Schedules are made by hand or copied from another term.
-- **Master-data import instead** (Admin only), so teachers, subjects, rooms and sections are not typed one by one
-  every year. Each has an Excel template with the exact headers, one example row and a "How to fill in" sheet.
-  The upload is checked row by row first (new, update, skip or error, with the fix, e.g. "Row 12: department
-  "TLE-ICTT" does not exist."); a key twice in one file is an error; the user chooses Skip or Update for records
-  already in the system; nothing is saved until Import, and the import runs the same checks in one transaction.
-  Records can still be added and edited on their own pages.
-- **Imports are XLSX; a PDF is accepted but answered with "use the Excel template"** until a PDF reader is approved.
-  Exports stay PDF and CSV.
-- **Employee ID** (`teachers.employee_id`, unique in any letter case) is the teacher key of the import, and a field
-  on the Teachers form. A teacher encoded by hand with the same name and no ID gets the ID instead of a second record.
-  A row with a DepEd email gives an active Teacher account (Google sign-in or Forgot password).
-- **Setup Guide** (`/setup`, Admin menu after Dashboard): the steps before a schedule, in order, each with its status,
-  count, what it needs first ("Add teachers first (Step 4).") and a button to its page or its import. Teacher Loading
-  is its own step, since plotting needs it. Step 10 offers the existing "Copy from another term".
-- **Later (after the evaluation, before the December defense):** teacher specialization (`teacher_subjects`, from the
-  beneficiary's ERD) with "qualified first" in the class dialog's teacher list; reading PDF imports.
+The beneficiary said the process was hard to follow, there were too many features, and data integrity matters
+most. These replace the earlier Nov 21 notes (master-data import and Setup Guide, both removed the same day).
+
+- **No Excel import at all:** "Why import if the system is for making schedules?" The schedule import and the
+  master-data import were removed. Records are typed on their pages. Exports stay PDF and CSV.
+- **One process, one order** on the Setup menu and the Dashboard (teacher, then subject, then section, as the
+  beneficiary explained): 1 Teachers, 2 Subjects, 3 Sections, 4 Rooms & Buildings, 5 Teacher Loading, then Make the
+  schedule. The Admin also sees the school year and accounts before, and Report Settings before printing. The Setup
+  Guide page, the Dashboard's separate "School setup" checklist and the "How to make a schedule" page were removed.
+- **Teachers:** the department is required (quick-add from the plotter stays name-only and is marked "No department
+  yet"); `employee_id` is kept; "Most hours a week" and "Name on printed forms" are gone (printed names are first
+  name + middle initial + last name); a teacher carries at most 5 subjects a term, and a 6th is refused with
+  "Full load" (copies of teacher loading leave such subjects without a teacher and say so).
+- **Time slots are not a separate setup:** the start and end are chosen in the class form while plotting. A typed
+  time becomes a period of the section's bell schedule (a day with none gets one); the end must be after the start
+  and it must not overlap a period or a break. Time Slots is now the optional "Class Hours" page.
+- **Subjects are names only:** no grade level and no typed minutes per week (code, type, and the Senior High term and
+  track stay). "Add a subject" in Teacher Loading joins subject, section and teacher in one form. Minutes are
+  counted from the schedule; the only rule left is Homeroom Guidance at most 60 minutes a week. Subjects made before
+  keep their grade and stay listed for it. Nothing was deleted from the database.
+- **Still to confirm with the beneficiary:** mid-shift (e.g. 10:00–3:00) as a shift of its own; the school ID,
+  tagline and address on the school profile form; a minimum length for a term (about 2 months).
 
 ## Open questions for the client
 
