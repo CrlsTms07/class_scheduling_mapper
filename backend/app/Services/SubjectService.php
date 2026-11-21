@@ -36,12 +36,15 @@ class SubjectService
             ->where('subjects.school_year_id', $year->id)
             // A subject with no grade is for every grade, so every scheduler sees it.
             ->where(fn ($query) => $query->whereNull('subjects.grade_level_id')->orWhereIn('subjects.grade_level_id', $user->gradeLevelIdsInScope()))
+            // ...of their own level only (Nov 21, 2026); one with no level yet is seen by all.
+            ->when($user->departmentsInScope() !== null, fn ($query) => $query->where(fn ($inner) => $inner->whereIn('subjects.level', $user->departmentsInScope())->orWhereNull('subjects.level')))
             ->orderBy('subjects.name')
-            ->select('subjects.*', 'grade_levels.grade', 'grade_levels.level', 'tracks.name as track')
+            ->select('subjects.*', 'grade_levels.grade', 'grade_levels.level as grade_level', 'tracks.name as track')
             ->get()
             ->map(fn ($subject) => [
                 'id' => $subject->id,
                 'grade_level_id' => $subject->grade_level_id,
+                'level' => $subject->level ?? $subject->grade_level ?? null,
                 'grade' => $subject->grade,
                 'level' => $subject->level,
                 'track_id' => $subject->track_id,

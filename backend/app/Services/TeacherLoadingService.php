@@ -124,6 +124,8 @@ class TeacherLoadingService
         return Subject::query()
             ->where('school_year_id', $section->school_year_id)
             ->whereNull('grade_level_id')
+            // Only subjects of the section's own level (or with no level yet).
+            ->where(fn ($query) => $query->where('level', $section->gradeLevel->level)->orWhereNull('level'))
             ->whereNotIn('id', $listed)
             ->where(fn ($query) => $this->offeredTo($query, $term, $section))
             ->orderBy('name')
@@ -396,6 +398,7 @@ class TeacherLoadingService
     private function ensureOffered(SchoolTerm $term, Section $section, Subject $subject): void
     {
         $isOffered = $subject->school_year_id === $section->school_year_id
+            && ($subject->level === null || $subject->level === $section->gradeLevel->level)
             && ($subject->grade_level_id === null || $subject->grade_level_id === $section->grade_level_id)
             && Subject::whereKey($subject->id)
                 ->where(fn ($query) => $this->offeredTo($query, $term, $section))

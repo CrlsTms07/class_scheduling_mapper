@@ -48,7 +48,7 @@ export async function render(container) {
       const key = (name ?? "").trim().toLowerCase();
       const termNo = isAdmin ? (values.term_no === "year" ? null : Number(values.term_no)) : null;
       const trackId = isAdmin && values.track_id ? Number(values.track_id) : null;
-      return key ? others.find((/** @type {any} */ item) => item.name.trim().toLowerCase() === key && item.term_no === termNo && (item.track_id ?? null) === trackId) : undefined;
+      return key ? others.find((/** @type {any} */ item) => item.name.trim().toLowerCase() === key && item.term_no === termNo && (item.track_id ?? null) === trackId && (!isAdmin || !item.level || !values.level || item.level === values.level)) : undefined;
     };
     openFormDialog({
       title: subject ? `Edit ${subject.name}` : "Add a subject",
@@ -59,8 +59,9 @@ export async function render(container) {
         // The Senior High details are the Admin's (team decision, Nov 21, 2026).
         ...(isAdmin
           ? [
+              { name: "level", label: "For", type: /** @type {const} */ ("select"), required: true, value: subject?.level ?? "", help: "Junior High or Senior High. A Chairperson sees only Junior High subjects; the Master Teacher only Senior High ones.", options: [{ value: "JHS", label: "Junior High" }, { value: "SHS", label: "Senior High" }] },
               { name: "term_no", label: `Taken in which ${year.term_label.toLowerCase()}`, type: /** @type {const} */ ("select"), required: true, value: subject ? (subject.term_no ?? "year") : "year", disabled: !!subject?.locked_reason, help: "Whole year for Junior High; Senior High subjects may be for one part only.", options: [{ value: "year", label: "Whole year" }, ...options.terms.map((/** @type {any} */ term) => ({ value: term.term_no, label: term.name }))] },
-              { name: "track_id", label: "Track", type: /** @type {const} */ ("select"), value: subject?.track_id ?? "", disabled: !!subject?.locked_reason, help: "For Senior High only, like Academic or TechPro. Leave it on All tracks for Junior High.", options: [{ value: "", label: "All tracks" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] },
+              { name: "track_id", label: "Track", type: /** @type {const} */ ("select"), value: subject?.track_id ?? "", disabled: !!subject?.locked_reason, help: "For Senior High only, like Academic or TechPro. Leave it on All tracks for Junior High.", check: (/** @type {any} */ value, /** @type {any} */ values) => (value && values.level === "JHS" ? "Only Senior High subjects have a track. Choose All tracks." : null), options: [{ value: "", label: "All tracks" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] },
               { name: "subject_type", label: "Type", type: /** @type {const} */ ("select"), required: true, value: subject?.subject_type ?? "core", help: "For Senior High only. Junior High subjects are Core.", options: Object.entries(TYPES).map(([value, label]) => ({ value, label })) },
             ]
           : []),
@@ -72,6 +73,7 @@ export async function render(container) {
         // No grade and no minutes (beneficiary review, Nov 21, 2026): the grade comes from the
         // section in Teacher Loading, and the minutes from the schedule.
         const body = {
+          ...(isAdmin ? { level: values.level } : {}),
           track_id: isAdmin && values.track_id ? Number(values.track_id) : (subject?.track_id ?? null),
           term_no: isAdmin ? (values.term_no === "year" ? null : Number(values.term_no)) : (subject?.term_no ?? null),
           code: values.code || null,
@@ -164,6 +166,7 @@ export async function render(container) {
                 subject.is_priority ? chip("Priority", "bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100") : null,
                 subject.is_active ? null : chip("Not offered"),
                 subject.grade ? h("span", { class: "badge bg-surface-muted text-muted-foreground", title: "Made for one grade before Nov 21, 2026" }, `Grade ${subject.grade} only`) : null,
+                isAdmin ? chip(subject.level === "SHS" ? "Senior High" : subject.level === "JHS" ? "Junior High" : "Level not set", subject.level ? "bg-brand-soft text-brand" : "bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100") : null,
                 isAdmin ? chip(termName(subject.term_no)) : null,
                 isAdmin && subject.track ? chip(`${subject.track} (SHS)`) : null,
                 isAdmin && subject.subject_type !== "core" ? chip(TYPES[/** @type {keyof typeof TYPES} */ (subject.subject_type)]) : null,

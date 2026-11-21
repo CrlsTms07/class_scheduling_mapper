@@ -1,27 +1,57 @@
 // @ts-check
 /**
  * Subjects and Class Hours are one setup step (team decision, Nov 21, 2026): two tabs of the same
- * module, with a short "what to do here" guide for the one making the schedule.
+ * module, under a small stepper that says what to do here and what comes next.
  */
 import { h } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
+
+const STEPS = [
+  { key: "subjects", title: "List the subjects", text: "Just their names.", href: "/subjects", icon: /** @type {const} */ ("book") },
+  { key: "hours", title: "Set the class hours", text: "Periods and breaks. Optional: times can be typed while plotting.", href: "/time-slots", icon: /** @type {const} */ ("clock") },
+  { key: "next", title: "Next: Sections", text: "Then give each subject its teacher in Teacher Loading.", href: "/sections", icon: /** @type {const} */ ("arrow-right") },
+];
 
 /**
  * @param {"subjects" | "hours"} active
  */
 export function subjectTabs(active) {
-  const tab = (/** @type {"subjects" | "hours"} */ key, /** @type {string} */ href, /** @type {string} */ label, /** @type {import("@/components/icons.js").IconName} */ iconName) =>
-    h("a", { href, role: "tab", "aria-selected": String(active === key), class: `btn ${active === key ? "bg-surface shadow-sm" : "text-muted-foreground"}` }, icon(iconName), label);
+  const activeIndex = STEPS.findIndex((step) => step.key === active);
   return h(
-    "div",
-    { class: "space-y-3" },
-    h("div", { role: "tablist", "aria-label": "Subjects and class hours", class: "grid grid-cols-2 gap-1 rounded-xl bg-surface-muted p-1 sm:flex sm:w-fit" }, tab("subjects", "/subjects", "Subjects", "book"), tab("hours", "/time-slots", "Class Hours", "clock")),
+    "nav",
+    { "aria-label": "Subjects and class hours", class: "card p-2" },
     h(
       "ol",
-      { class: "grid gap-2 rounded-xl border bg-surface p-3 text-sm sm:grid-cols-3", "aria-label": "What to do here" },
-      h("li", { class: active === "subjects" ? "font-medium text-brand" : "" }, "1. List the subjects: just their names."),
-      h("li", { class: active === "hours" ? "font-medium text-brand" : "" }, "2. Class Hours: the periods and breaks. Optional: times can also be typed while plotting."),
-      h("li", null, "3. Next: Sections, then give each subject its teacher in Teacher Loading."),
+      { class: "grid gap-1 sm:grid-cols-3" },
+      STEPS.map((step, index) => {
+        const isActive = index === activeIndex;
+        const isNext = step.key === "next";
+        return h(
+          "li",
+          { class: "relative" },
+          h(
+            "a",
+            {
+              href: step.href,
+              "aria-current": isActive ? "page" : undefined,
+              class: `flex h-full min-h-16 items-start gap-3 rounded-lg p-3 transition-colors ${isActive ? "bg-brand-soft" : "hover:bg-surface-muted"}`,
+            },
+            h(
+              "span",
+              { class: `flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isActive ? "bg-brand text-white" : isNext ? "border border-dashed text-muted-foreground" : "bg-surface-muted text-foreground"}`, "aria-hidden": "true" },
+              isNext ? icon(step.icon, "size-4") : String(index + 1),
+            ),
+            h(
+              "span",
+              { class: "min-w-0" },
+              h("span", { class: `block text-sm font-semibold ${isActive ? "text-brand" : isNext ? "text-muted-foreground" : ""}` }, step.title),
+              h("span", { class: "block text-small text-muted-foreground" }, step.text),
+            ),
+          ),
+          // A thin line between the steps on wide screens.
+          index < STEPS.length - 1 ? h("span", { class: "pointer-events-none absolute right-0 top-1/2 hidden h-8 w-px -translate-y-1/2 bg-border sm:block", "aria-hidden": "true" }) : null,
+        );
+      }),
     ),
   );
 }

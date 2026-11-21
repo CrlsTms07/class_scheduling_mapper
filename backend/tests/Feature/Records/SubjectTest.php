@@ -34,6 +34,7 @@ function subjectBody(array $overrides = []): array
 {
     return [
         'grade_level_id' => subjectGrade(7),
+        'level' => 'JHS',
         'track_id' => null,
         'term_no' => null,
         'code' => null,
@@ -280,12 +281,16 @@ describe('name only (beneficiary review, Nov 21, 2026)', function () {
         expect($subject->grade_level_id)->toBeNull()
             ->and($subject->minutes_per_week)->toBeNull();
 
-        // Any scheduler sees it and may change it, since it is for every grade.
+        // It is a Junior High subject (the Chairperson's level): the Master Teacher neither sees
+        // nor changes it (Nov 21, 2026), but may have a Senior High "Filipino" of their own.
+        expect($subject->level)->toBe('JHS');
         $master = User::factory()->create()->assignRole('master_teacher');
         $master->gradeLevels()->sync([subjectGrade(11)]);
         $this->actingAs($master);
-        expect(collect($this->getJson("/api/school-years/{$this->yearId}/subjects")->json('data'))->pluck('name'))->toContain('Filipino');
-        $this->putJson("/api/subjects/{$id}", [...$body, 'code' => 'FIL'])->assertOk();
+        expect(collect($this->getJson("/api/school-years/{$this->yearId}/subjects")->json('data'))->pluck('name'))->not->toContain('Filipino');
+        $this->putJson("/api/subjects/{$id}", [...$body, 'code' => 'FIL'])->assertForbidden();
+        $this->postJson("/api/school-years/{$this->yearId}/subjects", $body)->assertCreated();
+        expect(DB::table('subjects')->where('name', 'Filipino')->pluck('level')->sort()->values()->all())->toBe(['JHS', 'SHS']);
     });
 
     it('refuses the same name twice in any letter case', function () {

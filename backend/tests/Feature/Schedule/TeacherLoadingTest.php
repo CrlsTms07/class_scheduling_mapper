@@ -397,6 +397,13 @@ describe('adding a subject to a section (subjects are name only, Nov 21, 2026)',
         expect(collect($this->getJson($this->url)->json('data.rows'))->pluck('subject')->all())->toBe(['Math 7']);
     });
 
+    it('does not offer a Senior High subject to a Junior High section', function () {
+        loadingSubject($this, 'Senior Science', ['grade_level_id' => null, 'minutes_per_week' => null, 'level' => 'SHS']);
+        $junior = loadingSubject($this, 'Junior Science', ['grade_level_id' => null, 'minutes_per_week' => null, 'level' => 'JHS']);
+
+        expect(collect($this->getJson($this->url)->json('data.addable'))->pluck('id')->all())->toBe([$junior]);
+    });
+
     it('does not offer a subject of another track or term', function () {
         loadingSubject($this, 'Term 2 only', ['grade_level_id' => null, 'minutes_per_week' => null, 'term_no' => 2]);
 

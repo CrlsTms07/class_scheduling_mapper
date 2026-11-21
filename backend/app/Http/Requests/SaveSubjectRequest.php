@@ -34,6 +34,8 @@ class SaveSubjectRequest extends FormRequest
         return [
             // Not typed any more: the grade comes from the section in Teacher Loading (Nov 21, 2026).
             'grade_level_id' => ['nullable', 'integer', 'exists:grade_levels,id'],
+            // Junior High or Senior High (Nov 21, 2026): a Chairperson or Master Teacher's own, the Admin's choice.
+            'level' => ['required', Rule::in(['JHS', 'SHS'])],
             'track_id' => ['nullable', 'integer', 'exists:tracks,id'],
             'term_no' => ['nullable', 'integer', 'min:1'],
             'code' => ['nullable', 'string', 'max:20'],
@@ -74,6 +76,12 @@ class SaveSubjectRequest extends FormRequest
 
     private function validateTrack(Validator $validator): void
     {
+        if ($this->filled('track_id') && $this->input('level') === 'JHS') {
+            $validator->errors()->add('track_id', 'Only Senior High subjects have a track.');
+
+            return;
+        }
+
         if ($validator->errors()->has('grade_level_id') || ! $this->filled('track_id') || ! $this->filled('grade_level_id')) {
             return;
         }
@@ -105,6 +113,19 @@ class SaveSubjectRequest extends FormRequest
     /**
      * The same name is fine in another grade, track or term.
      */
+    /**
+     * A Chairperson or Master Teacher adds and keeps subjects of their own level only.
+     */
+    protected function prepareForValidation(): void
+    {
+        $own = $this->user()->departmentsInScope();
+        if ($own !== null && count($own) === 1) {
+            $this->merge(['level' => $own[0]]);
+        } elseif (! $this->filled('level') && $this->route('subject')) {
+            $this->merge(['level' => $this->route('subject')->level]);
+        }
+    }
+
     private function validateUniqueName(Validator $validator): void
     {
         if ($validator->errors()->hasAny(['grade_level_id', 'name', 'track_id', 'term_no'])) {
@@ -113,6 +134,7 @@ class SaveSubjectRequest extends FormRequest
 
         $taken = Subject::where('school_year_id', $this->year()->id)
             ->whereRaw('COALESCE(grade_level_id, 0) = ?', [(int) $this->input('grade_level_id')])
+            ->where(fn ($query) => $query->where('level', $this->input('level'))->orWhereNull('level'))
             ->whereRaw('COALESCE(track_id, 0) = ?', [(int) $this->input('track_id')])
             ->whereRaw('COALESCE(term_no, 0) = ?', [(int) $this->input('term_no')])
             ->whereRaw('LOWER(name) = LOWER(?)', [trim($this->input('name'))])
