@@ -72,7 +72,7 @@ it('lets the Admin manage too, since sections need advisers', function () {
 
     $this->getJson("/api/terms/{$this->termId}/teachers")->assertOk();
     $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody())->assertCreated();
-    $this->postJson('/api/personnel-options/departments', ['name' => 'Math'])->assertCreated();
+    $this->postJson('/api/personnel-options/departments', ['name' => 'Math', 'level' => 'JHS'])->assertCreated();
 });
 
 it('keeps people with only a teacher role out completely', function () {
@@ -83,7 +83,7 @@ it('keeps people with only a teacher role out completely', function () {
     $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody())->assertForbidden();
     $this->putJson("/api/terms/{$this->termId}/teachers/{$this->teacherId}", teacherBody())->assertForbidden();
     $this->deleteJson("/api/teachers/{$this->teacherId}")->assertForbidden();
-    $this->postJson('/api/personnel-options/departments', ['name' => 'Math'])->assertForbidden();
+    $this->postJson('/api/personnel-options/departments', ['name' => 'Math', 'level' => 'JHS'])->assertForbidden();
 });
 
 it('adds a record with no login account, and writes an audit log', function () {
@@ -114,7 +114,7 @@ it('needs the department of every teacher', function () {
 });
 
 it('saves department and designation, which are required', function () {
-    $departmentId = $this->postJson('/api/personnel-options/departments', ['name' => 'Math'])->assertCreated()->json('data.id');
+    $departmentId = $this->postJson('/api/personnel-options/departments', ['name' => 'Math', 'level' => 'JHS'])->assertCreated()->json('data.id');
     $designationId = DB::table('designations')->where('name', 'Teacher I')->value('id');
 
     $this->postJson("/api/terms/{$this->termId}/teachers", teacherBody(['department_id' => $departmentId, 'designation_id' => $designationId]))->assertCreated();
@@ -129,8 +129,8 @@ it('saves department and designation, which are required', function () {
 });
 
 it('renames a department in place, and refuses a name already in the list', function () {
-    $math = $this->postJson('/api/personnel-options/departments', ['name' => 'Filipno'])->assertCreated()->json('data.id');
-    $this->postJson('/api/personnel-options/departments', ['name' => 'Science'])->assertCreated();
+    $math = $this->postJson('/api/personnel-options/departments', ['name' => 'Filipno', 'level' => 'JHS'])->assertCreated()->json('data.id');
+    $this->postJson('/api/personnel-options/departments', ['name' => 'Science', 'level' => 'JHS'])->assertCreated();
 
     $this->putJson("/api/personnel-options/departments/{$math}", ['name' => 'Filipino'])->assertOk()->assertJsonPath('data.name', 'Filipino');
     $this->putJson("/api/personnel-options/departments/{$math}", ['name' => 'filipino'])->assertOk();
@@ -241,7 +241,7 @@ it('gives every teacher the same load limit, whatever is sent (team decision, No
 });
 
 it('refuses list names that do not read like a name, or are already there in other letters', function () {
-    $this->postJson('/api/personnel-options/departments', ['name' => 'vffxfszv'])
+    $this->postJson('/api/personnel-options/departments', ['name' => 'vffxfszv', 'level' => 'JHS'])
         ->assertUnprocessable()->assertJsonPath('errors.name.0', 'This does not look like a name (it has no vowel). Check the spelling, or type a short form in capitals, like SSG.');
     $this->postJson('/api/personnel-options/teaching-tasks', ['name' => 'Saaaaa'])->assertUnprocessable();
     $this->postJson('/api/personnel-options/designations', ['name' => 'Teacher #1'])->assertUnprocessable();
@@ -257,3 +257,41 @@ it('refuses a track name typed at random or already there in other letters', fun
     $this->postJson('/api/tracks', ['name' => 'TechPro'])->assertCreated();
     $this->postJson('/api/tracks', ['name' => 'techpro'])->assertUnprocessable()->assertJsonPath('errors.name.0', 'This track already exists.');
 });
+
+describe('departments of each level (Nov 21, 2026)', function () {
+    beforeEach(function () {
+        $this->mathJhs = DB::table('departments')->insertGetId(['name' => 'Department of Mathematics', 'level' => 'JHS']);
+        $this->tvl = DB::table('departments')->insertGetId(['name' => 'TVL', 'level' => 'SHS']);
+        DB::table('teachers')->insert([
+            ['first_name' => 'Junior', 'last_name' => 'Teacher', 'department_id' => $this->mathJhs],
+            ['first_name' => 'Senior', 'last_name' => 'Teacher', 'department_id' => $this->tvl],
+        ]);
+        $this->master = User::factory()->create()->assignRole('master_teacher');
+        $this->master->gradeLevels()->sync([DB::table('grade_levels')->where('grade', 11)->value('id')]);
+    });
+
+    it('shows the Master Teacher only Senior High departments and teachers', function () {
+        $this->actingAs($this->master);
+
+        expect(collect($this->getJson('/api/personnel-options')->json('data.departments'))->pluck('name')->all())->not->toContain('Department of Mathematics')
+            ->and(collect($this->getJson("/api/terms/{$this->termId}/teachers")->json('data'))->pluck('first_name')->all())->toContain('Senior')
+            ->and(collect($this->getJson("/api/terms/{$this->termId}/teachers")->json('data'))->pluck('first_name')->all())->not->toContain('Junior');
+    });
+
+    it('adds a department to the own level of the Master Teacher, and lets the same name live in each level', function () {
+        $this->actingAs($this->master);
+
+        $this->postJson('/api/personnel-options/departments', ['name' => 'Department of Mathematics'])->assertCreated()->assertJsonPath('data.level', 'SHS');
+        $this->putJson("/api/personnel-options/departments/{$this->mathJhs}", ['name' => 'Math'])->assertForbidden();
+    });
+
+    it('asks the Admin to choose the level of a new department', function () {
+        $this->actingAs(User::factory()->create()->assignRole('super_admin'));
+
+        $this->postJson('/api/personnel-options/departments', ['name' => 'Science'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['level' => 'Choose Junior High or Senior High first.']);
+        $this->postJson('/api/personnel-options/departments', ['name' => 'Science', 'level' => 'SHS'])->assertCreated();
+        $this->postJson('/api/personnel-options/departments', ['name' => 'science', 'level' => 'SHS'])->assertUnprocessable();
+    });
+});
+

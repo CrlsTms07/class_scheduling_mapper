@@ -31,6 +31,8 @@ import { toast } from "./toast.js";
  * @property {boolean} [localCreate]  select: what was typed is only used in this form (saved with it), so no "was added" message
  * @property {(option: { value: string | number, label: string }, name: string) => Promise<void>} [onRename]  select: renames a choice in the list
  * @property {(option: { value: string | number, label: string }) => Promise<void>} [onDelete]  select: deletes a choice from the list
+ * @property {(values: Record<string, any>) => { value: string | number, label: string, hint?: string }[]} [optionsFor]
+ *   select: its choices follow other fields (like departments of the chosen Junior or Senior High)
  *
  * @typedef {object} FormOptions
  * @property {string} title
@@ -71,6 +73,8 @@ export function buildField(spec, onEdit = () => {}) {
   const help = spec.help ? h("p", { class: "field-help" }, spec.help) : null;
   /** @type {() => any} */
   let read;
+  /** @type {(options: { value: string | number, label: string }[]) => void} */
+  let setOptions = () => {};
   /** @type {HTMLElement} */
   let element;
 
@@ -123,6 +127,11 @@ export function buildField(spec, onEdit = () => {}) {
         : undefined,
     });
     read = () => select.getValue();
+    setOptions = (/** @type {{ value: string | number, label: string }[]} */ next) => {
+      choices = next;
+      select.setOptions(next);
+      if (!next.some((option) => String(option.value) === String(select.getValue()))) select.setValue("");
+    };
     element = h("div", null, select, error);
   } else if (spec.type === "multi") {
     // Several choices, as toggle buttons (grade levels, days).
@@ -244,6 +253,7 @@ export function buildField(spec, onEdit = () => {}) {
   return {
     element,
     read,
+    setOptions: (/** @type {{ value: string | number, label: string }[]} */ next) => setOptions(next),
     /** @param {string | null} message */
     setError: (message) => {
       error.textContent = message ?? "";
@@ -267,18 +277,27 @@ export function openFormDialog({
 }) {
   /** Fields the user has changed: they are checked at once, the others only when Save is pressed. */
   const touched = new Set();
-  /** @type {{ spec: FieldSpec, element: HTMLElement, read: () => any, setError: (message: string | null) => void }[]} */
+  /** @type {{ spec: FieldSpec, element: HTMLElement, read: () => any, setError: (message: string | null) => void, setOptions: (options: any[]) => void }[]} */
   const built = [];
+  /** Selects whose choices follow other fields get their choices again. */
+  const follow = (/** @type {string | null} */ changed) => {
+    /** @type {Record<string, any>} */
+    const values = {};
+    for (const item of built) values[item.spec.name] = item.read();
+    for (const item of built) if (item.spec.optionsFor && item.spec.name !== changed) item.setOptions(item.spec.optionsFor(values));
+  };
   for (const spec of fields) {
     const item = {
       spec,
       ...buildField(spec, () => {
         touched.add(spec.name);
+        follow(spec.name);
         check(false);
       }),
     };
     built.push(item);
   }
+  follow(null);
   const formError = h("p", {
     class:
       "rounded-lg border border-danger/40 bg-danger/5 p-3 text-sm text-danger",

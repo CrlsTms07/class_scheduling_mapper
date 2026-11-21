@@ -112,6 +112,7 @@ test("adds a building with a room, a bell schedule from a preset, a subject, a s
   await page.getByRole("button", { name: "Add teacher" }).first().click();
   await fill(page, "First name", "Rosa");
   await fill(page, "Last name", "Bautista");
+  await choose(page, "Department of", "Junior High");
   await choose(page, "Department", "Mathematics");
   await choose(page, "Designation", "Teacher I");
   await page.getByRole("dialog").getByRole("button", { name: "Add teacher" }).click();

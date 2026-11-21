@@ -137,8 +137,11 @@ CREATE TABLE rooms (
 
 CREATE TABLE departments (                 -- subject departments: Math, Science, ...
     id              SERIAL PRIMARY KEY,
-    name            VARCHAR(80) UNIQUE NOT NULL
+    name            VARCHAR(80) NOT NULL,
+    level           school_level             -- JHS or SHS (Nov 21, 2026); NULL = not given yet
 );
+CREATE UNIQUE INDEX departments_level_name_unique ON departments (level, LOWER(name)) WHERE level IS NOT NULL;
+CREATE UNIQUE INDEX departments_name_no_level_unique ON departments (LOWER(name)) WHERE level IS NULL;
 
 CREATE TABLE designations (                -- Teacher I–III, Master Teacher I ...
     id    SERIAL PRIMARY KEY,

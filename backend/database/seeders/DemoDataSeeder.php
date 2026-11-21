@@ -190,7 +190,7 @@ class DemoDataSeeder extends Seeder
         // Every teacher belongs to a department (beneficiary review, Nov 21, 2026).
         $departmentId = null;
         foreach (['Mathematics', 'Science', 'English', 'Filipino', 'Araling Panlipunan', 'TLE', 'MAPEH', 'Values Education'] as $name) {
-            $id = DB::table('departments')->where('name', $name)->value('id') ?? DB::table('departments')->insertGetId(['name' => $name]);
+            $id = DB::table('departments')->where('name', $name)->value('id') ?? DB::table('departments')->insertGetId(['name' => $name, 'level' => 'JHS']);
             $departmentId ??= $id;
         }
 

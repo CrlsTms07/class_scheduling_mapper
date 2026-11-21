@@ -73,13 +73,13 @@ it('adds up the other department in room usage', function () {
     expect(json_encode($rooms))->toContain('Junior High section')->not->toContain('Sample A');
 });
 
-it('lists every teacher, but a teacher of the other department only is view-only', function () {
+it('lists only the teachers of its own level: a Junior High teacher is not shown to the Master Teacher (Nov 21, 2026)', function () {
     $this->actingAs($this->master);
     $onlyJhs = SectionSubject::where('section_id', $this->sectionA->id)->whereHas('subject', fn ($q) => $q->where('name', 'Filipino'))->value('teacher_id');
 
     $teachers = collect($this->getJson("/api/terms/{$this->termId}/teachers")->assertOk()->json('data'))->keyBy('id');
 
-    expect($teachers[$onlyJhs]['can_edit'])->toBeFalse()
+    expect($teachers->has($onlyJhs))->toBeFalse()
         ->and($teachers[$this->valuesTeacher]['can_edit'])->toBeTrue();
 
     $this->deleteJson("/api/teachers/{$onlyJhs}")->assertForbidden();

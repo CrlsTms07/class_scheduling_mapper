@@ -42,6 +42,36 @@ export async function render(container, { query }) {
     const { data } = /** @type {{ data: { id: number, name: string } }} */ (await api(`/personnel-options/${type}`, { method: "POST", body: { name: typed } }));
     return { value: data.id, label: data.name };
   };
+  /**
+   * Departments belong to Junior High or Senior High (Nov 21, 2026). The Admin chooses which one
+   * first; a Chairperson or Master Teacher only sees and adds those of their own level.
+   */
+  const isAdmin = session.user?.role === "super_admin";
+  /** @type {{ level: string }} */
+  const deptChoice = { level: "" };
+  const LEVELS = { JHS: "Junior High", SHS: "Senior High" };
+  const departmentOptions = (/** @type {string} */ level) =>
+    options.departments
+      .filter((/** @type {any} */ item) => !isAdmin || !level || item.level === level || item.level === null)
+      .map((/** @type {any} */ item) => ({ value: item.id, label: item.name, hint: isAdmin && item.level === null ? "Level not set yet" : undefined }));
+  const departmentActions = {
+    onCreate: async (/** @type {string} */ typed) => {
+      if (isAdmin && !deptChoice.level) throw new Error("Choose Junior High or Senior High first.");
+      const { data } = /** @type {{ data: { id: number, name: string, level: string | null } }} */ (await api("/personnel-options/departments", { method: "POST", body: { name: typed, ...(isAdmin ? { level: deptChoice.level } : {}) } }));
+      options.departments.push(data);
+      return { value: data.id, label: data.name };
+    },
+    onRename: async (/** @type {{ value: string | number }} */ option, /** @type {string} */ name) => {
+      await changeRecord(`/personnel-options/departments/${option.value}`, "PUT", { name });
+      const found = options.departments.find((/** @type {any} */ item) => item.id === Number(option.value));
+      if (found) found.name = name;
+    },
+    onDelete: async (/** @type {{ value: string | number }} */ option) => {
+      await changeRecord(`/personnel-options/departments/${option.value}`, "DELETE");
+      options.departments = options.departments.filter((/** @type {any} */ item) => item.id !== Number(option.value));
+    },
+  };
+
   /** Add, rename and delete a department or designation right in its dropdown. */
   const listActions = (/** @type {string} */ type) => ({
     onCreate: addOption(type),
@@ -69,6 +99,7 @@ export async function render(container, { query }) {
   const teacherForm = async (/** @type {any} */ teacher = null) => {
     // The choices are loaded first, so a quick tap never opens an empty form.
     options = await getRecords("/personnel-options");
+    deptChoice.level = teacher?.department_level ?? "";
     openFormDialog({
       title: teacher ? `Edit ${teacher.printed_name}` : "Add a teacher",
       description: `A teaching personnel record. Tasks are for ${term.name}.`,
@@ -77,7 +108,9 @@ export async function render(container, { query }) {
         { name: "middle_name", label: "Middle name", value: teacher?.middle_name ?? "" },
         { name: "last_name", label: "Last name", required: true, value: teacher?.last_name },
         { name: "suffix", label: "Suffix", value: teacher?.suffix ?? "" },
-        { name: "department_id", label: "Department", type: "select", required: true, value: teacher?.department_id ?? "", help: "Every teacher belongs to one. Type a new name to add it; use the pencil or trash beside a name to rename or delete it.", options: options.departments.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), ...listActions("departments") },
+        // The Admin chooses Junior High or Senior High first; then the list shows that level's departments.
+        ...(isAdmin ? [{ name: "department_level", label: "Department of", type: /** @type {const} */ ("select"), required: true, value: teacher?.department_level ?? "", options: Object.entries(LEVELS).map(([value, label]) => ({ value, label })), help: "Junior High or Senior High. The departments of that level show below.", check: (/** @type {any} */ value) => { deptChoice.level = value ?? ""; return null; } }] : []),
+        { name: "department_id", label: "Department", type: "select", required: true, value: teacher?.department_id ?? "", help: isAdmin ? "Choose Junior High or Senior High first. Type a new name to add it to that level; use the pencil or trash beside a name to rename or delete it." : "Your level's departments. Type a new name to add it; use the pencil or trash beside a name to rename or delete it.", options: departmentOptions(teacher?.department_level ?? ""), optionsFor: (values) => departmentOptions(values.department_level ?? ""), check: (value, values) => (isAdmin && !values.department_level ? "Choose Junior High or Senior High first." : null), ...departmentActions },
         { name: "designation_id", label: "Designation", type: "select", required: true, value: teacher?.designation_id ?? "", help: "Like Teacher I or Master Teacher I. Type a new name to add it; use the pencil or trash beside a name to rename or delete it.", options: options.designations.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), ...listActions("designations") },
         { name: "shift", label: "Shift", type: "select", required: true, value: teacher?.shift ?? defaultShift(session.user?.role), options: shiftOptions(session.user?.role, teacher?.shift) },
         { name: "task_ids", label: `Tasks this ${term.school_year.term_label.toLowerCase()}`, type: "multi", wide: true, value: teacher?.task_ids ?? [], options: options.tasks.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), help: "Like ICT Coordinator, SSG Adviser or Lab Manager. Change the list of tasks with Tasks on the Teachers page." },
@@ -86,7 +119,8 @@ export async function render(container, { query }) {
       submitLabel: teacher ? "Save changes" : "Add teacher",
       onSubmit: async (values) => {
         const id = (/** @type {any} */ value) => (value === "" || value === null ? null : Number(value));
-        const body = { ...values, middle_name: values.middle_name || null, suffix: values.suffix || null, department_id: id(values.department_id), designation_id: id(values.designation_id), task_ids: values.task_ids.map(Number) };
+        const { department_level: level, ...rest } = values;
+        const body = { ...rest, ...(isAdmin ? { department_level: level || null } : {}), middle_name: values.middle_name || null, suffix: values.suffix || null, department_id: id(values.department_id), designation_id: id(values.designation_id), task_ids: values.task_ids.map(Number) };
         await changeRecord(teacher ? `/terms/${term.id}/teachers/${teacher.id}` : `/terms/${term.id}/teachers`, teacher ? "PUT" : "POST", body);
         return `${values.first_name} ${values.last_name} was ${teacher ? "saved" : "added"}.`;
       },

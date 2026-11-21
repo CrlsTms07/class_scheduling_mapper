@@ -152,11 +152,27 @@ class TeacherLoadingService
             ->groupBy('teacher_id')
             ->pluck('assigned', 'teacher_id');
 
+        // A Chairperson or Master Teacher picks from the teachers of their own level (Nov 21, 2026),
+        // plus anyone already teaching a class in this term in their grade levels.
+        $own = auth()->user()?->departmentsInScope();
+        $departmentLevels = DB::table('departments')->pluck('level', 'id');
+        $teachingHere = $own === null ? collect() : DB::table('section_subjects')
+            ->join('sections', 'sections.id', '=', 'section_subjects.section_id')
+            ->where('section_subjects.term_id', $term->id)
+            ->whereIn('sections.grade_level_id', auth()->user()->gradeLevelIdsInScope())
+            ->pluck('section_subjects.teacher_id')
+            ->flip();
+
         return Teacher::where('personnel_type', 'teaching')
             ->where('is_active', true)
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
+            ->filter(fn (Teacher $teacher) => $own === null
+                || ($departmentLevels[$teacher->department_id] ?? null) === null
+                || in_array($departmentLevels[$teacher->department_id], $own, true)
+                || $teachingHere->has($teacher->id))
+            ->values()
             ->map(fn (Teacher $teacher) => [
                 'id' => $teacher->id,
                 'name' => $teacher->printedName(),

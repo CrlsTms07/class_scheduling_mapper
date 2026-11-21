@@ -24,21 +24,24 @@ class TeacherController extends Controller
     {
         Gate::authorize('view-school-records');
 
-        return response()->json(['data' => $service->options()]);
+        return response()->json(['data' => $service->options(request()->user())]);
     }
 
     public function storeOption(StorePersonnelOptionRequest $request, string $type, TeacherService $service): JsonResponse
     {
-        return response()->json(['data' => $service->addOption($type, $request->input('name'), $request->user())], 201);
+        return response()->json(['data' => $service->addOption($type, $request->input('name'), $request->user(), $request->input('level'))], 201);
     }
 
     public function renameOption(StorePersonnelOptionRequest $request, string $type, int $id, TeacherService $service): JsonResponse
     {
+        $service->ensureOwnDepartment($type, $id, $request->user());
+
         return response()->json(['data' => $service->renameOption($type, $id, $request->input('name'), $request->user())]);
     }
 
     public function destroyOption(Request $request, string $type, int $id, TeacherService $service): JsonResponse
     {
+        $service->ensureOwnDepartment($type, $id, $request->user());
         Gate::authorize('manage-school-records');
 
         $service->deleteOption($type, $id, $request->user());

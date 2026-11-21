@@ -25,6 +25,8 @@ class SaveTeacherRequest extends FormRequest
             'suffix' => ['nullable', 'string', 'max:10'],
             // Every teacher belongs to one department (beneficiary review, Nov 21, 2026).
             'department_id' => ['required', 'integer', 'exists:departments,id'],
+            // The Admin's "Department of": gives a department with no level yet its level.
+            'department_level' => ['nullable', Rule::in(['JHS', 'SHS'])],
             'designation_id' => ['required', 'integer', 'exists:designations,id'],
             'shift' => ['required', Rule::in(['AM', 'PM', 'WHOLE_DAY', 'PART_TIME'])],
             'is_active' => ['required', 'boolean'],
@@ -51,5 +53,19 @@ class SaveTeacherRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(['personnel_type' => 'teaching']);
+    }
+
+    public function after(): array
+    {
+        return [function (\Illuminate\Validation\Validator $validator) {
+            $own = $this->user()->departmentsInScope();
+            if ($own === null || $validator->errors()->has('department_id')) {
+                return;
+            }
+            $level = \Illuminate\Support\Facades\DB::table('departments')->where('id', $this->integer('department_id'))->value('level');
+            if ($level !== null && ! in_array($level, $own, true)) {
+                $validator->errors()->add('department_id', 'Choose a department of your own level.');
+            }
+        }];
     }
 }

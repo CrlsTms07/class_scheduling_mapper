@@ -70,11 +70,20 @@ class TeacherService
             ->groupBy('teacher_id')
             ->map(fn ($rows) => $rows->pluck('level')->unique()->sort()->values()->all());
 
-        // Teaching personnel only (team decision, Nov 21, 2026).
+        $own = $viewer?->departmentsInScope();
+        $departmentLevels = DB::table('departments')->pluck('level', 'id');
+
+        // Teaching personnel only (team decision, Nov 21, 2026). A Chairperson or Master Teacher sees
+        // the teachers of their own level: by department, or by classes or an advisory there, or
+        // with no department level yet (Nov 21, 2026).
         return Teacher::where('personnel_type', 'teaching')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
             ->get()
+            ->filter(fn (Teacher $teacher) => $own === null
+                || ($departmentLevels[$teacher->department_id] ?? null) === null
+                || in_array($departmentLevels[$teacher->department_id], $own, true)
+                || array_intersect($levels->get($teacher->id, []), $own) !== [])
+            ->sortBy(fn (Teacher $teacher) => [$teacher->last_name, $teacher->first_name])
+            ->values()
             ->map(fn (Teacher $teacher) => [
                 'id' => $teacher->id,
                 'personnel_type' => $teacher->personnel_type,
@@ -86,6 +95,7 @@ class TeacherService
                 'printed_name' => $teacher->printedName(),
                 'department_id' => $teacher->department_id,
                 'department' => $departments[$teacher->department_id] ?? null,
+                'department_level' => $departmentLevels[$teacher->department_id] ?? null,
                 'designation_id' => $teacher->designation_id,
                 'designation' => $designations[$teacher->designation_id] ?? null,
                 'shift' => $teacher->shift,
@@ -112,10 +122,17 @@ class TeacherService
     /**
      * @return array<string, mixed>
      */
-    public function options(): array
+    public function options(?User $viewer = null): array
     {
+        $own = $viewer?->departmentsInScope();
+
         return [
-            'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
+            // A Chairperson or Master Teacher sees the departments of their own level (and any not
+            // given a level yet); the Admin sees all, with their level (Nov 21, 2026).
+            'departments' => DB::table('departments')
+                ->when($own !== null, fn ($query) => $query->where(fn ($inner) => $inner->whereIn('level', $own)->orWhereNull('level')))
+                ->orderBy('name')
+                ->get(['id', 'name', 'level']),
             'designations' => DB::table('designations')->orderBy('name')->get(['id', 'name']),
             'tasks' => DB::table('teaching_tasks')->orderBy('name')->get(['id', 'name']),
         ];
@@ -124,15 +141,30 @@ class TeacherService
     /**
      * @return array{id: int, name: string}
      */
-    public function addOption(string $type, string $name, User $user): array
+    public function addOption(string $type, string $name, User $user, ?string $level = null): array
     {
         $table = self::OPTION_TABLES[$type];
         $name = trim($name);
-        $id = DB::table($table)->insertGetId(['name' => $name]);
+        $values = ['name' => $name, ...($type === 'departments' ? ['level' => $level] : [])];
+        $id = DB::table($table)->insertGetId($values);
 
-        $this->audit->log($user, 'create', $table, $id, null, ['name' => $name]);
+        $this->audit->log($user, 'create', $table, $id, null, $values);
 
-        return ['id' => $id, 'name' => $name];
+        return ['id' => $id, ...$values];
+    }
+
+    /**
+     * A Chairperson or Master Teacher changes only the departments of their own level.
+     */
+    public function ensureOwnDepartment(string $type, int $id, User $user): void
+    {
+        $own = $user->departmentsInScope();
+        if ($type !== 'departments' || $own === null) {
+            return;
+        }
+
+        $level = DB::table('departments')->where('id', $id)->value('level');
+        abort_if($level !== null && ! in_array($level, $own, true), 403, 'This department belongs to the other department level. The Admin keeps it.');
     }
 
     /**
@@ -293,6 +325,11 @@ class TeacherService
      */
     private function saveDetails(Teacher $teacher, SchoolTerm $term, array $data): void
     {
+        // A department made before levels takes the level the Admin chose for it (Nov 21, 2026).
+        if (! empty($data['department_level'])) {
+            DB::table('departments')->where('id', $data['department_id'])->whereNull('level')->update(['level' => $data['department_level']]);
+        }
+
         DB::table('teacher_tasks')->where('teacher_id', $teacher->id)->where('term_id', $term->id)->delete();
 
         foreach ($data['task_ids'] as $taskId) {
@@ -311,7 +348,7 @@ class TeacherService
     private function recordValues(array $data): array
     {
         // The load limit is one for the whole school, not chosen per teacher.
-        return [...collect($data)->except(['qualifications', 'task_ids', 'max_subjects'])->all(), 'max_subjects' => (int) config('school.max_subjects')];
+        return [...collect($data)->except(['qualifications', 'task_ids', 'max_subjects', 'department_level'])->all(), 'max_subjects' => (int) config('school.max_subjects')];
     }
 
     /**
