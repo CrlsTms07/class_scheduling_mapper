@@ -37,3 +37,23 @@ describe("searchable select with add, rename and delete in the list", () => {
     expect(select.getValue()).toBe(1);
   });
 });
+
+describe("adding a new choice", () => {
+  it("says how to add when the list is empty, and offers Add after one letter", async () => {
+    const run = vi.fn(async () => {});
+    const select = searchableSelect({ label: "Department", options: [], create: { label: (typed) => `Add "${typed}"`, run } });
+    document.body.append(select);
+    click(select.querySelector("[aria-haspopup=listbox]"));
+
+    expect(select.textContent).toContain("Nothing in the list yet. Type a department in the box above, then choose Add.");
+
+    const search = /** @type {HTMLInputElement} */ (select.querySelector("input[type=search]"));
+    search.value = "M";
+    search.dispatchEvent(new Event("input"));
+    click([...select.querySelectorAll("[role=option]")].find((item) => item.textContent?.includes('Add "M"')));
+    await flush();
+
+    expect(run).toHaveBeenCalledWith("M");
+  });
+});
+

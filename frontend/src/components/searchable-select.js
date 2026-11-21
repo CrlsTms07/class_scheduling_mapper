@@ -62,7 +62,7 @@ export function searchableSelect({ label, options, value = null, placeholder = "
     h("input", {
       type: "search",
       class: "input",
-      placeholder: "Type to search",
+      placeholder: create ? "Type to search, or type a new one to add" : "Type to search",
       "aria-label": `Search ${label.toLowerCase()}`,
       "aria-controls": listId,
       autocomplete: "off",
@@ -110,13 +110,16 @@ export function searchableSelect({ label, options, value = null, placeholder = "
     help ? h("p", { class: "field-help" }, help) : null,
   );
 
+  /** With "add" and nothing typed, a hint above the choices says how to add one. */
+  const addHint = () => (create && !search.value.trim() && items.length > 0 ? h("li", { class: "px-3 pb-2 text-small text-muted-foreground" }, `Not in the list? Type it in the box above, then choose Add.${manage ? " Use the pencil or trash to rename or delete." : ""}`) : null);
+
   const visibleOptions = () => {
     const typed = search.value.trim().toLowerCase();
     return typed ? items.filter((option) => `${option.label} ${option.hint ?? ""}`.toLowerCase().includes(typed)) : items;
   };
 
   const createAvailable = () =>
-    !!create && search.value.trim().length > 1 && !items.some((option) => option.label.toLowerCase() === search.value.trim().toLowerCase());
+    !!create && search.value.trim().length > 0 && !items.some((option) => option.label.toLowerCase() === search.value.trim().toLowerCase());
 
   const drawShown = () => {
     const option = items.find((item) => String(item.value) === String(current));
@@ -128,6 +131,8 @@ export function searchableSelect({ label, options, value = null, placeholder = "
     const matches = visibleOptions();
     const enabled = matches.filter((option) => !option.disabled);
     list.replaceChildren();
+    const hint = addHint();
+    if (hint) list.append(hint);
 
     for (const option of matches) {
       const index = enabled.indexOf(option);
@@ -167,7 +172,9 @@ export function searchableSelect({ label, options, value = null, placeholder = "
     }
 
     if (matches.length === 0) {
-      list.append(h("li", { class: "px-3 py-3 text-sm text-muted-foreground" }, "No results"));
+      // With "add", say how: the list is often empty at first (like the departments of a new school).
+      const typed = search.value.trim();
+      list.append(h("li", { class: "px-3 py-3 text-sm text-muted-foreground" }, create && !typed ? (items.length === 0 ? `Nothing in the list yet. Type a ${label.toLowerCase()} in the box above, then choose Add.` : "No results") : "No results"));
     }
 
     if (createAvailable() && create) {
