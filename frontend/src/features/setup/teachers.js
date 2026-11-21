@@ -6,6 +6,8 @@
  * focus is class scheduling). Departments and designations are added, renamed and deleted right in
  * their dropdowns.
  */
+import { defaultShift, shiftOptions } from "@/lib/shifts.js";
+import { session } from "@/state/session.js";
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
 import { dataList, editButton } from "@/components/data-list.js";
@@ -77,7 +79,7 @@ export async function render(container, { query }) {
         { name: "suffix", label: "Suffix", value: teacher?.suffix ?? "" },
         { name: "department_id", label: "Department", type: "select", required: true, value: teacher?.department_id ?? "", help: "Every teacher belongs to one. Type a new name to add it; use the pencil or trash beside a name to rename or delete it.", options: options.departments.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), ...listActions("departments") },
         { name: "designation_id", label: "Designation", type: "select", required: true, value: teacher?.designation_id ?? "", help: "Like Teacher I or Master Teacher I. Type a new name to add it; use the pencil or trash beside a name to rename or delete it.", options: options.designations.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), ...listActions("designations") },
-        { name: "shift", label: "Shift", type: "select", required: true, value: teacher?.shift ?? "WHOLE_DAY", options: Object.entries(SHIFTS).map(([value, label]) => ({ value, label })) },
+        { name: "shift", label: "Shift", type: "select", required: true, value: teacher?.shift ?? defaultShift(session.user?.role), options: shiftOptions(session.user?.role, teacher?.shift) },
         { name: "task_ids", label: `Tasks this ${term.school_year.term_label.toLowerCase()}`, type: "multi", wide: true, value: teacher?.task_ids ?? [], options: options.tasks.map((/** @type {any} */ item) => ({ value: item.id, label: item.name })), help: "Like ICT Coordinator, SSG Adviser or Lab Manager. Change the list of tasks with Tasks on the Teachers page." },
         { name: "is_active", label: "Active (can be given subjects)", type: "checkbox", value: teacher?.is_active ?? true },
       ],

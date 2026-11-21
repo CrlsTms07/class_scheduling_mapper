@@ -8,7 +8,6 @@
  */
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
-import { dataList, editButton } from "@/components/data-list.js";
 import { openFormDialog } from "@/components/form-dialog.js";
 import { openListEditor } from "@/components/list-editor.js";
 import { skeletonList } from "@/components/loading.js";
@@ -135,6 +134,52 @@ export async function render(container) {
     ),
   );
 
+  /**
+   * The subjects as cards: the name first, its code and badges under it, and Edit and Delete as
+   * icon buttons (44 px). The Admin also sees the Senior High details as small chips.
+   * @param {any[]} subjects
+   */
+  const subjectCards = (subjects) =>
+    h(
+      "section",
+      { "aria-label": "Subjects", class: "space-y-3" },
+      h("p", { class: "text-sm text-muted-foreground", "aria-live": "polite" }, `${subjects.length} ${subjects.length === 1 ? "subject" : "subjects"} in SY ${year.name}`),
+      h(
+        "ul",
+        { class: "grid gap-3 sm:grid-cols-2 xl:grid-cols-3" },
+        subjects.map((subject) => {
+          const chip = (/** @type {string} */ text, /** @type {string} */ tone = "bg-surface-muted text-muted-foreground") => h("span", { class: `badge ${tone}` }, text);
+          return h(
+            "li",
+            { class: `card group flex items-start gap-3 p-4 transition-colors hover:border-brand/40 ${subject.is_active ? "" : "opacity-70"}` },
+            h("span", { class: "flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-base font-bold text-brand", "aria-hidden": "true" }, subject.name.trim().charAt(0).toUpperCase()),
+            h(
+              "div",
+              { class: "min-w-0 flex-1 space-y-1.5" },
+              h("p", { class: "truncate font-semibold leading-tight", title: subject.name }, subject.name),
+              h("p", { class: "text-small text-muted-foreground" }, subject.code ? `Code: ${subject.code}` : "No code"),
+              h(
+                "div",
+                { class: "flex flex-wrap gap-1" },
+                subject.is_priority ? chip("Priority", "bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100") : null,
+                subject.is_active ? null : chip("Not offered"),
+                subject.grade ? h("span", { class: "badge bg-surface-muted text-muted-foreground", title: "Made for one grade before Nov 21, 2026" }, `Grade ${subject.grade} only`) : null,
+                isAdmin ? chip(termName(subject.term_no)) : null,
+                isAdmin && subject.track ? chip(`${subject.track} (SHS)`) : null,
+                isAdmin && subject.subject_type !== "core" ? chip(TYPES[/** @type {keyof typeof TYPES} */ (subject.subject_type)]) : null,
+              ),
+            ),
+            h(
+              "div",
+              { class: "flex shrink-0 gap-1" },
+              h("button", { type: "button", class: "btn btn-quiet size-11 p-0", "aria-label": `Edit ${subject.name}`, title: "Edit", onclick: () => subjectForm(subject) }, icon("pencil", "size-4")),
+              h("button", { type: "button", class: "btn btn-quiet size-11 p-0 text-danger", "aria-label": `Delete ${subject.name}`, title: subject.locked_reason ? "It has teacher loading, so it stays" : "Delete", onclick: () => deleteSubject(subject) }, icon("trash", "size-4")),
+            ),
+          );
+        }),
+      ),
+    );
+
   const draw = async () => {
     try {
       const subjects = await getRecords(`/school-years/${year.id}/subjects`);
@@ -163,21 +208,7 @@ export async function render(container) {
                   draw();
                 },
               })
-            : dataList({
-                label: "Subjects",
-                items: shown,
-                columns: [
-                  { label: "Subject", primary: true, cell: (/** @type {any} */ subject) => h("span", null, subject.name, subject.is_priority ? h("span", { class: "badge ml-2 bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100" }, "Priority") : null, subject.is_active ? null : h("span", { class: "badge ml-2 bg-surface-muted" }, "Not offered"), subject.grade ? h("span", { class: "badge ml-2 bg-surface-muted", title: "Made for one grade before Nov 21, 2026" }, `Grade ${subject.grade} only`) : null) },
-                  ...(isAdmin
-                    ? [
-                        { label: "When", cell: (/** @type {any} */ subject) => termName(subject.term_no) },
-                        { label: "Track (SHS)", cell: (/** @type {any} */ subject) => subject.track ?? "All tracks" },
-                        { label: "Type", cell: (/** @type {any} */ subject) => TYPES[/** @type {keyof typeof TYPES} */ (subject.subject_type)] },
-                      ]
-                    : []),
-                ],
-                actions: (/** @type {any} */ subject) => [editButton(subject.name, () => subjectForm(subject)), h("button", { type: "button", class: "btn btn-quiet text-danger", "aria-label": `Delete ${subject.name}`, onclick: () => deleteSubject(subject) }, icon("trash"), "Delete")],
-              }),
+            : subjectCards(shown),
       );
     } catch (error) {
       replace(content, h("p", { role: "alert", class: "text-danger" }, errorMessage(error)));

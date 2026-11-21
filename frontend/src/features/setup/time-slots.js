@@ -6,6 +6,7 @@
  * same periods and breaks (like Monday – Thursday, and Friday) for a department and shift.
  * Times are typed in 12-hour form (UI requirement 5).
  */
+import { defaultShift, shiftChoices } from "@/lib/shifts.js";
 import { subjectTabs } from "./subject-tabs.js";
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
@@ -102,9 +103,10 @@ export async function render(container) {
   }
   const user = session.user;
   const levels = user?.role === "glc" || user?.role === "master_teacher" ? ["JHS", "SHS"].filter((level) => user.grade_levels.some((grade) => grade.level === level)) : ["JHS", "SHS"];
-  const ui = { level: levels[0] ?? "JHS", shift: "WHOLE_DAY" };
+  const ui = { level: levels[0] ?? "JHS", shift: defaultShift(session.user?.role) };
   const content = h("div", { class: "space-y-4" }, skeletonList(3));
-  const shifts = { WHOLE_DAY: "Whole day", AM: "Morning (AM)", PM: "Afternoon (PM)" };
+  // A Chairperson (Junior High) works with Morning and Afternoon only (Nov 21, 2026).
+  const shifts = shiftChoices(session.user?.role);
   const dayOptions = [1, 2, 3, 4, 5].map((day) => ({ value: day, label: DAY_NAMES[day] }));
 
   /** @param {{ mode: "create" | "edit" | "copy", pattern?: any }} action */
@@ -192,7 +194,7 @@ export async function render(container) {
         h(
           "ul",
           { class: "mt-2 list-disc space-y-1 pl-5" },
-          h("li", null, "Choose the shift first (Whole day, Morning or Afternoon): each shift has its own class hours."),
+          h("li", null, `Choose the shift first (${Object.values(shifts).join(", ")}): each shift has its own class hours.`),
           h("li", null, "A bell schedule is the days that share the same times, like Monday – Thursday and Friday."),
           h("li", null, "Each row is a period (a class time) or a break (recess or lunch, shaded). Time with neither is shown in amber, so nothing is missed."),
           h("li", null, h("strong", null, "Conflicts here: "), "two rows of the same bell schedule cannot overlap. The form says so while you choose the time, and the database refuses it too."),
@@ -222,7 +224,7 @@ export async function render(container) {
           "div",
           { class: "flex flex-col gap-2 sm:flex-row" },
           levels.length > 1 ? h("div", { role: "tablist", "aria-label": "Department", class: "grid grid-cols-2 gap-2 sm:w-64" }, levels.map((level) => h("button", { type: "button", role: "tab", "aria-selected": String(ui.level === level), class: toggle(ui.level === level), onclick: () => { ui.level = level; draw(); } }, level === "JHS" ? "Junior High" : "Senior High"))) : null,
-          h("div", { role: "tablist", "aria-label": "Shift", class: "grid grid-cols-3 gap-2 sm:w-96" }, Object.entries(shifts).map(([key, label]) => h("button", { type: "button", role: "tab", "aria-selected": String(ui.shift === key), class: toggle(ui.shift === key), onclick: () => { ui.shift = key; draw(); } }, label))),
+          h("div", { role: "tablist", "aria-label": "Shift", class: `grid gap-2 ${Object.keys(shifts).length === 2 ? "grid-cols-2 sm:w-64" : "grid-cols-3 sm:w-96"}` }, Object.entries(shifts).map(([key, label]) => h("button", { type: "button", role: "tab", "aria-selected": String(ui.shift === key), class: toggle(ui.shift === key), onclick: () => { ui.shift = key; draw(); } }, label))),
         ),
         shown.length === 0
           ? emptyState({ title: "No bell schedule here yet", text: "Add one for these days, then fill it with a preset or add its periods one by one.", action: h("button", { type: "button", class: "btn btn-primary", onclick: () => patternForm({ mode: "create" }) }, icon("plus"), "Add bell schedule") })
