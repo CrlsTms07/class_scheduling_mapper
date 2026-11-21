@@ -31,7 +31,7 @@ class ScheduleService
      *
      * @param  array<int, int>  $days
      */
-    public function assign(int $termId, Section $section, TimeSlot $slot, SectionSubject $loading, int $roomId, array $days, User $user): void
+    public function assign(int $termId, Section $section, TimeSlot $slot, SectionSubject $loading, ?int $roomId, array $days, User $user): void
     {
         $this->rejectUnlessEditable($termId, $section);
         $this->stopOnConflict($termId, $section, $slot, $loading->teacher_id, $roomId, $days, $loading->subject_id);
@@ -46,7 +46,8 @@ class ScheduleService
                         'section_id' => $section->id,
                         'section_subject_id' => $loading->id,
                         'teacher_id' => $loading->teacher_id,
-                        'room_id' => $roomId,
+                        'room_id' => $slot->is_async ? null : $roomId,
+                        'is_async' => (bool) $slot->is_async,
                         'day_of_week' => $day,
                         'start_time' => $slot->start_time,
                         'end_time' => $slot->end_time,
@@ -102,7 +103,7 @@ class ScheduleService
         $stopOnAnyConflict = function () use ($termId, $section, $to, $fromDays, $toDays, $entries) {
             foreach ($fromDays as $index => $fromDay) {
                 $entry = $entries[$fromDay];
-                $this->stopOnConflict($termId, $section, $to, (int) $entry->teacher_id, (int) $entry->room_id, [$toDays[$index]], $entry->sectionSubject?->subject_id);
+                $this->stopOnConflict($termId, $section, $to, (int) $entry->teacher_id, $to->is_async || $entry->room_id === null ? null : (int) $entry->room_id, [$toDays[$index]], $entry->sectionSubject?->subject_id);
             }
         };
 
@@ -119,6 +120,9 @@ class ScheduleService
                         'day_of_week' => $toDays[$index],
                         'start_time' => $to->start_time,
                         'end_time' => $to->end_time,
+                        // Into an asynchronous period: no room. Out of one: a room is chosen after.
+                        'is_async' => (bool) $to->is_async,
+                        ...($to->is_async ? ['room_id' => null] : []),
                     ]);
                 }
 
@@ -262,7 +266,7 @@ class ScheduleService
 
             foreach ($entries as $entry) {
                 $conflicts = $this->conflicts->findConflicts(
-                    $termId, $section, (int) $entry->teacher_id, (int) $entry->room_id,
+                    $termId, $section, (int) $entry->teacher_id, $entry->room_id === null ? null : (int) $entry->room_id,
                     [$entry->day_of_week], $entry->start_time, $entry->end_time,
                 );
 
@@ -290,7 +294,7 @@ class ScheduleService
     /**
      * @param  array<int, int>  $days
      */
-    private function stopOnConflict(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days, ?int $subjectId = null): void
+    private function stopOnConflict(int $termId, Section $section, TimeSlot $slot, int $teacherId, ?int $roomId, array $days, ?int $subjectId = null): void
     {
         $conflicts = $this->conflicts->findConflicts($termId, $section, $teacherId, $roomId, $days, $slot->start_time, $slot->end_time);
 
@@ -351,6 +355,7 @@ class ScheduleService
             $entries = ScheduleEntry::where('section_id', $section->id)
                 ->whereNotNull('section_subject_id')
                 ->whereNull('room_id')
+                ->where('is_async', false)
                 ->whereIn('status', ['draft'])
                 ->get();
 

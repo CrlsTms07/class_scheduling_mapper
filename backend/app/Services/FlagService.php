@@ -118,6 +118,8 @@ class FlagService
             ->where('status', '<>', 'rejected')
             ->whereNotNull('section_subject_id')
             ->whereNull('room_id')
+            // An asynchronous class needs no room.
+            ->where('is_async', false)
             ->count();
 
         return $count === 0 ? [] : [[

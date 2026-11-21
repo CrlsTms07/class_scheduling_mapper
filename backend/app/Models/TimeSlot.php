@@ -11,7 +11,7 @@ class TimeSlot extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['is_break' => 'boolean'];
+    protected $casts = ['is_break' => 'boolean', 'is_async' => 'boolean'];
 
     public function dayPattern(): BelongsTo
     {

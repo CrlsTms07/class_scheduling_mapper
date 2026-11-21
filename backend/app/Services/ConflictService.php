@@ -25,11 +25,11 @@ class ConflictService
      * @param  array<int, int>  $days
      * @return array<int, array<string, mixed>>
      */
-    public function findConflicts(int $termId, Section $section, int $teacherId, int $roomId, array $days, string $start, string $end): array
+    public function findConflicts(int $termId, Section $section, int $teacherId, ?int $roomId, array $days, string $start, string $end): array
     {
         $entries = $this->overlapping($termId, $days, $start, $end)
             ->where('section_id', '<>', $section->id)
-            ->where(fn (Builder $query) => $query->where('teacher_id', $teacherId)->orWhere('room_id', $roomId))
+            ->where(fn (Builder $query) => $query->where('teacher_id', $teacherId)->when($roomId !== null, fn (Builder $room) => $room->orWhere('room_id', $roomId)))
             ->with(['section.gradeLevel', 'sectionSubject.subject', 'activity', 'teacher', 'room.building'])
             ->orderBy('day_of_week')
             ->get();
@@ -42,7 +42,7 @@ class ConflictService
                 $this->addToGroup($groups, 'teacher', "{$entry->teacher->printedName()} is teaching {$entry->section->labelFor(withArticle: true)}", $entry);
             }
 
-            if ((int) $entry->room_id === $roomId) {
+            if ($roomId !== null && (int) $entry->room_id === $roomId) {
                 $this->addToGroup($groups, 'room', "{$entry->room->label()} is used by {$entry->section->labelFor(withArticle: true)}", $entry);
             }
         }
@@ -213,7 +213,9 @@ class ConflictService
                 foreach ($pattern->day_numbers as $day) {
                     $clash = $entries->first(fn (ScheduleEntry $entry) => $entry->day_of_week === $day
                         && $entry->start_time < $slot->end_time
-                        && $entry->end_time > $slot->start_time);
+                        && $entry->end_time > $slot->start_time
+                        // An asynchronous period needs no room, so only the section or teacher can block it.
+                        && (! $slot->is_async || $entry->section_id === $section->id || ($teacherId !== null && (int) $entry->teacher_id === $teacherId)));
 
                     if ($clash === null) {
                         $free[] = $day;
@@ -246,7 +248,7 @@ class ConflictService
      * @param  array<int, int>  $days
      * @return array{rooms: array<int, array<string, mixed>>, slots: array<int, array<string, mixed>>, teachers: array<int, array<string, mixed>>}
      */
-    public function suggest(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days, ?int $subjectId = null): array
+    public function suggest(int $termId, Section $section, TimeSlot $slot, int $teacherId, ?int $roomId, array $days, ?int $subjectId = null): array
     {
         $teachers = $this->availableTeachers($termId, $section, $days, $slot->start_time, $slot->end_time, $teacherId, $subjectId);
 
@@ -286,13 +288,16 @@ class ConflictService
     /**
      * @param  array<int, int>  $days
      */
-    private function isSlotFree(int $termId, Section $section, TimeSlot $slot, int $teacherId, int $roomId, array $days): bool
+    private function isSlotFree(int $termId, Section $section, TimeSlot $slot, int $teacherId, ?int $roomId, array $days): bool
     {
+        // A room counts only when the class needs one (not in an asynchronous period).
+        $roomId = $slot->is_async ? null : $roomId;
+
         return ! $this->overlapping($termId, $days, $slot->start_time, $slot->end_time)
             ->where(fn (Builder $query) => $query
                 ->where('section_id', $section->id)
                 ->orWhere('teacher_id', $teacherId)
-                ->orWhere('room_id', $roomId))
+                ->when($roomId !== null, fn (Builder $room) => $room->orWhere('room_id', $roomId)))
             ->exists();
     }
 

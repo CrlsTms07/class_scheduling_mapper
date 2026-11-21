@@ -188,6 +188,7 @@ class TermCopyService
                 'section_subject_id' => $isFilled ? $loading->id : null,
                 'teacher_id' => $isFilled ? $loading->teacher_id : null,
                 'room_id' => $roomId,
+                'is_async' => (bool) $entry->is_async,
                 'day_of_week' => $entry->day_of_week,
                 'start_time' => $entry->start_time,
                 'end_time' => $entry->end_time,

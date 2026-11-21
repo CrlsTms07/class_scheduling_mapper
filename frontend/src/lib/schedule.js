@@ -6,7 +6,7 @@
 import { timeRange } from "./time.js";
 
 /**
- * @typedef {{ id: number, period_no: number | null, label: string | null, start_time: string, end_time: string, minutes: number, is_break: boolean }} TimeSlot
+ * @typedef {{ id: number, period_no: number | null, label: string | null, start_time: string, end_time: string, minutes: number, is_break: boolean, is_async?: boolean }} TimeSlot
  * @typedef {{ id: number, name: string, days: number[], slots: TimeSlot[] }} DayPattern
  * @typedef {{ id: number, subject_id: number, teacher_id: number, subject: string, is_priority: boolean, required_minutes: number | null, scheduled_minutes: number, teacher: string }} Loading
  * @typedef {{ id: number, day: number, start_time: string, end_time: string, status: "draft" | "pending" | "approved" | "rejected", section_subject_id: number | null, activity_id: number | null, subject: string | null, teacher: string | null, room_id: number | null, room: string | null }} ScheduleEntry

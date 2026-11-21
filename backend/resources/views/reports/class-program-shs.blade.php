@@ -38,6 +38,9 @@
         </thead>
         <tbody>
             @foreach ($weekly['rows'] as $row)
+                @if ($row['async_banner'] ?? false)
+                    <tr><td class="break" colspan="{{ 2 + count($weekly['days']) }}">ASYNCHRONOUS SESSION</td></tr>
+                @endif
                 <tr>
                     <td>{{ $row['time'] }}</td>
                     <td>{{ $row['minutes'] }}</td>

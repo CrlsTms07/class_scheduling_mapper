@@ -24,6 +24,7 @@ class SaveTimeSlotRequest extends FormRequest
     {
         return [
             'is_break' => ['required', 'boolean'],
+            'is_async' => ['sometimes', 'boolean'],
             'label' => ['nullable', 'string', 'max:40', 'required_if_accepted:is_break'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
@@ -43,7 +44,20 @@ class SaveTimeSlotRequest extends FormRequest
 
     public function after(): array
     {
-        return [fn (Validator $validator) => $this->validateNoOverlap($validator)];
+        return [
+            fn (Validator $validator) => $this->validateNoOverlap($validator),
+            function (Validator $validator) {
+                if (! $this->boolean('is_async')) {
+                    return;
+                }
+                $pattern = $this->route('dayPattern') ?? $this->route('timeSlot')?->dayPattern;
+                if ($this->boolean('is_break')) {
+                    $validator->errors()->add('is_async', 'A break cannot be asynchronous; only a period can.');
+                } elseif ($pattern && $pattern->level !== 'SHS') {
+                    $validator->errors()->add('is_async', 'Asynchronous sessions are for Senior High only.');
+                }
+            },
+        ];
     }
 
     /**

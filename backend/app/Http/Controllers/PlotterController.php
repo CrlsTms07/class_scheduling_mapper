@@ -46,7 +46,7 @@ class PlotterController extends Controller
     {
         $this->ensureSameSchoolYear($term, $section);
 
-        $schedule->assign($term->id, $section, $timeSlot, $request->loading(), $request->integer('room_id'), $request->input('days'), $request->user());
+        $schedule->assign($term->id, $section, $timeSlot, $request->loading(), $timeSlot->is_async ? null : $request->integer('room_id'), $request->input('days'), $request->user());
 
         return response()->json(['data' => $plotter->forSection($section, $term->id, $request->user())]);
     }

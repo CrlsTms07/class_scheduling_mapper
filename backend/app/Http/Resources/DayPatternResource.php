@@ -31,6 +31,7 @@ class DayPatternResource extends JsonResource
                 'end_time' => ScheduleFormat::shortTime($slot->end_time),
                 'minutes' => ScheduleFormat::minutesBetween($slot->start_time, $slot->end_time),
                 'is_break' => $slot->is_break,
+                    'is_async' => (bool) $slot->is_async,
                 'locked_reason' => $service->whySlotLocked($slot),
                 // What deleting it would take with it, or why it cannot be deleted.
                 'in_use' => $service->classesInSlot($slot),

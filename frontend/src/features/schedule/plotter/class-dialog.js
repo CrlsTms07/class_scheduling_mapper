@@ -73,6 +73,8 @@ export function openClassDialog({ plotter, termId, target }) {
   };
 
   const loading = () => plotter.loading.find(({ id }) => id === state.loadingId);
+  /** A chosen period of an asynchronous session (Senior High) takes no room (Nov 21, 2026). */
+  const isAsyncChosen = () => !state.typing && state.slotId !== null && plotter.patterns.some(({ slots }) => slots.some((slot) => slot.id === state.slotId && slot.is_async));
   const chosenTeacherId = () => state.teacherId ?? loading()?.teacher_id ?? null;
 
   const errorBox = h("div", { role: "alert", "aria-live": "assertive" });
@@ -376,7 +378,7 @@ export function openClassDialog({ plotter, termId, target }) {
                         drawPeriods();
                       },
                     },
-                    h("span", { class: "flex items-center justify-between gap-2" }, h("span", { class: "font-medium" }, slotTimeLabel(slot)), reason ? h("span", { class: "badge shrink-0 bg-surface text-muted-foreground" }, reason.badge) : isChosen ? h("span", { class: "badge shrink-0 bg-brand text-white" }, "Selected") : h("span", { class: "badge shrink-0 bg-success/10 text-success" }, "Available")),
+                    h("span", { class: "flex items-center justify-between gap-2" }, h("span", { class: "font-medium" }, slotTimeLabel(slot), slot.is_async ? h("span", { class: "badge ml-1 bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100" }, "Async") : null), reason ? h("span", { class: "badge shrink-0 bg-surface text-muted-foreground" }, reason.badge) : isChosen ? h("span", { class: "badge shrink-0 bg-brand text-white" }, "Selected") : h("span", { class: "badge shrink-0 bg-success/10 text-success" }, "Available")),
                     h("span", { class: "block text-small" }, reason ? reason.text : `${slot.minutes} mins · ${plotter.patterns.length > 1 ? `${pattern.name} · ` : ""}free ${freeDays.map((day) => DAY_NAMES[day].slice(0, 3)).join(", ")}`),
                   );
                 }),
@@ -386,6 +388,7 @@ export function openClassDialog({ plotter, termId, target }) {
     );
 
     const chosen = options.find(({ slot }) => slot.id === state.slotId) ?? null;
+    if (chosen?.slot.is_async) periodsArea.append(h("p", { class: "rounded-lg bg-sky-50 p-2 text-sm text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, "Asynchronous session: this class needs no room, so the room above is not used."));
     drawDays(chosen);
   };
 
@@ -616,7 +619,7 @@ export function openClassDialog({ plotter, termId, target }) {
       }
 
       const subject = loading();
-      if (!subject || !state.roomId) {
+      if (!subject || (!state.roomId && !isAsyncChosen())) {
         showError("Choose the subject and the room.");
         return;
       }
@@ -657,7 +660,7 @@ export function openClassDialog({ plotter, termId, target }) {
       }
 
       for (const [slotId, days] of placements) {
-        await assignSlot(termId, sectionId, { slotId, section_subject_id: subject.id, room_id: state.roomId, days });
+        await assignSlot(termId, sectionId, { slotId, section_subject_id: subject.id, room_id: isAsyncChosen() ? null : state.roomId, days });
       }
 
       // Moved to another period: take the class off its old one.

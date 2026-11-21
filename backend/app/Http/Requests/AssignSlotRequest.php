@@ -24,7 +24,8 @@ class AssignSlotRequest extends FormRequest
     {
         return [
             'section_subject_id' => ['required', 'integer'],
-            'room_id' => ['required', 'integer', Rule::exists('rooms', 'id')->where('is_active', true)],
+            // An asynchronous period needs no room (Nov 21, 2026).
+            'room_id' => [Rule::requiredIf(fn () => ! $this->route('timeSlot')?->is_async), 'nullable', 'integer', Rule::exists('rooms', 'id')->where('is_active', true)],
             'days' => ['required', 'array', 'min:1'],
             'days.*' => ['integer', 'distinct', 'between:1,5'],
         ];
@@ -36,7 +37,7 @@ class AssignSlotRequest extends FormRequest
             fn (Validator $validator) => $this->validateSlotAndDays($validator),
             function (Validator $validator) {
                 $section = $this->route('section');
-                if (! $validator->errors()->has('room_id')
+                if (! $validator->errors()->has('room_id') && $this->filled('room_id')
                     && ! \App\Models\Room::whereKey($this->integer('room_id'))->forLevel($section->gradeLevel->level)->exists()) {
                     $validator->errors()->add('room_id', 'Choose a room of this department or a shared one.');
                 }

@@ -138,6 +138,8 @@ export async function render(container) {
         { name: "start_time", label: "Start time", type: "time", required: true, value: slot?.start_time?.slice(0, 5) ?? null, check: (start, values) => slotOverlap(pattern.slots, start, values.end_time, slot?.id ?? null) },
         { name: "end_time", label: "End time", type: "time", required: true, value: slot?.end_time?.slice(0, 5) ?? null, check: (end, values) => (end && values.start_time && minutesBetween(values.start_time, end) <= 0 ? "The end time must be after the start time." : null) },
         { name: "is_break", label: "This is a break (recess or lunch)", type: "checkbox", value: slot?.is_break ?? false },
+        // Senior High: the asynchronous session after the break (Nov 21, 2026). Its classes need no room.
+        ...(pattern.level === "SHS" ? [{ name: "is_async", label: "Asynchronous session (Senior High): classes here need no room", type: /** @type {const} */ ("checkbox"), value: slot?.is_async ?? false, check: (/** @type {any} */ value, /** @type {any} */ values) => (value && values.is_break ? "A break cannot be asynchronous; only a period can." : null) }] : []),
         { name: "label", label: "Break name", value: slot?.label ?? "", help: "Like Recess or Lunch. Leave it empty for a period." },
       ],
       submitLabel: slot ? "Save changes" : "Add",
@@ -199,6 +201,7 @@ export async function render(container) {
           h("li", null, "Each row is a period (a class time) or a break (recess or lunch, shaded). Time with neither is shown in amber, so nothing is missed."),
           h("li", null, h("strong", null, "Conflicts here: "), "two rows of the same bell schedule cannot overlap. The form says so while you choose the time, and the database refuses it too."),
           h("li", null, h("strong", null, "Conflicts of classes "), "(the same teacher, room or section at the same time) are checked when classes are placed on the schedule, not here."),
+          h("li", null, "Senior High: mark a period as an asynchronous session (like the one after the break). Its classes keep their subject and teacher but need no room, and print under an ASYNCHRONOUS SESSION banner."),
           h("li", null, "This page is optional: a class time typed while plotting is added here by itself."),
         ),
       ),
@@ -244,7 +247,7 @@ export async function render(container) {
                   ? h("p", { class: "text-sm text-muted-foreground" }, "No periods yet.")
                   : h("ol", { class: "divide-y rounded-lg border" }, pattern.slots.flatMap((/** @type {any} */ slot, /** @type {number} */ index) => [
                       h("li", { class: `flex items-center justify-between gap-2 p-2 text-sm ${slot.is_break ? "bg-surface-muted" : ""}` },
-                        h("div", { class: "min-w-0" }, h("p", { class: `font-medium ${slot.is_break ? "uppercase text-muted-foreground" : ""}` }, slot.is_break ? slot.label || "Break" : `Period ${slot.period_no ?? ""}`), h("p", { class: "text-small text-muted-foreground" }, `${timeRange(slot.start_time, slot.end_time)} · ${slot.minutes} mins${slot.in_use?.classes ? ` · ${slot.in_use.classes} classes` : ""}`)),
+                        h("div", { class: "min-w-0" }, h("p", { class: `font-medium ${slot.is_break ? "uppercase text-muted-foreground" : ""}` }, slot.is_break ? slot.label || "Break" : `Period ${slot.period_no ?? ""}`, slot.is_async ? h("span", { class: "badge ml-2 bg-sky-100 text-sky-900 dark:bg-sky-900 dark:text-sky-100" }, "Asynchronous") : null), h("p", { class: "text-small text-muted-foreground" }, `${timeRange(slot.start_time, slot.end_time)} · ${slot.minutes} mins${slot.in_use?.classes ? ` · ${slot.in_use.classes} classes` : ""}`)),
                         h("button", { type: "button", class: "btn btn-outline shrink-0", "aria-label": `Edit ${slot.is_break ? slot.label || "break" : `period ${slot.period_no ?? ""}`}, ${timeRange(slot.start_time, slot.end_time)}`, onclick: () => slotForm(pattern, slot) }, icon("pencil"), "Edit"),
                       ),
                       ...gapsBetween(pattern.slots).filter((gap) => gap.after === index).map((gap) => h("li", { class: "flex items-center gap-2 bg-amber-50 p-2 text-small text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, icon("warning", "size-4 shrink-0"), `No class or break: ${timeRange(gap.start, gap.end)} (${gap.minutes} mins). Add a row here, or change the next row's start.`)),

@@ -196,10 +196,12 @@ class ReportService
             ->sortBy(['start_time', 'end_time'])
             ->values();
 
-        $rows = $slots->map(function ($slot) use ($patternOf, $entries) {
+        $wasAsync = false;
+        $rows = $slots->map(function ($slot) use ($patternOf, $entries, &$wasAsync) {
             $cells = [];
             $breaks = [];
             $days = [];
+            $isAsync = false;
 
             foreach ([1, 2, 3, 4, 5] as $day) {
                 $daySlot = ($patternOf[$day] ?? null)?->timeSlots
@@ -213,6 +215,10 @@ class ReportService
                     $breaks[$day] = mb_strtoupper((string) $daySlot->label);
                 }
 
+                if ($daySlot?->is_async) {
+                    $isAsync = true;
+                }
+
                 // Both ends must match: two bell schedules can start a period at the same time.
                 $entry = $entries->first(fn (ScheduleEntry $item) => $item->day_of_week === $day
                     && $item->start_time === $slot->start_time
@@ -221,11 +227,17 @@ class ReportService
                 $cells[$day] = $entry ? [
                     'subject' => $entry->subjectName(),
                     'teacher' => $entry->teacher?->printedName(),
-                    'room' => $entry->room?->label(),
+                    'room' => $entry->is_async ? 'Asynchronous' : $entry->room?->label(),
                 ] : null;
             }
 
+            // The asynchronous session starts here: a banner row above it, as on the school's form.
+            $startsAsync = $isAsync && ! $wasAsync;
+            $wasAsync = $isAsync;
+
             return [
+                'is_async' => $isAsync,
+                'async_banner' => $startsAsync,
                 'start_time' => $slot->start_time,
                 'end_time' => $slot->end_time,
                 'time' => $this->printedTime($slot->start_time).' - '.$this->printedTime($slot->end_time),

@@ -109,7 +109,9 @@ CREATE TABLE time_slots (
     start_time      TIME NOT NULL,
     end_time        TIME NOT NULL CHECK (end_time > start_time),
     is_break        BOOLEAN NOT NULL DEFAULT false,
+    is_async        BOOLEAN NOT NULL DEFAULT false,  -- SHS asynchronous session: classes need no room
     CHECK (is_break OR period_no IS NOT NULL),
+    CHECK (NOT (is_async AND is_break)),
     EXCLUDE USING gist (day_pattern_id WITH =, timerange(start_time, end_time) WITH &&)
 );
 

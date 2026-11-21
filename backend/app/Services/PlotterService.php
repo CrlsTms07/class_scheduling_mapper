@@ -115,6 +115,7 @@ class PlotterService
                     'end_time' => ScheduleFormat::shortTime($slot->end_time),
                     'minutes' => ScheduleFormat::minutesBetween($slot->start_time, $slot->end_time),
                     'is_break' => $slot->is_break,
+                    'is_async' => (bool) $slot->is_async,
                 ])->values(),
             ])
             ->values();
@@ -168,7 +169,8 @@ class PlotterService
                 'subject' => $entry->subjectName(),
                 'teacher' => $entry->teacher?->printedName(),
                 'room_id' => $entry->room_id,
-                'room' => $entry->room?->label(),
+                'room' => $entry->is_async ? 'Asynchronous' : $entry->room?->label(),
+                'is_async' => (bool) $entry->is_async,
             ])
             ->values();
     }

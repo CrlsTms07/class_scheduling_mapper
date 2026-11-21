@@ -154,7 +154,8 @@ class TimeSlotService
             $before = $slot->only(['label', 'start_time', 'end_time', 'is_break']);
             $sameTimes = substr($slot->start_time, 0, 5) === $data['start_time']
                 && substr($slot->end_time, 0, 5) === $data['end_time']
-                && $slot->is_break === (bool) $data['is_break'];
+                && $slot->is_break === (bool) $data['is_break']
+                && $slot->is_async === (bool) ($data['is_async'] ?? false);
 
             if (! $sameTimes) {
                 $this->stopIfUsed($slot, 'start_time');
@@ -326,6 +327,8 @@ class TimeSlotService
 
         return [
             'is_break' => $isBreak,
+            // A Senior High period can be an asynchronous session: its classes need no room.
+            'is_async' => ! $isBreak && (bool) ($data['is_async'] ?? false),
             'label' => $label === '' ? null : $label,
             'start_time' => $data['start_time'],
             'end_time' => $data['end_time'],
