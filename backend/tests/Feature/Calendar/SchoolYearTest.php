@@ -127,7 +127,10 @@ it('rejects bad years and term dates', function (array $overrides, string $field
     'name not one year apart' => [['name' => '2027-2029'], 'name'],
     'name already used' => [['name' => '2026-2027'], 'name'],
     'ends before it starts' => [['end_date' => '2027-01-01'], 'end_date'],
-    'overlaps another year' => [['start_date' => '2027-03-01'], 'start_date'],
+    'overlaps another year' => [['start_date' => '2027-03-01', 'end_date' => '2028-02-28'], 'start_date'],
+    'longer than a year' => [['end_date' => '2028-07-01'], 'end_date'],
+    'name not from the first day' => [['name' => '2028-2029'], 'name'],
+    'a term of one day' => [['terms' => [['name' => 'First', 'start_date' => '2027-06-01', 'end_date' => '2027-06-01']]], 'terms.0.start_date'],
     'no terms' => [['terms' => []], 'terms'],
     'five terms' => [['terms' => array_fill(0, 5, ['name' => 'X', 'start_date' => '2027-06-01', 'end_date' => '2027-06-02'])], 'terms'],
     'same term names' => [['terms' => [

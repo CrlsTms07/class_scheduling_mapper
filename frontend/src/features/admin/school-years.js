@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * School Years (Admin): every school year with its terms, the active term, the "Start New School
- * Year" wizard (name and dates, term structure, what to copy, review), and Calendar settings to
+ * Year" wizard (dates, term structure, review; the name comes from the dates), and Calendar settings to
  * change the structure later. Nothing here assumes 3 terms or the word "Term": both come from
  * the school year.
  */
@@ -15,6 +15,7 @@ import { errorMessage } from "@/api/client.js";
 import { changeRecord, getRecords } from "@/api/records.js";
 import { watch } from "@/state/cache.js";
 import { loadTerms } from "@/state/term.js";
+import { termProblems, yearName, yearProblems } from "@/lib/calendar-rules.js";
 
 export const TERM_PRESETS = [
   { key: "terms", title: "3 Terms", hint: "Current DepEd", count: 3, label: "Term" },
@@ -55,21 +56,66 @@ export function dayMonthYear(/** @type {string} */ date) {
 const formatDate = (/** @type {string} */ date) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 /**
- * A date field with the day/month/year reading under it.
+ * A date field with the day/month/year reading under it, and its own error line. The error is set
+ * while the date is chosen (it never waits for Next or Save).
  * @param {string} label @param {string} value @param {(value: string) => void} onChange
  */
 function dateField(label, value, onChange) {
   const id = `date-${Math.random().toString(36).slice(2, 8)}`;
   const hint = h("p", { class: "field-help" }, dayMonthYear(value) || "dd/mm/yyyy");
-  const input = /** @type {HTMLInputElement} */ (h("input", { id, type: "date", class: "input", value, oninput: () => { hint.textContent = dayMonthYear(input.value) || "dd/mm/yyyy"; onChange(input.value); } }));
-  return h("div", { class: "space-y-1" }, h("label", { class: "field-label", htmlFor: id }, label), input, hint);
+  const error = h("p", { id: `${id}-error`, class: "field-error", role: "alert", hidden: true });
+  const input = /** @type {HTMLInputElement} */ (h("input", { id, type: "date", class: "input", value, "aria-describedby": `${id}-error`, oninput: () => { hint.textContent = dayMonthYear(input.value) || "dd/mm/yyyy"; onChange(input.value); } }));
+  return Object.assign(h("div", { class: "space-y-1" }, h("label", { class: "field-label", htmlFor: id }, label), input, hint, error), {
+    /** @param {string | undefined} message */
+    setError(message) {
+      error.textContent = message ?? "";
+      error.hidden = !message;
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      input.classList.toggle("border-danger", !!message);
+    },
+  });
 }
 
-/** A text field bound to a value. */
+/** A text field bound to a value, with its own error line. */
 function textField(/** @type {string} */ label, /** @type {string} */ value, /** @type {(value: string) => void} */ onChange) {
   const id = `text-${Math.random().toString(36).slice(2, 8)}`;
+  const error = h("p", { class: "field-error", role: "alert", hidden: true });
   const input = /** @type {HTMLInputElement} */ (h("input", { id, class: "input", value, oninput: () => onChange(input.value.trim()) }));
-  return h("div", { class: "space-y-1" }, h("label", { class: "field-label", htmlFor: id }, label), input);
+  return Object.assign(h("div", { class: "space-y-1" }, h("label", { class: "field-label", htmlFor: id }, label), input, error), {
+    /** @param {string | undefined} message */
+    setError(message) {
+      error.textContent = message ?? "";
+      error.hidden = !message;
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      input.classList.toggle("border-danger", !!message);
+    },
+  });
+}
+
+/**
+ * The term rows (name, start, end) with their errors, checked on every change.
+ * @param {{ name: string, start_date: string, end_date: string, cannot_remove_reason?: string | null }[]} terms
+ * @param {() => void} onChange
+ */
+function termRows(terms, onChange) {
+  return terms.map((term, index) => {
+    const name = textField(`Name of part ${index + 1}`, term.name, (value) => { term.name = value; onChange(); });
+    const start = dateField("Starts", term.start_date, (value) => { term.start_date = value; onChange(); });
+    const end = dateField("Ends", term.end_date, (value) => { term.end_date = value; onChange(); });
+    return { element: h("div", { class: "grid gap-3 rounded-lg border p-3 sm:grid-cols-3" }, name, start, end), fields: { name, start_date: start, end_date: end } };
+  });
+}
+
+/**
+ * Shows each problem under its field, and says whether everything is right.
+ * @param {{ fields: Record<string, { setError: (message: string | undefined) => void }> }[]} rows
+ * @param {ReturnType<typeof termProblems>} problems
+ */
+function showTermProblems(rows, problems) {
+  rows.forEach((row, index) => {
+    for (const [field, control] of Object.entries(row.fields)) control.setError(problems.find((problem) => problem.index === index && problem.field === field)?.message);
+  });
+  return problems.length === 0;
 }
 
 /** @type {import("@/router.js").RenderPage} */
@@ -78,38 +124,45 @@ export async function render(container) {
   /** @type {any[]} */
   let years = [];
 
-  /** The four-step wizard. */
+  /**
+   * Start a new school year in three steps: dates, terms, review. The name comes from the first day
+   * (2026 → "2026-2027"), and every rule is checked while the dates are chosen, so a mistake shows
+   * at once and Next waits until it is fixed. Subjects, class hours and signatories of the latest
+   * school year are copied (beneficiary review, Nov 21, 2026: no "what to copy" step).
+   */
   const startYearWizard = () => {
     const latest = years[0];
-    const first = latest ? Number(latest.name.slice(0, 4)) + 1 : new Date().getFullYear();
-    const draft = { name: Number.isNaN(first) ? "" : `${first}-${first + 1}`, start_date: "", end_date: "", preset: "terms", label: "Term", count: 3, terms: /** @type {any[]} */ ([]), copy_from_id: latest?.id ?? null, copy: { subjects: true, time_slots: true, signatories: true, section_names: false } };
+    const draft = { start_date: "", end_date: "", preset: "terms", label: "Term", count: 3, terms: /** @type {any[]} */ ([]) };
     let step = 1;
     const body = h("div", { class: "space-y-4" });
     const back = h("button", { type: "button", class: "btn btn-outline", onclick: () => { step -= 1; draw(); } }, icon("arrow-left"), "Back");
     const next = /** @type {HTMLButtonElement} */ (h("button", { type: "button", class: "btn btn-primary", onclick: () => go() }, "Next"));
+    /** Fields the user has changed show their problem at once; the others after Next is pressed. */
+    const touched = new Set();
+    /** @type {() => boolean} */
+    let check = () => true;
 
     const go = async () => {
-      if (step === 1 && (!draft.name || !draft.start_date || !draft.end_date || draft.end_date <= draft.start_date)) {
-        toast.error("Enter the name, and a start date before the end date.");
+      touched.add("all");
+      if (!check()) {
+        toast.error("Fix what is marked in red first.");
         return;
       }
-      if (step === 1 || (step === 2 && draft.terms.length === 0)) draft.terms = buildTerms(draft.count, draft.label, draft.start_date, draft.end_date);
-      if (step === 2 && draft.terms.some((term) => !term.name || !term.start_date || !term.end_date || term.end_date < term.start_date)) {
-        toast.error("Each term needs a name and dates, the start before the end.");
-        return;
-      }
-      if (step < 4) {
+      if (step === 1 && draft.terms.length === 0) draft.terms = buildTerms(draft.count, draft.label, draft.start_date, draft.end_date);
+      if (step < 3) {
         step += 1;
+        touched.clear();
         draw();
         return;
       }
       setBusy(next, true, "Starting...");
       try {
-        const reply = await changeRecord("/school-years", "POST", { name: draft.name, start_date: draft.start_date, end_date: draft.end_date, term_label: draft.label, terms: draft.terms, copy_from_id: draft.copy_from_id, copy: draft.copy });
+        const name = yearName(draft.start_date);
+        const reply = await changeRecord("/school-years", "POST", { name, start_date: draft.start_date, end_date: draft.end_date, term_label: draft.label, terms: draft.terms, copy_from_id: latest?.id ?? null, copy: { subjects: true, time_slots: true, signatories: true, section_names: false } });
         const copied = reply.copied ?? {};
-        const lines = [copied.subjects ? `${copied.subjects} subjects` : "", copied.day_patterns ? `${copied.day_patterns} bell schedules` : "", copied.sections ? `${copied.sections} section names` : "", copied.signatories ? "the report signatories" : ""].filter(Boolean);
+        const lines = [copied.subjects ? `${copied.subjects} subjects` : "", copied.day_patterns ? `${copied.day_patterns} class hours` : "", copied.signatories ? "the signatories" : ""].filter(Boolean);
         await loadTerms();
-        toast.success(`SY ${draft.name} was started${lines.length ? `, with ${lines.join(", ")} copied` : ""}. Make one of its terms active when it begins.`);
+        toast.success(`SY ${name} was started${lines.length ? `, with ${lines.join(", ")} copied from SY ${latest.name}` : ""}. Make one of its terms active when it begins.`);
         close();
       } catch (error) {
         toast.error(error);
@@ -119,12 +172,41 @@ export async function render(container) {
 
     const draw = () => {
       back.hidden = step === 1;
-      next.textContent = step === 4 ? "Start the school year" : "Next";
-      const steps = ["Name and dates", "Terms", "Copy", "Review"];
-      const header = h("ol", { class: "grid grid-cols-4 gap-1 text-center text-small" }, steps.map((title, index) => h("li", { class: `rounded-lg px-1 py-2 ${index + 1 === step ? "bg-brand text-white" : index + 1 < step ? "bg-brand-soft text-brand" : "bg-surface-muted text-muted-foreground"}`, "aria-current": index + 1 === step ? "step" : null }, `${index + 1}. ${title}`)));
+      next.textContent = step === 3 ? "Start the school year" : "Next";
+      const steps = ["Dates", "Terms", "Review"];
+      const header = h("ol", { class: "grid grid-cols-3 gap-1 text-center text-small" }, steps.map((title, index) => h("li", { class: `rounded-lg px-1 py-2 ${index + 1 === step ? "bg-brand text-white" : index + 1 < step ? "bg-brand-soft text-brand" : "bg-surface-muted text-muted-foreground"}`, "aria-current": index + 1 === step ? "step" : null }, `${index + 1}. ${title}`)));
       if (step === 1) {
-        replace(body, header, textField("School year name", draft.name, (value) => (draft.name = value)), h("div", { class: "grid gap-4 sm:grid-cols-2" }, dateField("First day", draft.start_date, (value) => (draft.start_date = value)), dateField("Last day", draft.end_date, (value) => (draft.end_date = value))));
+        const nameLine = h("p", { class: "rounded-lg bg-surface-muted p-3 text-sm" });
+        const showName = () => replace(nameLine, draft.start_date ? h("span", null, "School year: ", h("strong", null, `SY ${yearName(draft.start_date)}`), " (made from the first day)") : "The school year's name is made from the first day, like 2026-2027.");
+        const startField = dateField("First day", draft.start_date, (value) => { draft.start_date = value; draft.terms = []; touched.add("start_date"); showName(); check(); });
+        const endField = dateField("Last day", draft.end_date, (value) => { draft.end_date = value; draft.terms = []; touched.add("end_date"); check(); });
+        check = () => {
+          const problems = yearProblems(draft, years);
+          const ok = !problems.start_date && !problems.end_date;
+          // Nothing is shown before a date is chosen; after that, every problem at once.
+          const isShown = touched.size > 0;
+          startField.setError(isShown ? problems.start_date : undefined);
+          endField.setError(isShown ? problems.end_date : undefined);
+          next.disabled = isShown && !ok;
+          return ok;
+        };
+        showName();
+        replace(body, header, nameLine, h("div", { class: "grid gap-4 sm:grid-cols-2" }, startField, endField), h("p", { class: "field-help" }, "A school year is one year at most, and must not overlap another."));
+        next.disabled = false;
       } else if (step === 2) {
+        const termsArea = h("div", { class: "space-y-3" });
+        /** @type {ReturnType<typeof termRows>} */
+        let rows = [];
+        check = () => {
+          const ok = showTermProblems(rows, termProblems(draft.terms, draft));
+          next.disabled = !ok;
+          return ok;
+        };
+        const drawTerms = () => {
+          rows = termRows(draft.terms, () => check());
+          replace(termsArea, rows.map((row) => row.element));
+          check();
+        };
         const presetButtons = h("div", { class: "grid gap-2 sm:grid-cols-4" }, [...TERM_PRESETS, { key: "custom", title: "Custom", hint: "Your own", count: draft.count, label: draft.label }].map((preset) =>
           h("button", { type: "button", "aria-pressed": String(draft.preset === preset.key), class: `card flex min-h-16 flex-col items-start justify-center p-3 text-left ${draft.preset === preset.key ? "border-brand bg-brand text-white" : "hover:border-brand"}`, onclick: () => { draft.preset = preset.key; if (preset.key !== "custom") { draft.count = preset.count; draft.label = preset.label; } draft.terms = buildTerms(draft.count, draft.label, draft.start_date, draft.end_date); draw(); } }, h("span", { class: "font-semibold" }, preset.title), h("span", { class: "text-small opacity-80" }, preset.hint)),
         ));
@@ -133,28 +215,18 @@ export async function render(container) {
           header,
           presetButtons,
           draft.preset === "custom" ? h("div", { class: "grid gap-4 sm:grid-cols-2" }, textField("What a part is called", draft.label, (value) => { draft.label = value || "Term"; }), h("div", { class: "space-y-1" }, h("label", { class: "field-label" }, "How many parts"), h("div", { class: "flex gap-2" }, [1, 2, 3, 4].map((count) => h("button", { type: "button", "aria-pressed": String(draft.count === count), class: `btn border ${draft.count === count ? "border-brand bg-brand text-white" : "bg-surface"}`, onclick: () => { draft.count = count; draft.terms = buildTerms(count, draft.label, draft.start_date, draft.end_date); draw(); } }, String(count)))))) : null,
-          h("p", { class: "field-help" }, "The dates are split evenly to start with. Change any of them."),
-          draft.terms.map((term, index) => h("div", { class: "grid gap-3 rounded-lg border p-3 sm:grid-cols-3" }, textField(`Name of part ${index + 1}`, term.name, (value) => (term.name = value)), dateField("Starts", term.start_date, (value) => (term.start_date = value)), dateField("Ends", term.end_date, (value) => (term.end_date = value)))),
+          h("p", { class: "field-help" }, `The dates are split evenly to start with. Each part lies inside SY ${yearName(draft.start_date)}, one after another, and lasts at least 2 months.`),
+          termsArea,
         );
-      } else if (step === 3) {
-        const box = (/** @type {"subjects" | "time_slots" | "signatories" | "section_names"} */ key, /** @type {string} */ label) => {
-          const input = /** @type {HTMLInputElement} */ (h("input", { type: "checkbox", checked: draft.copy[key], class: "size-5 shrink-0 accent-[var(--brand)]", onchange: () => (draft.copy[key] = input.checked) }));
-          return h("label", { class: "flex min-h-11 items-center gap-3 rounded-lg border p-3 text-sm" }, input, label);
-        };
-        replace(
-          body,
-          header,
-          latest
-            ? [h("p", { class: "text-sm" }, `Copy from SY ${latest.name}:`), box("subjects", "Subjects"), box("time_slots", "Time slots and breaks (bell schedules)"), box("signatories", "Report signatories"), box("section_names", "Section names, one grade up (sections themselves are not copied)")]
-            : h("p", { class: "text-sm text-muted-foreground" }, "This is the first school year, so there is nothing to copy."),
-        );
+        drawTerms();
       } else {
-        const copies = latest ? Object.entries({ subjects: "subjects", time_slots: "bell schedules", signatories: "signatories", section_names: "section names" }).filter(([key]) => draft.copy[/** @type {keyof typeof draft.copy} */ (key)]).map(([, label]) => label) : [];
+        check = () => true;
+        next.disabled = false;
         replace(body, header, h("dl", { class: "grid gap-x-4 gap-y-2 rounded-lg border p-3 text-sm sm:grid-cols-3" },
-          h("dt", { class: "text-muted-foreground" }, "School year"), h("dd", { class: "font-medium sm:col-span-2" }, `${draft.name}: ${dayMonthYear(draft.start_date)} to ${dayMonthYear(draft.end_date)}`),
+          h("dt", { class: "text-muted-foreground" }, "School year"), h("dd", { class: "font-medium sm:col-span-2" }, `SY ${yearName(draft.start_date)}: ${dayMonthYear(draft.start_date)} to ${dayMonthYear(draft.end_date)}`),
           h("dt", { class: "text-muted-foreground" }, `${draft.label}s`), h("dd", { class: "sm:col-span-2" }, h("ul", null, draft.terms.map((term) => h("li", null, `${term.name}: ${formatDate(term.start_date)} – ${formatDate(term.end_date)}`)))),
-          h("dt", { class: "text-muted-foreground" }, "Copied"), h("dd", { class: "sm:col-span-2" }, copies.length ? copies.join(", ") : "Nothing"),
-        ), h("p", { class: "field-help" }, "Everything is saved together. The current active term stays active until you switch."));
+          h("dt", { class: "text-muted-foreground" }, "Copied"), h("dd", { class: "sm:col-span-2" }, latest ? `Subjects, class hours and signatories of SY ${latest.name}` : "Nothing: this is the first school year"),
+        ), h("p", { class: "field-help" }, "Everything is saved together. Teachers stay from year to year; add this year's sections after. The current active term stays active until you switch."));
       }
     };
 
@@ -162,29 +234,55 @@ export async function render(container) {
     draw();
   };
 
-  /** Calendar settings: change the name, dates and terms of a school year. */
+  /** Calendar settings: change the dates and terms of a school year, checked while they are chosen. */
   const calendarSettings = (/** @type {any} */ year) => {
-    const draft = { name: year.name, start_date: year.start_date, end_date: year.end_date, label: year.term_label, terms: year.terms.map((/** @type {any} */ term) => ({ ...term })) };
+    const draft = { start_date: year.start_date, end_date: year.end_date, label: year.term_label, terms: year.terms.map((/** @type {any} */ term) => ({ ...term })) };
     const body = h("div", { class: "space-y-4" });
+    /** @type {ReturnType<typeof termRows>} */
+    let rows = [];
+    /** @type {ReturnType<typeof dateField>} */
+    let startField;
+    /** @type {ReturnType<typeof dateField>} */
+    let endField;
+    const nameLine = h("p", { class: "rounded-lg bg-surface-muted p-3 text-sm" });
+    const check = () => {
+      const problems = yearProblems(draft, years, year.id);
+      startField.setError(problems.start_date);
+      endField.setError(problems.end_date);
+      replace(nameLine, "School year: ", h("strong", null, `SY ${yearName(draft.start_date) || year.name}`), " (made from the first day)");
+      const ok = showTermProblems(rows, termProblems(draft.terms, draft)) && !problems.start_date && !problems.end_date;
+      save.disabled = !ok;
+      return ok;
+    };
     const draw = () => {
+      startField = dateField("First day", draft.start_date, (value) => { draft.start_date = value; check(); });
+      endField = dateField("Last day", draft.end_date, (value) => { draft.end_date = value; check(); });
+      rows = termRows(draft.terms, () => check());
       replace(
         body,
-        h("div", { class: "grid gap-4 sm:grid-cols-2" }, textField("School year name", draft.name, (value) => (draft.name = value)), textField("What a part is called", draft.label, (value) => (draft.label = value || "Term")), dateField("First day", draft.start_date, (value) => (draft.start_date = value)), dateField("Last day", draft.end_date, (value) => (draft.end_date = value))),
-        draft.terms.map((/** @type {any} */ term, /** @type {number} */ index) => h("div", { class: "space-y-2 rounded-lg border p-3" },
-          h("div", { class: "grid gap-3 sm:grid-cols-3" }, textField(`Name of part ${index + 1}`, term.name, (value) => (term.name = value)), dateField("Starts", term.start_date, (value) => (term.start_date = value)), dateField("Ends", term.end_date, (value) => (term.end_date = value))),
+        nameLine,
+        h("div", { class: "grid gap-4 sm:grid-cols-3" }, textField("What a part is called", draft.label, (value) => (draft.label = value || "Term")), startField, endField),
+        rows.map((row, index) => h("div", { class: "space-y-2" },
+          row.element,
           // Parts are kept in order, so only the last one can be removed.
-          index === draft.terms.length - 1 && draft.terms.length > 1 ? h("button", { type: "button", class: "btn btn-outline text-danger", disabled: !!term.cannot_remove_reason, title: term.cannot_remove_reason ?? undefined, onclick: () => { draft.terms.pop(); draw(); } }, icon("trash"), "Remove this part") : null,
-          index === draft.terms.length - 1 && term.cannot_remove_reason ? h("p", { class: "field-help" }, `It cannot be removed: ${term.cannot_remove_reason}`) : null,
+          index === draft.terms.length - 1 && draft.terms.length > 1 ? h("button", { type: "button", class: "btn btn-outline text-danger", disabled: !!draft.terms[index].cannot_remove_reason, title: draft.terms[index].cannot_remove_reason ?? undefined, onclick: () => { draft.terms.pop(); draw(); } }, icon("trash"), "Remove this part") : null,
+          index === draft.terms.length - 1 && draft.terms[index].cannot_remove_reason ? h("p", { class: "field-help" }, `It cannot be removed: ${draft.terms[index].cannot_remove_reason}`) : null,
         )),
         draft.terms.length < 4 ? h("button", { type: "button", class: "btn btn-outline", onclick: () => { draft.terms.push({ name: termName(draft.terms.length, draft.label), start_date: "", end_date: "" }); draw(); } }, icon("plus"), "Add a part") : null,
       );
+      check();
     };
     const save = /** @type {HTMLButtonElement} */ (h("button", { type: "button", class: "btn btn-primary", onclick: async () => {
+      if (!check()) {
+        toast.error("Fix what is marked in red first.");
+        return;
+      }
       setBusy(save, true);
+      const name = yearName(draft.start_date);
       try {
-        await changeRecord(`/school-years/${year.id}`, "PUT", { name: draft.name, start_date: draft.start_date, end_date: draft.end_date, term_label: draft.label, terms: draft.terms.map((/** @type {any} */ term) => ({ name: term.name, start_date: term.start_date, end_date: term.end_date })) });
+        await changeRecord(`/school-years/${year.id}`, "PUT", { name, start_date: draft.start_date, end_date: draft.end_date, term_label: draft.label, terms: draft.terms.map((/** @type {any} */ term) => ({ name: term.name, start_date: term.start_date, end_date: term.end_date })) });
         await loadTerms();
-        toast.success(`SY ${draft.name} was saved.`);
+        toast.success(`SY ${name} was saved.`);
         close();
       } catch (error) {
         toast.error(error);
@@ -192,7 +290,7 @@ export async function render(container) {
       }
     } }, "Save changes"));
     const remove = h("button", { type: "button", class: "btn btn-outline text-danger sm:mr-auto", disabled: !!year.cannot_delete_reason, title: year.cannot_delete_reason ?? undefined, onclick: async () => {
-      if (!(await confirmAction({ title: `Delete SY ${year.name}?`, message: "Its terms, subjects, bell schedules and signatories are deleted.", confirmLabel: "Yes, delete" }))) return;
+      if (!(await confirmAction({ title: `Delete SY ${year.name}?`, message: "Its terms, subjects, class hours and signatories are deleted.", confirmLabel: "Yes, delete" }))) return;
       try {
         await changeRecord(`/school-years/${year.id}`, "DELETE");
         await loadTerms();

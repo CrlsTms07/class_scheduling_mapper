@@ -164,7 +164,7 @@ test("the school years, report settings, guide, rooms and buildings open", async
   await signIn(page, "admin@deped.gov.ph");
   await page.goto("/school-years");
   await page.getByRole("button", { name: "Start a new school year" }).first().click();
-  await expect(page.getByRole("dialog").getByText("1. Name and dates")).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("1. Dates")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Calendar settings" }).first().click();
   await expect(page.getByRole("dialog").getByRole("heading", { name: /Calendar settings/ })).toBeVisible();
