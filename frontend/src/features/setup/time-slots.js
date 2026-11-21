@@ -6,6 +6,7 @@
  * same periods and breaks (like Monday – Thursday, and Friday) for a department and shift.
  * Times are typed in 12-hour form (UI requirement 5).
  */
+import { subjectTabs } from "./subject-tabs.js";
 import { h, replace } from "@/lib/dom.js";
 import { icon } from "@/components/icons.js";
 import { openFormDialog } from "@/components/form-dialog.js";
@@ -164,6 +165,7 @@ export async function render(container) {
       "div",
       { class: "space-y-5 p-4 sm:p-6" },
       pageHeader({ icon: "clock", title: "Class Hours", description: `Optional: the periods and breaks of SY ${year.name}. They are also made by themselves when you type a class time while plotting.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Time Slots" }], actions: h("button", { type: "button", class: "btn btn-primary", onclick: () => patternForm({ mode: "create" }) }, icon("plus"), "Add bell schedule") }),
+      subjectTabs("hours"),
       content,
     ),
   );

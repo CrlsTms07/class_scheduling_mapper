@@ -93,10 +93,8 @@ test("adds a building with a room, a bell schedule from a preset, a subject, a s
 
   await page.goto("/subjects");
   await page.getByRole("button", { name: "Add subject" }).first().click();
-  // Subject name is a searchable list of the names already used; a new one is typed and chosen with Use.
-  await page.getByRole("dialog").getByRole("button", { name: /^Subject name/ }).click();
-  await page.getByLabel("Search subject name").fill("Robotics E2E");
-  await page.getByRole("option", { name: 'Use "Robotics E2E"' }).click();
+  // Name only, checked while typing; the Senior High details are the Admin's.
+  await fill(page, "Subject name", "Robotics E2E");
   // Name only: no grade and no minutes (beneficiary review, Nov 21, 2026).
   await expect(page.getByRole("dialog").getByRole("spinbutton", { name: /^Minutes per week/ })).toHaveCount(0);
   await page.getByRole("dialog").getByRole("button", { name: "Add subject" }).click();

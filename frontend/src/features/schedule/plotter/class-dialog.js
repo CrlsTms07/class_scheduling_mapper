@@ -16,7 +16,8 @@ import { searchableSelect } from "@/components/searchable-select.js";
 import { timePicker } from "@/components/time-picker.js";
 import { toast } from "@/components/toast.js";
 import { icon } from "@/components/icons.js";
-import { errorMessage } from "@/api/client.js";
+import { api, errorMessage } from "@/api/client.js";
+import { termState } from "@/state/term.js";
 import {
   assignSlot,
   changeTeacher,
@@ -446,10 +447,6 @@ export function openClassDialog({ plotter, termId, target }) {
       replace(fieldsArea, h("p", { class: "rounded-lg bg-surface-muted p-3 text-sm" }, "Activities go on a period of the bell schedule. Tap a period to add one."));
       return;
     }
-    if (plotter.activities.length === 0) {
-      replace(fieldsArea, h("p", { class: "rounded-lg bg-surface-muted p-3 text-sm" }, "There are no activities for this school year yet. Add them on the Subjects page, under Activities."));
-      return;
-    }
     const pattern = plotter.patterns.find(({ slots }) => slots.some(({ id }) => id === tappedSlot.id));
     /** @type {{ activityId: number | null, scope: "section" | "grade" | "all", days: number[] }} */
     const activity = { activityId: current?.activity_id ?? null, scope: "section", days: [target.day] };
@@ -460,12 +457,28 @@ export function openClassDialog({ plotter, termId, target }) {
         fieldsArea,
         searchableSelect({
           label: "Activity",
-          placeholder: "Choose the activity",
+          placeholder: "Choose or type the activity",
           value: activity.activityId,
+          help: "Like Flag Ceremony or Catch-up Friday. Type a new one to add it.",
           options: plotter.activities.map((item) => ({ value: item.id, label: item.name })),
           onChange: (value) => {
             activity.activityId = Number(value);
             review.replaceChildren();
+          },
+          // Activities are added right here, while plotting (team decision, Nov 21, 2026).
+          create: {
+            label: (typed) => `Add "${typed}"`,
+            run: async (typed) => {
+              try {
+                const { data } = /** @type {{ data: { id: number } }} */ (await api(`/school-years/${termState.term?.school_year.id}/activities`, { method: "POST", body: { name: typed, code: null } }));
+                plotter.activities.push({ id: data.id, name: typed });
+                activity.activityId = data.id;
+                toast.success(`${typed} was added.`);
+                draw();
+              } catch (error) {
+                showError(errorMessage(error));
+              }
+            },
           },
         }),
         h(
