@@ -111,7 +111,7 @@ class ScheduleReportService
                 $department,
                 $advisory ? "Adviser of {$advisory->label()}" : null,
             ])),
-            'signatories' => $this->reports->signatories($term, 'teacher_program', null, ['teacher' => $teacher->printedName()]),
+            'signatories' => $this->reports->signatories($term, 'teacher_program', 'JHS', ['teacher' => $teacher->printedName()]),
             ...$this->grid($entries, fn (ScheduleEntry $entry) => $entry->activity_id !== null
                 ? [$entry->subjectName()]
                 : ($this->isOwn($entry)
@@ -173,7 +173,7 @@ class ScheduleReportService
                 $room->room_name,
                 $room->capacity ? "Capacity: {$room->capacity}" : null,
             ])),
-            'signatories' => $this->reports->signatories($term, 'room_schedule', null),
+            'signatories' => $this->reports->signatories($term, 'room_schedule', 'JHS'),
             ...$this->grid($entries, fn (ScheduleEntry $entry) => $this->isOwn($entry)
                 ? [$entry->section->label(), $entry->subjectName(), $entry->teacher?->printedName()]
                 : [$entry->section->labelFor()]),

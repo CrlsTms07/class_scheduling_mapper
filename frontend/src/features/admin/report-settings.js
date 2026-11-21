@@ -122,29 +122,38 @@ export async function render(container, { query, navigate }) {
       return;
     }
     const list = await getRecords(`/terms/${term.id}/signatories`);
-    const saved = (/** @type {string} */ label) => list.find((/** @type {any} */ item) => item.label === label);
-    const SLOTS = [
-      { key: "prepared_by", label: "Prepared by", example: "Head Teacher III" },
-      { key: "conforme", label: "Conforme", auto: true },
-      { key: "recommending_approval", label: "Recommending Approval", example: "School Principal II" },
-      { key: "approved_by", label: "Approved by", example: "PSDS Cluster IV" },
-    ];
-    const typed = SLOTS.filter((slot) => !slot.auto);
-    const edit = () =>
+    // Each department's official form has its own block (team decision, Nov 21, 2026).
+    const BLOCKS = {
+      JHS: { title: "Junior High Class Program", note: "A 2×2 block.", slots: [
+        { key: "prepared_by", label: "Prepared by", example: "Head Teacher III" },
+        { key: "conforme", label: "Conforme", auto: true },
+        { key: "recommending_approval", label: "Recommending Approval", example: "School Principal II" },
+        { key: "approved_by", label: "Approved by", example: "PSDS Cluster IV" },
+      ] },
+      SHS: { title: "Senior High Class Program", note: "A row of three.", slots: [
+        { key: "prepared_by", label: "Prepared by", example: "Master Teacher I" },
+        { key: "noted_by", label: "Noted by", example: "Assistant School Principal II - SHS" },
+        { key: "approved_by", label: "Approved by", example: "School Principal" },
+      ] },
+    };
+    const saved = (/** @type {"JHS" | "SHS"} */ level, /** @type {string} */ label) => list.find((/** @type {any} */ item) => item.level === level && item.label === label);
+    const edit = (/** @type {"JHS" | "SHS"} */ level) => {
+      const typed = BLOCKS[level].slots.filter((slot) => !slot.auto);
       openFormDialog({
-        title: "Signatories",
-        description: `For ${term.name}. Conforme is the section's class adviser, filled in by the system.`,
+        title: `Signatories · ${BLOCKS[level].title}`,
+        description: level === "JHS" ? `For ${term.name}. Conforme is the section's class adviser, filled in by the system.` : `For ${term.name}.`,
         fields: typed.flatMap((slot) => [
-          { name: `${slot.key}__name`, label: `${slot.label}: name`, required: true, value: saved(slot.label)?.name ?? "" },
-          { name: `${slot.key}__position`, label: `${slot.label}: position`, required: true, value: saved(slot.label)?.position ?? "", help: `Like ${slot.example}` },
+          { name: `${slot.key}__name`, label: `${slot.label}: name`, required: true, value: saved(level, slot.label)?.name ?? "" },
+          { name: `${slot.key}__position`, label: `${slot.label}: position`, required: true, value: saved(level, slot.label)?.position ?? "", help: `Like ${slot.example}` },
         ]),
         submitLabel: "Save signatories",
         onSubmit: async (values) => {
-          const body = Object.fromEntries(typed.map((slot) => [slot.key, { name: values[`${slot.key}__name`].trim(), position: values[`${slot.key}__position`].trim() }]));
+          const body = { level, ...Object.fromEntries(typed.map((slot) => [slot.key, { name: values[`${slot.key}__name`].trim(), position: values[`${slot.key}__position`].trim() }])) };
           await changeRecord(`/terms/${term.id}/signatories/slots`, "PUT", body);
-          return `The signatories of ${term.name} were saved.`;
+          return `The ${level === "JHS" ? "Junior High" : "Senior High"} signatories of ${term.name} were saved.`;
         },
       });
+    };
     const copyButton = /** @type {HTMLButtonElement} */ (h("button", { type: "button", class: "btn btn-outline", onclick: async () => {
       if (!(await confirmAction({ title: "Use these for every term?", message: `The signatories of ${term.name} replace those of the other terms of SY ${term.school_year.name}.`, confirmLabel: "Yes, copy them", danger: false }))) return;
       setBusy(copyButton, true, "Copying...");
@@ -157,25 +166,35 @@ export async function render(container, { query, navigate }) {
         setBusy(copyButton, false);
       }
     } }, icon("copy"), "Use for every term"));
-    const isSet = typed.every((slot) => saved(slot.label)?.name);
+    const block = (/** @type {"JHS" | "SHS"} */ level) => {
+      const { title, note, slots } = BLOCKS[level];
+      const isSet = slots.filter((slot) => !slot.auto).every((slot) => saved(level, slot.label)?.name);
+      return h("section", { class: "space-y-3", "aria-label": title },
+        h("div", { class: "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" },
+          h("div", null, h("h2", { class: "font-semibold text-accent" }, title), h("p", { class: "text-small text-muted-foreground" }, `${note} As it prints on the form.`)),
+          h("button", { type: "button", class: "btn btn-primary", onclick: () => edit(level) }, icon("pencil"), isSet ? "Edit" : "Set the signatories"),
+        ),
+        h("div", { class: `grid gap-3 ${level === "JHS" ? "sm:grid-cols-2" : "sm:grid-cols-3"}` }, slots.map((slot) => {
+          const item = saved(level, slot.label);
+          return h("div", { class: "card space-y-1 p-4", role: "group", "aria-label": `${title}: ${slot.label}` },
+            h("p", { class: "text-small text-muted-foreground" }, slot.label),
+            slot.auto
+              ? [h("p", { class: "font-semibold" }, "The section's class adviser"), h("p", { class: "text-sm text-muted-foreground" }, "Class Adviser · filled in by the system")]
+              : item?.name
+                ? [h("p", { class: "font-semibold uppercase" }, item.name), h("p", { class: "text-sm text-muted-foreground" }, item.position ?? "")]
+                : h("p", { class: "text-sm text-danger" }, "Not set yet"),
+          );
+        })),
+      );
+    };
     replace(
       content,
       h("div", { class: "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" },
-        h("p", { class: "text-sm text-muted-foreground" }, `The signature block of ${term.name}, SY ${term.school_year.name}, as it prints on the forms.`),
-        h("div", { class: "flex flex-wrap gap-2" }, isSet ? copyButton : null, h("button", { type: "button", class: "btn btn-primary", onclick: edit }, icon("pencil"), isSet ? "Edit signatories" : "Set the signatories")),
+        h("p", { class: "text-sm text-muted-foreground" }, `Signatories of ${term.name}, SY ${term.school_year.name}. Each department's Class Program has its own.`),
+        list.length ? copyButton : null,
       ),
-      // The same 2×2 block as on the printed form.
-      h("div", { class: "grid gap-3 sm:grid-cols-2" }, SLOTS.map((slot) => {
-        const item = saved(slot.label);
-        return h("section", { class: "card space-y-1 p-4", "aria-label": slot.label },
-          h("p", { class: "text-small text-muted-foreground" }, slot.label),
-          slot.auto
-            ? [h("p", { class: "font-semibold" }, "The section's class adviser"), h("p", { class: "text-sm text-muted-foreground" }, "Class Adviser · filled in by the system")]
-            : item?.name
-              ? [h("p", { class: "font-semibold uppercase" }, item.name), h("p", { class: "text-sm text-muted-foreground" }, item.position ?? "")]
-              : h("p", { class: "text-sm text-danger" }, "Not set yet"),
-        );
-      })),
+      block("JHS"),
+      block("SHS"),
     );
   };
 

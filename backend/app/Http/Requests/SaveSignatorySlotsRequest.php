@@ -5,13 +5,19 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * The four signatories of the printed forms, always the same 2×2 block (team decision, Nov 21,
- * 2026): Prepared by, Conforme (filled in from the section's adviser), Recommending Approval and
- * Approved by. The Admin types the name and position of the three that are not automatic.
+ * The fixed signatories of each department's Class Program (team decisions, Nov 21, 2026):
+ * - Junior High, a 2×2 block: Prepared by, Conforme (the section's adviser, filled in by the
+ *   system), Recommending Approval, Approved by.
+ * - Senior High, a row of three: Prepared by, Noted by, Approved by.
+ * The Admin types the name and position of each one that is not automatic.
  */
 class SaveSignatorySlotsRequest extends FormRequest
 {
-    public const SLOTS = ['prepared_by', 'recommending_approval', 'approved_by'];
+    /** The typed slots of each department, in printing order, with their printed label. */
+    public const SLOTS = [
+        'JHS' => ['prepared_by' => 'Prepared by', 'recommending_approval' => 'Recommending Approval', 'approved_by' => 'Approved by'],
+        'SHS' => ['prepared_by' => 'Prepared by', 'noted_by' => 'Noted by', 'approved_by' => 'Approved by'],
+    ];
 
     public function authorize(): bool
     {
@@ -23,8 +29,8 @@ class SaveSignatorySlotsRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rules = [];
-        foreach (self::SLOTS as $slot) {
+        $rules = ['level' => ['required', \Illuminate\Validation\Rule::in(['JHS', 'SHS'])]];
+        foreach (array_keys(self::SLOTS[$this->input('level')] ?? self::SLOTS['JHS']) as $slot) {
             $rules["{$slot}.name"] = ['required', 'string', 'max:120'];
             $rules["{$slot}.position"] = ['required', 'string', 'max:120'];
         }

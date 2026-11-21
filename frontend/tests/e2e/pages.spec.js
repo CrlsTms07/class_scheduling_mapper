@@ -176,7 +176,7 @@ test("the school years, report settings, guide, rooms and buildings open", async
   await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("The school's contact details were saved.")).toBeVisible();
   await page.getByRole("tab", { name: "Signatories" }).click();
-  await expect(page.getByRole("region", { name: "Conforme" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Junior High Class Program: Conforme" })).toBeVisible();
 
   await page.goto("/schedule");
   await page.getByRole("tab", { name: "Sample Building" }).click();

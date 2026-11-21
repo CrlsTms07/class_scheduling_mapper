@@ -248,32 +248,47 @@ it('prints what the Admin saved on the Class Program', function () {
         ->and($data['signatories'][0]['name'])->toBe('Typed Head');
 });
 
-describe('the four fixed signatories (Nov 21, 2026)', function () {
-    $slots = fn (array $overrides = []) => [
-        'prepared_by' => ['name' => 'Ana Reyes', 'position' => 'Head Teacher III'],
-        'recommending_approval' => ['name' => 'Ben Cruz', 'position' => 'School Principal II'],
-        'approved_by' => ['name' => 'Carla Diaz', 'position' => 'PSDS Cluster IV'],
-        ...$overrides,
-    ];
-
-    it('saves the 2x2 block in printing order, with Conforme from the adviser', function () use ($slots) {
+describe('the fixed signatories of each department (Nov 21, 2026)', function () {
+    it('saves the Junior High 2x2 block in printing order, with Conforme from the adviser', function () {
         DB::table('report_signatories')->insert(['term_id' => $this->termIds[1], 'label' => 'Old', 'name' => 'Someone']);
 
-        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", $slots())->assertOk();
+        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", [
+            'level' => 'JHS',
+            'prepared_by' => ['name' => 'Ana Reyes', 'position' => 'Head Teacher III'],
+            'recommending_approval' => ['name' => 'Ben Cruz', 'position' => 'School Principal II'],
+            'approved_by' => ['name' => 'Carla Diaz', 'position' => 'PSDS Cluster IV'],
+        ])->assertOk();
 
         $rows = DB::table('report_signatories')->where('term_id', $this->termIds[1])->orderBy('sort_order')->get();
         expect($rows->pluck('label')->all())->toBe(['Prepared by', 'Conforme', 'Recommending Approval', 'Approved by'])
-            ->and($rows[1]->auto_source)->toBe('section_adviser')
-            ->and($rows[1]->name)->toBeNull()
-            ->and($rows[3]->position)->toBe('PSDS Cluster IV');
+            ->and($rows[1]->auto_source)->toBe('section_adviser');
 
         $printed = app(ReportService::class)->signatories(SchoolTerm::find($this->termIds[1]), 'class_program', 'JHS', ['section_adviser' => 'The Adviser']);
         expect(collect($printed)->pluck('name')->all())->toBe(['Ana Reyes', 'The Adviser', 'Ben Cruz', 'Carla Diaz']);
     });
 
-    it('needs every name and position', function () use ($slots) {
-        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", $slots(['approved_by' => ['name' => '', 'position' => '']]))
+    it('keeps a separate Senior High row of three: Prepared by, Noted by, Approved by', function () {
+        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", [
+            'level' => 'JHS',
+            'prepared_by' => ['name' => 'Ana Reyes', 'position' => 'Head Teacher III'],
+            'recommending_approval' => ['name' => 'Ben Cruz', 'position' => 'School Principal II'],
+            'approved_by' => ['name' => 'Carla Diaz', 'position' => 'PSDS Cluster IV'],
+        ])->assertOk();
+        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", [
+            'level' => 'SHS',
+            'prepared_by' => ['name' => 'Rhessie Ambion', 'position' => 'Master Teacher I'],
+            'noted_by' => ['name' => 'Irene M.', 'position' => 'Assistant School Principal II - SHS'],
+            'approved_by' => ['name' => 'Ivy Joy D.', 'position' => 'School Principal'],
+        ])->assertOk();
+
+        $term = SchoolTerm::find($this->termIds[1]);
+        expect(collect(app(ReportService::class)->signatories($term, 'class_program', 'SHS'))->pluck('label')->all())->toBe(['Prepared by', 'Noted by', 'Approved by'])
+            ->and(collect(app(ReportService::class)->signatories($term, 'class_program', 'JHS'))->pluck('label')->all())->toHaveCount(4);
+    });
+
+    it('needs every name and position', function () {
+        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", ['level' => 'SHS', 'prepared_by' => ['name' => 'A', 'position' => 'B'], 'noted_by' => ['name' => '', 'position' => ''], 'approved_by' => ['name' => 'C', 'position' => 'D']])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['approved_by.name' => 'Type the name to print.', 'approved_by.position']);
+            ->assertJsonValidationErrors(['noted_by.name' => 'Type the name to print.', 'noted_by.position']);
     });
 });

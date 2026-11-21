@@ -1,3 +1,20 @@
+    {{-- Senior High: one row of three, as on its form (Prepared by, Noted by, Approved by): the label,
+         the name in capitals, and the position under it. --}}
+    @if (count($signatories) === 3)
+        <table class="signatures">
+            <tr>
+                @foreach ($signatories as $signatory)
+                    <td style="width: 33%; text-align: center; vertical-align: top;">
+                        <div>{{ $signatory['label'] }}:</div>
+                        <div style="margin-top: 14px; font-weight: bold;">{{ mb_strtoupper((string) $signatory['name']) }}</div>
+                        @if ($signatory['position'])
+                            <div>{{ $signatory['position'] }}</div>
+                        @endif
+                    </td>
+                @endforeach
+            </tr>
+        </table>
+    @else
     {{-- 2 × 2, filled down then across as on the school's form: Prepared by and Conforme on the
          left, Recommending Approval and Approved by on the right (in their sort order). --}}
     @php
@@ -20,3 +37,4 @@
             </tr>
         @endfor
     </table>
+    @endif
