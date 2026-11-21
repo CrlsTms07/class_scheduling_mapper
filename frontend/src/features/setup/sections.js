@@ -44,6 +44,14 @@ export async function render(container, { query }) {
         hint: teacher.advises && teacher.advises_section_id !== section?.id ? `Already adviser of ${teacher.advises}` : undefined,
       })),
     ];
+    // A Chairperson (Junior High) never sees Senior High fields, and the Master Teacher (Senior High)
+    // never sees Junior High ones; the Admin sees both (team decision, Nov 21, 2026).
+    const levels = new Set(options.grade_levels.map((/** @type {any} */ grade) => grade.level));
+    const hasShs = levels.has("SHS");
+    const hasJhs = levels.has("JHS");
+    const levelOf = (/** @type {any} */ gradeId) => options.grade_levels.find((/** @type {any} */ grade) => String(grade.id) === String(gradeId))?.level;
+    const roomLabel = hasJhs && hasShs ? "Home room (Junior High) or usual room (Senior High)" : hasShs ? "Usual room" : "Home room";
+    const roomHelp = hasJhs && hasShs ? "Its classes take this room unless another is chosen." : hasShs ? "Senior High classes may use other rooms; this is the one they take unless another is chosen." : "The section's fixed room: its classes are held here.";
     openFormDialog({
       title: section ? `Edit ${section.label}` : "Add a section",
       description: section?.locked_reason ? `${section.locked_reason} The grade and shift can no longer change.` : `For SY ${year.name}. Sections are encoded again each school year.`,
@@ -51,16 +59,16 @@ export async function render(container, { query }) {
         { name: "name", label: "Section name", required: true, value: section?.name, help: "Like Honesty or STEM 11-1", check: (value, values) => (knownSections.some((/** @type {any} */ other) => other.id !== section?.id && String(other.grade_level_id) === String(values.grade_level_id) && other.name.trim().toLowerCase() === String(value).trim().toLowerCase()) ? "This grade level already has a section with this name." : null) },
         { name: "grade_level_id", label: "Grade level", type: "select", required: true, value: section?.grade_level_id ?? "", disabled: !!section?.locked_reason, options: options.grade_levels.map((/** @type {any} */ grade) => ({ value: grade.id, label: `Grade ${grade.grade}` })) },
         { name: "shift", label: "Shift", type: "select", required: true, value: section?.shift ?? "WHOLE_DAY", disabled: !!section?.locked_reason, options: Object.entries(SHIFTS).map(([value, label]) => ({ value, label })) },
-        { name: "track_id", label: "Track (Senior High)", type: "select", value: section?.track_id ?? "", options: [{ value: "", label: "No track" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] },
+        ...(hasShs ? [{ name: "track_id", label: "Track", type: /** @type {const} */ ("select"), help: "For Senior High only, like Academic or TechPro.", check: (/** @type {any} */ value, /** @type {any} */ values) => (value && levelOf(values.grade_level_id) === "JHS" ? "Only Senior High sections have a track. Choose No track." : null), value: section?.track_id ?? "", options: [{ value: "", label: "No track" }, ...options.tracks.map((/** @type {any} */ track) => ({ value: track.id, label: track.name }))] }] : []),
         { name: "adviser_id", label: "Adviser", type: "select", value: section?.adviser_id ?? "", options: teacherOptions("adviser"), help: "A teacher advises one section a year.", check: (value, values) => (value && value === values.co_adviser_id ? "The adviser and co-adviser must be different people." : null) },
         { name: "co_adviser_id", label: "Co-adviser", type: "select", value: section?.co_adviser_id ?? "", options: teacherOptions("co") },
-        { name: "home_room_id", label: "Home room (usual room for Senior High)", type: "select", value: section?.home_room_id ?? "", options: [{ value: "", label: "No room yet" }, ...options.rooms.map((/** @type {any} */ room) => ({ value: room.id, label: room.label }))], help: "Its classes take this room unless another is chosen." },
+        { name: "home_room_id", label: roomLabel, type: "select", value: section?.home_room_id ?? "", options: [{ value: "", label: "No room yet" }, ...options.rooms.map((/** @type {any} */ room) => ({ value: room.id, label: room.label }))], help: roomHelp },
         { name: "class_size", label: "Class size", type: "number", min: 1, max: 100, value: section?.class_size },
       ],
       submitLabel: section ? "Save changes" : "Add section",
       onSubmit: async (values) => {
         const id = (/** @type {any} */ value) => (value === "" || value === null ? null : Number(value));
-        const body = { name: values.name, grade_level_id: Number(values.grade_level_id), shift: values.shift, track_id: id(values.track_id), adviser_id: id(values.adviser_id), co_adviser_id: id(values.co_adviser_id), home_room_id: id(values.home_room_id), class_size: values.class_size ?? null };
+        const body = { name: values.name, grade_level_id: Number(values.grade_level_id), shift: values.shift, track_id: hasShs ? id(values.track_id) : null, adviser_id: id(values.adviser_id), co_adviser_id: id(values.co_adviser_id), home_room_id: id(values.home_room_id), class_size: values.class_size ?? null };
         await changeRecord(section ? `/sections/${section.id}` : `/school-years/${year.id}/sections`, section ? "PUT" : "POST", body);
         return `${values.name} was ${section ? "saved" : "added"}.`;
       },
@@ -109,7 +117,7 @@ export async function render(container, { query }) {
                 items: shown,
                 columns: [
                   { label: "Section", primary: true, cell: (/** @type {any} */ section) => section.label },
-                  { label: "Track", cell: (/** @type {any} */ section) => section.track ?? "–" },
+                  ...(options.grade_levels.some((/** @type {any} */ grade) => grade.level === "SHS") ? [{ label: "Track (SHS)", cell: (/** @type {any} */ section) => section.track ?? "–" }] : []),
                   { label: "Shift", cell: (/** @type {any} */ section) => SHIFTS[/** @type {keyof typeof SHIFTS} */ (section.shift)] },
                   { label: "Adviser", cell: (/** @type {any} */ section) => section.adviser ?? h("span", { class: "text-warning" }, "None yet") },
                   { label: "Co-adviser", cell: (/** @type {any} */ section) => section.co_adviser ?? "–" },

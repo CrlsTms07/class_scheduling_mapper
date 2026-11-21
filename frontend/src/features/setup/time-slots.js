@@ -74,6 +74,25 @@ export function slotOverlap(slots, start, end, exceptId = null) {
   return `This overlaps ${name} (${timeRange(other.start_time, other.end_time)}). Choose a time before or after it.`;
 }
 
+/**
+ * Time between two rows that is neither a period nor a break (like 7:15 – 7:45), so it is seen at
+ * once instead of being missed. Rows are in time order.
+ * @param {{ start_time: string, end_time: string, is_break: boolean, label?: string | null, period_no?: number | null }[]} slots
+ * @returns {{ after: number, start: string, end: string, minutes: number }[]}  after: the index of the row before the gap
+ */
+export function gapsBetween(slots) {
+  const sorted = [...slots].sort((a, b) => a.start_time.localeCompare(b.start_time));
+  /** @type {{ after: number, start: string, end: string, minutes: number }[]} */
+  const gaps = [];
+  sorted.forEach((slot, index) => {
+    const next = sorted[index + 1];
+    if (next && slot.end_time.slice(0, 5) < next.start_time.slice(0, 5)) {
+      gaps.push({ after: index, start: slot.end_time.slice(0, 5), end: next.start_time.slice(0, 5), minutes: minutesBetween(slot.end_time.slice(0, 5), next.start_time.slice(0, 5)) });
+    }
+  });
+  return gaps;
+}
+
 /** @type {import("@/router.js").RenderPage} */
 export async function render(container) {
   const year = termState.term?.school_year;
@@ -166,9 +185,31 @@ export async function render(container) {
       { class: "space-y-5 p-4 sm:p-6" },
       pageHeader({ icon: "clock", title: "Class Hours", description: `Optional: the periods and breaks of SY ${year.name}. They are also made by themselves when you type a class time while plotting.`, crumbs: [{ label: "Home", to: "/dashboard" }, { label: "Time Slots" }], actions: h("button", { type: "button", class: "btn btn-primary", onclick: () => patternForm({ mode: "create" }) }, icon("plus"), "Add bell schedule") }),
       subjectTabs("hours"),
+      h(
+        "details",
+        { class: "card p-4 text-sm", open: true },
+        h("summary", { class: "min-h-11 cursor-pointer font-semibold text-accent" }, "How this page works"),
+        h(
+          "ul",
+          { class: "mt-2 list-disc space-y-1 pl-5" },
+          h("li", null, "Choose the shift first (Whole day, Morning or Afternoon): each shift has its own class hours."),
+          h("li", null, "A bell schedule is the days that share the same times, like Monday – Thursday and Friday."),
+          h("li", null, "Each row is a period (a class time) or a break (recess or lunch, shaded). Time with neither is shown in amber, so nothing is missed."),
+          h("li", null, h("strong", null, "Conflicts here: "), "two rows of the same bell schedule cannot overlap. The form says so while you choose the time, and the database refuses it too."),
+          h("li", null, h("strong", null, "Conflicts of classes "), "(the same teacher, room or section at the same time) are checked when classes are placed on the schedule, not here."),
+          h("li", null, "This page is optional: a class time typed while plotting is added here by itself."),
+        ),
+      ),
       content,
     ),
   );
+
+  /** "Classes 315 mins · Breaks 80 mins · 6:30 AM to 1:35 PM" under a bell schedule. */
+  const dayTotals = (/** @type {any[]} */ slots) => {
+    const sorted = [...slots].sort((a, b) => a.start_time.localeCompare(b.start_time));
+    const sum = (/** @type {boolean} */ isBreak) => sorted.filter((slot) => slot.is_break === isBreak).reduce((total, slot) => total + slot.minutes, 0);
+    return h("p", { class: "text-small text-muted-foreground" }, `Classes ${sum(false)} mins · Breaks ${sum(true)} mins · ${timeRange(sorted[0].start_time, sorted[sorted.length - 1].end_time)}`);
+  };
 
   const draw = async () => {
     try {
@@ -199,12 +240,14 @@ export async function render(container) {
                 ),
                 pattern.slots.length === 0
                   ? h("p", { class: "text-sm text-muted-foreground" }, "No periods yet.")
-                  : h("ol", { class: "divide-y rounded-lg border" }, pattern.slots.map((/** @type {any} */ slot) =>
+                  : h("ol", { class: "divide-y rounded-lg border" }, pattern.slots.flatMap((/** @type {any} */ slot, /** @type {number} */ index) => [
                       h("li", { class: `flex items-center justify-between gap-2 p-2 text-sm ${slot.is_break ? "bg-surface-muted" : ""}` },
                         h("div", { class: "min-w-0" }, h("p", { class: `font-medium ${slot.is_break ? "uppercase text-muted-foreground" : ""}` }, slot.is_break ? slot.label || "Break" : `Period ${slot.period_no ?? ""}`), h("p", { class: "text-small text-muted-foreground" }, `${timeRange(slot.start_time, slot.end_time)} · ${slot.minutes} mins${slot.in_use?.classes ? ` · ${slot.in_use.classes} classes` : ""}`)),
                         h("button", { type: "button", class: "btn btn-outline shrink-0", "aria-label": `Edit ${slot.is_break ? slot.label || "break" : `period ${slot.period_no ?? ""}`}, ${timeRange(slot.start_time, slot.end_time)}`, onclick: () => slotForm(pattern, slot) }, icon("pencil"), "Edit"),
                       ),
-                    )),
+                      ...gapsBetween(pattern.slots).filter((gap) => gap.after === index).map((gap) => h("li", { class: "flex items-center gap-2 bg-amber-50 p-2 text-small text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, icon("warning", "size-4 shrink-0"), `No class or break: ${timeRange(gap.start, gap.end)} (${gap.minutes} mins). Add a row here, or change the next row's start.`)),
+                    ])),
+                pattern.slots.length ? dayTotals(pattern.slots) : null,
               ),
             )),
       );
