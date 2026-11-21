@@ -43,7 +43,6 @@ Route::get('/me', [AuthController::class, 'me']);
 Route::get('/public/school', [PublicSchoolController::class, 'show']);
 // Which sign-in buttons to show: "Continue with Google" only once the school has set it up.
 Route::get('/auth/providers', fn () => response()->json(['data' => ['google' => \App\Http\Controllers\GoogleAuthController::isConfigured()]]));
-Route::get('/public/school/photo', [PublicSchoolController::class, 'photo']);
 
 Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login'])->name('login');
 // The second step of signing in: the code sent to the DepEd email.
@@ -108,15 +107,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     Route::get('/report-settings', [ReportSettingsController::class, 'index']);
     Route::put('/school-profile', [ReportSettingsController::class, 'saveProfile']);
-    Route::post('/school-profile/logos', [ReportSettingsController::class, 'addLogo']);
-    Route::post('/school-profile/photo', [ReportSettingsController::class, 'savePhoto']);
-    Route::delete('/school-profile/photo', [ReportSettingsController::class, 'removePhoto']);
-    Route::delete('/school-profile/logos/{index}', [ReportSettingsController::class, 'removeLogo'])->whereNumber('index');
-    Route::put('/school-profile/logos/{index}/placement', [ReportSettingsController::class, 'placeLogo'])->whereNumber('index');
     Route::put('/report-settings/documents', [ReportSettingsController::class, 'saveDocument']);
     Route::get('/terms/{term}/signatories', [ReportSettingsController::class, 'signatories']);
     Route::post('/terms/{term}/signatories', [ReportSettingsController::class, 'addSignatory']);
     Route::post('/terms/{term}/signatories/copy', [ReportSettingsController::class, 'copySignatories']);
+    Route::put('/terms/{term}/signatories/slots', [ReportSettingsController::class, 'saveSignatorySlots']);
     Route::put('/signatories/{signatory}', [ReportSettingsController::class, 'updateSignatory'])->whereNumber('signatory');
     Route::delete('/signatories/{signatory}', [ReportSettingsController::class, 'deleteSignatory'])->whereNumber('signatory');
     Route::post('/signatories/{signatory}/move', [ReportSettingsController::class, 'moveSignatory'])->whereNumber('signatory');

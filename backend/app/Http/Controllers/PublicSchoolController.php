@@ -27,19 +27,9 @@ class PublicSchoolController extends Controller
         return response()->json(['data' => [
             ...$school,
             'short_name' => $defaults['short_name'],
-            'has_photo' => filled($profile['photo_base64'] ?? null),
+            // The home page shows the school's logo (no uploaded photo since Nov 21, 2026).
+            'has_photo' => false,
         ]]);
     }
 
-    /** The campus photo the Admin uploaded, cached by the browser for a day. */
-    public function photo(): Response
-    {
-        $profile = DB::table('school_profile')->first(['photo_mime', 'photo_base64']);
-        abort_unless($profile && $profile->photo_base64, 404);
-
-        return response(base64_decode($profile->photo_base64), 200, [
-            'Content-Type' => $profile->photo_mime,
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
-    }
 }

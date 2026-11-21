@@ -7,6 +7,8 @@
 return [
     'school_name' => 'Emmanuel Resurreccion Congressional Integrated High School',
     'short_name' => 'ERCIHS',
+    // The DepEd school ID never changes, so it is not typed (beneficiary review, Nov 21, 2026).
+    'school_id' => '301179',
     'address' => 'Poinsettia St., Via Verde Village, Brgy. San Agustin II, City of Dasmariñas, Cavite 4114',
     'phone' => '(046) 894-1463 / (046) 472-9768',
     'email' => '301179@deped.gov.ph',

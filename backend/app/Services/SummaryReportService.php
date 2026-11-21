@@ -285,7 +285,7 @@ class SummaryReportService
     public function adviserSummarySheet(array $data): ReportSheet
     {
         $rows = [
-            [DB::table('school_profile')->value('school_name')],
+            [\App\Support\SchoolProfile::current()->school_name],
             ['ADVISER SUMMARY'],
             [$data['term_label']],
         ];

@@ -16,20 +16,24 @@ class SaveSchoolProfileRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Only what changes; the school's name, ID, region, division and address are fixed in
+        // config/school.php (team decision, Nov 21, 2026).
         return [
-            'school_name' => ['required', 'string', 'max:150'],
-            'school_id' => ['nullable', 'string', 'max:20'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:150'],
-            'website' => ['nullable', 'string', 'max:150'],
-            'region' => ['nullable', 'string', 'max:120'],
-            'division' => ['nullable', 'string', 'max:150'],
-            'facebook_url' => ['nullable', 'url', 'max:255'],
-            'tagline' => ['nullable', 'string', 'max:200'],
-            'vision' => ['nullable', 'string', 'max:2000'],
-            'mission' => ['nullable', 'string', 'max:2000'],
-            'core_values' => ['nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:50', 'regex:/^[0-9()+\-\/ ]{7,}$/'],
+            'email' => ['required', 'email', 'max:150'],
+            'facebook_url' => ['required', 'url', 'max:255', 'regex:/^https?:\/\/(www\.|m\.)?facebook\.com\//i'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'phone.regex' => 'Write the phone number with digits, like (046) 894-1463.',
+            'facebook_url.regex' => 'Use the link of the school\'s Facebook page, like https://www.facebook.com/DepEdTayoERCIHS301179.',
+            'facebook_url.url' => 'Use the full link, starting with https://.',
         ];
     }
 }

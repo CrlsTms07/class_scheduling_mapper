@@ -76,7 +76,7 @@ class ReportService
         $settings = $this->documentSettings('class_program', $section->gradeLevel->level);
 
         return [
-            'school' => DB::table('school_profile')->first(),
+            'school' => \App\Support\SchoolProfile::current(),
             'logos' => $this->settings->logoDataUris(),
             'headerLogos' => $this->settings->logoDataUris('header'),
             'footerLogos' => $this->settings->logoDataUris('footer'),

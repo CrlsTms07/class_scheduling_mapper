@@ -236,7 +236,7 @@ class ScheduleReportService
             'term' => $term,
             'term_label' => "{$term->name}, School Year {$term->schoolYear->name}",
             'buildings' => $buildings,
-            'school' => DB::table('school_profile')->first(),
+            'school' => \App\Support\SchoolProfile::current(),
             'logos' => $this->settings->logoDataUris(),
         ];
     }
@@ -374,7 +374,7 @@ class ScheduleReportService
         $settings = $this->reports->documentSettings($reportType, null);
 
         return [
-            'school' => DB::table('school_profile')->first(),
+            'school' => \App\Support\SchoolProfile::current(),
             'logos' => $this->settings->logoDataUris(),
             'title' => $settings?->title_format ?? $defaultTitle,
             'settings' => $settings,

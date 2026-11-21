@@ -25,8 +25,10 @@ class ReportSettingsService
     {
         DB::transaction(function () use ($data, $admin) {
             $before = DB::table('school_profile')->first();
+            // The fixed details come from config/school.php the first time the row is made.
+            $fixed = $before ? [] : collect(\App\Support\SchoolProfile::FIXED)->mapWithKeys(fn ($field) => [$field => config("school.{$field}")])->all();
 
-            DB::table('school_profile')->updateOrInsert(['id' => 1], $data);
+            DB::table('school_profile')->updateOrInsert(['id' => 1], [...$fixed, ...$data]);
 
             $this->audit->log($admin, 'update', 'school_profile', 1, (array) $before, $data);
         });
@@ -40,12 +42,15 @@ class ReportSettingsService
      */
     public function logoDataUris(string $placement = 'header'): array
     {
-        return DB::table('school_logos')
+        $saved = DB::table('school_logos')
             ->where('placement', $placement)
             ->orderBy('id')
             ->get()
             ->map(fn ($logo) => "data:{$logo->mime_type};base64,{$logo->image_base64}")
             ->all();
+
+        // The school's logo is built into the system, so no one has to upload it (Nov 21, 2026).
+        return $saved === [] && $placement === 'header' ? [\App\Support\SchoolProfile::logoDataUri()] : $saved;
     }
 
     /** The campus photo on the landing page. Kept in the database, like the logos. */
@@ -151,6 +156,44 @@ class ReportSettingsService
     /**
      * @param  array<string, mixed>  $data
      */
+    /**
+     * The four fixed signatories of a term, in printing order (team decision, Nov 21, 2026). They
+     * replace the term's signatories as a whole, so the 2×2 block is always the same:
+     * Prepared by, Conforme (the section's adviser, Class Program only), Recommending Approval,
+     * Approved by. The three typed ones print on every form.
+     *
+     * @param  array<string, array{name: string, position: string}>  $slots
+     */
+    public function saveSlots(SchoolTerm $term, array $slots, User $admin): void
+    {
+        $rows = [
+            ['label' => 'Prepared by', 'report_type' => null, 'auto_source' => null, ...$this->slot($slots, 'prepared_by')],
+            ['label' => 'Conforme', 'report_type' => 'class_program', 'auto_source' => 'section_adviser', 'name' => null, 'position' => 'Class Adviser'],
+            ['label' => 'Recommending Approval', 'report_type' => null, 'auto_source' => null, ...$this->slot($slots, 'recommending_approval')],
+            ['label' => 'Approved by', 'report_type' => null, 'auto_source' => null, ...$this->slot($slots, 'approved_by')],
+        ];
+
+        DB::transaction(function () use ($term, $rows, $admin) {
+            $before = DB::table('report_signatories')->where('term_id', $term->id)->orderBy('sort_order')->get(['label', 'name', 'position'])->toArray();
+            DB::table('report_signatories')->where('term_id', $term->id)->delete();
+
+            foreach ($rows as $index => $row) {
+                DB::table('report_signatories')->insert([...$row, 'level' => null, 'term_id' => $term->id, 'sort_order' => $index + 1]);
+            }
+
+            $this->audit->log($admin, 'update', 'report_signatories', $term->id, ['signatories' => $before], ['signatories' => $rows]);
+        });
+    }
+
+    /**
+     * @param  array<string, array{name: string, position: string}>  $slots
+     * @return array{name: string, position: string}
+     */
+    private function slot(array $slots, string $key): array
+    {
+        return ['name' => trim($slots[$key]['name']), 'position' => trim($slots[$key]['position'])];
+    }
+
     public function addSignatory(SchoolTerm $term, array $data, User $admin): int
     {
         return DB::transaction(function () use ($term, $data, $admin) {

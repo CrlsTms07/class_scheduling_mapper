@@ -102,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The reset email: the school's name and logo, one button, how long the link lasts.
         ResetPassword::toMailUsing(function (User $user, string $token) {
-            $school = DB::table('school_profile')->first();
+            $school = \App\Support\SchoolProfile::current();
             $schoolName = $school?->school_name ?? config('school.school_name');
 
             return (new MailMessage)

@@ -127,7 +127,8 @@ class AdminDashboardService
             'key' => 'school_profile',
             'title' => 'School profile',
             'done' => $profile !== null,
-            'detail' => $profile ? $profile->school_name : 'The printed forms need the school details.',
+            // The school's name, ID and address are built in; the Admin checks the contact details once.
+            'detail' => $profile ? $profile->school_name : 'Check the school phone, email and Facebook page.',
         ];
     }
 

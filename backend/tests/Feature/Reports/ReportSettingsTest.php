@@ -5,9 +5,7 @@ use App\Models\Section;
 use App\Models\User;
 use App\Services\ReportService;
 use Database\Seeders\ReferenceDataSeeder;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->withHeader('Referer', 'http://localhost:5173');
@@ -30,7 +28,7 @@ beforeEach(function () {
 
 function profileBody(array $overrides = []): array
 {
-    return ['school_name' => 'ERCIHS', 'school_id' => '123', 'address' => 'Somewhere', 'phone' => null, 'email' => 'school@deped.gov.ph', 'website' => null, ...$overrides];
+    return ['phone' => '(046) 894-1463', 'email' => 'school@deped.gov.ph', 'facebook_url' => 'https://www.facebook.com/DepEdTayoERCIHS301179', ...$overrides];
 }
 
 function documentBody(array $overrides = []): array
@@ -43,14 +41,6 @@ function signatoryBody(array $overrides = []): array
     return ['report_type' => 'class_program', 'level' => 'JHS', 'label' => 'Prepared by', 'name' => 'Name One', 'position' => 'Head Teacher III', 'auto_source' => null, ...$overrides];
 }
 
-/** A tiny real PNG, because the validator reads the file's real type. */
-function pngFile(string $name = 'logo.png'): UploadedFile
-{
-    return UploadedFile::fake()->createWithContent($name, base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-    ));
-}
-
 it('keeps report settings to the Admin', function (string $role) {
     $signatoryId = DB::table('report_signatories')->insertGetId([
         'term_id' => $this->termIds[1], 'label' => 'Prepared by', 'name' => 'Someone',
@@ -59,8 +49,6 @@ it('keeps report settings to the Admin', function (string $role) {
 
     $this->getJson('/api/report-settings')->assertForbidden();
     $this->putJson('/api/school-profile', profileBody())->assertForbidden();
-    $this->postJson('/api/school-profile/logos', ['logo' => pngFile()])->assertForbidden();
-    $this->deleteJson('/api/school-profile/logos/0')->assertForbidden();
     $this->putJson('/api/report-settings/documents', documentBody())->assertForbidden();
     $this->getJson("/api/terms/{$this->termIds[1]}/signatories")->assertForbidden();
     $this->postJson("/api/terms/{$this->termIds[1]}/signatories", signatoryBody())->assertForbidden();
@@ -71,120 +59,33 @@ it('keeps report settings to the Admin', function (string $role) {
 })->with(['glc', 'master_teacher', 'teacher']);
 
 describe('school profile', function () {
-    it('starts empty on a new server, then saves and updates', function () {
-        $this->getJson('/api/report-settings')->assertOk()->assertJsonPath('data.school', null);
+    it('has the school details built in, and saves only the phone, email and Facebook page', function () {
+        $this->getJson('/api/report-settings')->assertOk()
+            ->assertJsonPath('data.school.school_name', 'Emmanuel Resurreccion Congressional Integrated High School')
+            ->assertJsonPath('data.school.school_id', '301179');
 
         $this->putJson('/api/school-profile', profileBody())->assertOk();
-        $this->putJson('/api/school-profile', profileBody(['school_name' => 'New Name']))->assertOk();
+        $this->putJson('/api/school-profile', profileBody(['email' => 'new@deped.gov.ph', 'school_name' => 'Not saved']))->assertOk();
 
-        $this->getJson('/api/report-settings')->assertJsonPath('data.school.school_name', 'New Name');
-        $this->putJson('/api/school-profile', profileBody(['region' => 'Region IV-A CALABARZON', 'division' => 'Schools Division of Cavite Province']))->assertOk();
         $this->getJson('/api/report-settings')
-            ->assertJsonPath('data.school.region', 'Region IV-A CALABARZON')
-            ->assertJsonPath('data.school.division', 'Schools Division of Cavite Province');
+            ->assertJsonPath('data.school.email', 'new@deped.gov.ph')
+            ->assertJsonPath('data.school.school_name', 'Emmanuel Resurreccion Congressional Integrated High School')
+            ->assertJsonPath('data.school.region', 'Region IV-A CALABARZON');
         expect(DB::table('school_profile')->count())->toBe(1)
-            ->and(DB::table('audit_logs')->where('table_name', 'school_profile')->count())->toBe(3);
+            ->and(DB::table('school_profile')->value('school_id'))->toBe('301179')
+            ->and(DB::table('audit_logs')->where('table_name', 'school_profile')->count())->toBe(2);
     });
 
-    it('needs a school name and a valid email', function () {
-        $this->putJson('/api/school-profile', profileBody(['school_name' => '', 'email' => 'nope']))
+    it('needs all three, each in the right form', function () {
+        $this->putJson('/api/school-profile', ['phone' => '', 'email' => 'nope', 'facebook_url' => 'https://example.com/page'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['school_name', 'email']);
-    });
-});
-
-describe('logos', function () {
-    beforeEach(function () {
-        Storage::fake('local');
-        $this->putJson('/api/school-profile', profileBody());
+            ->assertJsonValidationErrors(['phone', 'email', 'facebook_url' => 'school\'s Facebook page']);
     });
 
-    it('needs the school name first', function () {
-        DB::table('school_profile')->delete();
-
-        $this->postJson('/api/school-profile/logos', ['logo' => pngFile()])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['logo' => 'school name']);
-    });
-
-    it('stores logos in order and gives them back as images', function () {
-        $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('deped.png')], ['Accept' => 'application/json'])->assertCreated();
-
-        $logos = $this->getJson('/api/report-settings')->assertOk()->json('data.logos');
-
-        expect($logos)->toHaveCount(2)
-            ->and($logos[0])->toStartWith('data:image/png;base64,');
-
-        expect(DB::table('school_logos')->count())->toBe(2);
-    });
-
-    it('keeps logos in the database, so they survive a restart of the server', function () {
-        Storage::fake('local');
-
-        $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
-
-        expect(Storage::disk('local')->allFiles())->toBe([])
-            ->and(DB::table('school_logos')->sole()->mime_type)->toBe('image/png');
-    });
-
-    it('refuses other file types, big files and too many logos', function () {
-        $this->post('/api/school-profile/logos', ['logo' => UploadedFile::fake()->createWithContent('evil.svg', '<svg></svg>')], ['Accept' => 'application/json'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['logo' => 'PNG or JPG']);
-
-        $this->post('/api/school-profile/logos', ['logo' => UploadedFile::fake()->image('big.png')->size(3000)], ['Accept' => 'application/json'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['logo' => '2 MB']);
-
-        foreach (range(1, 6) as $number) {
-            $this->post('/api/school-profile/logos', ['logo' => pngFile("{$number}.png")], ['Accept' => 'application/json'])->assertCreated();
-        }
-
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('5.png')], ['Accept' => 'application/json'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['logo' => 'up to 6']);
-    });
-
-    it('moves the next logo up when the first is removed', function () {
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('a.png')], ['Accept' => 'application/json']);
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('b.png')], ['Accept' => 'application/json']);
-        $second = DB::table('school_logos')->orderByDesc('id')->value('id');
-
-        $this->deleteJson('/api/school-profile/logos/0')->assertOk();
-
-        expect(DB::table('school_logos')->pluck('id')->all())->toBe([$second]);
-    });
-
-    it('removes the one asked for', function () {
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('a.png')], ['Accept' => 'application/json']);
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('b.png')], ['Accept' => 'application/json']);
-        $first = DB::table('school_logos')->orderBy('id')->value('id');
-
-        $this->deleteJson('/api/school-profile/logos/1')->assertOk();
-
-        expect(DB::table('school_logos')->pluck('id')->all())->toBe([$first]);
-    });
-
-    it('explains when the logo is already gone', function () {
-        $this->deleteJson('/api/school-profile/logos/3')
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('logo');
-    });
-
-    it('prints a logo at the top or in the footer of the form', function () {
-        $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
-        $this->post('/api/school-profile/logos', ['logo' => pngFile('deped.png')], ['Accept' => 'application/json'])->assertCreated();
-
-        $this->putJson('/api/school-profile/logos/1/placement', ['placement' => 'footer'])->assertOk();
-        $this->putJson('/api/school-profile/logos/0/placement', ['placement' => 'side'])->assertUnprocessable();
-        $this->putJson('/api/school-profile/logos/5/placement', ['placement' => 'footer'])->assertUnprocessable();
-
-        $this->getJson('/api/report-settings')
-            ->assertJsonPath('data.logo_items.0.placement', 'header')
-            ->assertJsonPath('data.logo_items.1.placement', 'footer');
-        expect(app(\App\Services\ReportSettingsService::class)->logoDataUris('footer'))->toHaveCount(1)
-            ->and(app(\App\Services\ReportSettingsService::class)->logoDataUris())->toHaveCount(1);
+    it('prints the built-in school logo, with no upload', function () {
+        expect(app(\App\Services\ReportSettingsService::class)->logoDataUris('header'))->toHaveCount(1)
+            ->and(app(\App\Services\ReportSettingsService::class)->logoDataUris('header')[0])->toStartWith('data:image/png;base64,');
+        $this->postJson('/api/school-profile/logos')->assertNotFound();
     });
 });
 
@@ -328,10 +229,7 @@ describe('signatories', function () {
 });
 
 it('prints what the Admin saved on the Class Program', function () {
-    Storage::fake('local');
-    $this->putJson('/api/school-profile', profileBody(['school_name' => 'My School']));
-    $this->post('/api/school-profile/logos', ['logo' => pngFile()], ['Accept' => 'application/json'])->assertCreated();
-    $this->post('/api/school-profile/logos', ['logo' => pngFile('b.png')], ['Accept' => 'application/json'])->assertCreated();
+    $this->putJson('/api/school-profile', profileBody(['phone' => '(046) 111-2222']));
     $this->putJson('/api/report-settings/documents', documentBody(['doc_ref_code' => 'REF-9']));
     $this->postJson("/api/terms/{$this->termIds[1]}/signatories", signatoryBody(['name' => 'Typed Head']));
 
@@ -343,8 +241,39 @@ it('prints what the Admin saved on the Class Program', function () {
 
     $data = app(ReportService::class)->classProgramData(SchoolTerm::find($this->termIds[1]), $section);
 
-    expect($data['school']->school_name)->toBe('My School')
-        ->and($data['logos'])->toHaveCount(2)
+    expect($data['school']->school_name)->toBe('Emmanuel Resurreccion Congressional Integrated High School')
+        ->and($data['school']->phone)->toBe('(046) 111-2222')
+        ->and($data['logos'])->toHaveCount(1)
         ->and($data['settings']->doc_ref_code)->toBe('REF-9')
         ->and($data['signatories'][0]['name'])->toBe('Typed Head');
+});
+
+describe('the four fixed signatories (Nov 21, 2026)', function () {
+    $slots = fn (array $overrides = []) => [
+        'prepared_by' => ['name' => 'Ana Reyes', 'position' => 'Head Teacher III'],
+        'recommending_approval' => ['name' => 'Ben Cruz', 'position' => 'School Principal II'],
+        'approved_by' => ['name' => 'Carla Diaz', 'position' => 'PSDS Cluster IV'],
+        ...$overrides,
+    ];
+
+    it('saves the 2x2 block in printing order, with Conforme from the adviser', function () use ($slots) {
+        DB::table('report_signatories')->insert(['term_id' => $this->termIds[1], 'label' => 'Old', 'name' => 'Someone']);
+
+        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", $slots())->assertOk();
+
+        $rows = DB::table('report_signatories')->where('term_id', $this->termIds[1])->orderBy('sort_order')->get();
+        expect($rows->pluck('label')->all())->toBe(['Prepared by', 'Conforme', 'Recommending Approval', 'Approved by'])
+            ->and($rows[1]->auto_source)->toBe('section_adviser')
+            ->and($rows[1]->name)->toBeNull()
+            ->and($rows[3]->position)->toBe('PSDS Cluster IV');
+
+        $printed = app(ReportService::class)->signatories(SchoolTerm::find($this->termIds[1]), 'class_program', 'JHS', ['section_adviser' => 'The Adviser']);
+        expect(collect($printed)->pluck('name')->all())->toBe(['Ana Reyes', 'The Adviser', 'Ben Cruz', 'Carla Diaz']);
+    });
+
+    it('needs every name and position', function () use ($slots) {
+        $this->putJson("/api/terms/{$this->termIds[1]}/signatories/slots", $slots(['approved_by' => ['name' => '', 'position' => '']]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['approved_by.name' => 'Type the name to print.', 'approved_by.position']);
+    });
 });

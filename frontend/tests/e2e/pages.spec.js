@@ -168,12 +168,14 @@ test("the school years, report settings, guide, rooms and buildings open", async
   await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
 
   await page.goto("/report-settings");
-  await page.getByRole("button", { name: "Edit profile" }).click();
-  await page.getByRole("dialog").getByRole("textbox", { name: /^Tagline/ }).fill("Excellence in every class");
-  await page.getByRole("dialog").getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("The school profile was saved.")).toBeVisible();
+  // The school's details and logo are built in; only the contact details are edited.
+  await expect(page.getByText("Built into the system")).toBeVisible();
+  await page.getByRole("button", { name: "Edit" }).first().click();
+  await page.getByRole("dialog").getByRole("textbox", { name: /^Phone/ }).fill("(046) 894-1463");
+  await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("The school's contact details were saved.")).toBeVisible();
   await page.getByRole("tab", { name: "Signatories" }).click();
-  await expect(page.getByRole("button", { name: "Add signatory" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Conforme" })).toBeVisible();
 
   await page.goto("/schedule");
   await page.getByRole("tab", { name: "Sample Building" }).click();

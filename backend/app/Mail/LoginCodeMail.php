@@ -23,7 +23,7 @@ class LoginCodeMail extends Mailable
 
     public function content(): Content
     {
-        $school = DB::table('school_profile')->first();
+        $school = \App\Support\SchoolProfile::current();
 
         return new Content(
             view: 'emails.login-code',
